@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.db.session import SessionFactory, engine
 from app.main import app
+from app.platform_.auth.google import GoogleIdentity, google_oauth
 
 SYNC_URL = settings.database_url.replace("+asyncpg", "")
 SCHEMAS = ("platform", "content", "authoring", "insight", "ops")
@@ -73,18 +74,51 @@ async def db() -> AsyncIterator[AsyncSession]:
         yield session
 
 
-async def signup(client: AsyncClient, email: str, password: str = "hunter2!pw") -> dict:
+class FakeGoogle:
+    """Google 포트의 테스트 구현.
+
+    ``oauth_code`` 를 ``"{sub}|{email}"`` 로 읽는다. 실제 프로덕션 경로(2단계 가입)를
+    그대로 통과시키기 위한 것이다 — 로컬 가입 같은 우회 엔드포인트를 만들지 않는다
+    (CLAUDE.md §4.4).
+    """
+
+    async def exchange(self, oauth_code: str) -> GoogleIdentity:
+        sub, _, email = oauth_code.partition("|")
+        return GoogleIdentity(sub=sub, email=email or None)
+
+
+app.dependency_overrides[google_oauth] = FakeGoogle
+
+
+def oauth_code(email: str) -> str:
+    return f"sub-{email}|{email}"
+
+
+async def google_ticket(client: AsyncClient, email: str) -> str:
+    res = await client.post("/auth/oauth/google", json={"oauth_code": oauth_code(email)})
+    assert res.status_code == 200, res.text
+    assert res.json()["meta"]["is_new_user"] is True
+    return str(res.json()["data"]["signup_ticket"])
+
+
+async def signup(
+    client: AsyncClient, email: str, username: str | None = None, role: str = "writer"
+) -> dict:
+    """Google 인증 → 가입 완료. 2단계를 모두 태운다."""
+    ticket = await google_ticket(client, email)
     res = await client.post(
         "/auth/signup",
-        json={"email": email, "password": password, "nickname": email.split("@")[0]},
+        json={"signup_ticket": ticket, "username": username or email.split("@")[0], "role": role},
     )
     assert res.status_code == 201, res.text
     data = res.json()["data"]
     return {
-        "id": data["user"]["id"],
+        "id": data["user"]["user_id"],
         "email": data["user"]["email"],
-        "headers": {"Authorization": f"Bearer {data['token']['access_token']}"},
-        "refresh_token": data["token"]["refresh_token"],
+        "username": data["user"]["username"],
+        "signup_ticket": ticket,
+        "headers": {"Authorization": f"Bearer {data['tokens']['access_token']}"},
+        "refresh_token": data["tokens"]["refresh_token"],
     }
 
 

@@ -2,36 +2,41 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field
 
-# ASSUMPTION: AUTH 명세 원문을 참조하지 못했다. 필드명/경로는 아래로 고정하고 명세 확인 시 조정한다.
 UserRole = Literal["writer", "aspiring_writer", "reader"]
+USERNAME_MAX = 30
+
+
+class OAuthGoogleRequest(BaseModel):
+    oauth_code: str = Field(min_length=1)
 
 
 class SignupRequest(BaseModel):
-    email: EmailStr
-    # bcrypt 는 72바이트를 넘는 입력을 잘라내므로 상한을 명시한다.
-    password: str = Field(min_length=8, max_length=72)
-    nickname: str = Field(min_length=1, max_length=50)
-    role: UserRole = "writer"
-
-
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str = Field(min_length=1, max_length=72)
+    signup_ticket: str = Field(min_length=1)
+    # 누락은 USERNAME_REQUIRED(400) 로 답해야 해서 스키마에서 막지 않는다 (AUTH 명세 §1.4).
+    username: str | None = Field(default=None, max_length=USERNAME_MAX)
+    role: UserRole
 
 
 class RefreshRequest(BaseModel):
-    refresh_token: str
+    refresh_token: str = Field(min_length=1)
+
+
+class UserUpdate(BaseModel):
+    # v0.2 에서 수정 가능한 필드는 role 뿐이다 (CLAUDE.md §4.1).
+    role: UserRole
 
 
 class UserResponse(BaseModel):
-    id: UUID
+    user_id: UUID
+    username: str
     email: str | None
-    nickname: str
     role: UserRole
+    auth_provider: str
     created_at: datetime
-    # users.plan 은 어떤 응답 스키마에도 노출하지 않는다 (CLAUDE.md §5).
+    updated_at: datetime
+    # users.plan 과 provider_user_id 는 어떤 응답에도 노출하지 않는다.
 
 
 class TokenResponse(BaseModel):
@@ -43,4 +48,16 @@ class TokenResponse(BaseModel):
 
 class SessionResponse(BaseModel):
     user: UserResponse
-    token: TokenResponse
+    tokens: TokenResponse
+
+
+class SignupTicketResponse(BaseModel):
+    """신규 사용자. 계정은 아직 만들지 않았다 (AUTH 계약 §4.2)."""
+
+    signup_ticket: str
+    email: str | None
+
+
+class UsernameCheckResponse(BaseModel):
+    username: str
+    available: bool

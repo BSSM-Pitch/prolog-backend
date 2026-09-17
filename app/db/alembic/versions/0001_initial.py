@@ -1,4 +1,4 @@
-"""38 테이블 초기 스키마 (CLAUDE.md §5).
+"""37 테이블 초기 스키마 (CLAUDE.md §5).
 
 DDL 을 raw SQL 로 쓴다. 부분 인덱스 · lower() UNIQUE · CHECK · 트리거는
 autogenerate 가 만들어내지 못하므로, 이 파일이 스키마의 정본이다.
@@ -29,28 +29,22 @@ CREATE SCHEMA IF NOT EXISTS authoring;
 CREATE SCHEMA IF NOT EXISTS insight;
 CREATE SCHEMA IF NOT EXISTS ops;
 
--- ========================= platform (12) =========================
+-- ========================= platform (11) =========================
 CREATE TABLE platform.users (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     email varchar(255),
-    password_hash varchar(255),
-    auth_provider varchar(20) NOT NULL DEFAULT 'local',
-    provider_user_id varchar(255),
-    nickname varchar(50) NOT NULL,
+    auth_provider varchar(20) NOT NULL DEFAULT 'google',
+    provider_user_id varchar(255) NOT NULL,
+    username varchar(30) NOT NULL,
     role varchar(20) NOT NULL,
     plan varchar(20) NOT NULL DEFAULT 'free',
     {TS},
-    CONSTRAINT users_auth_provider_chk
-        CHECK (auth_provider IN ('local','google','kakao','naver')),
+    CONSTRAINT users_auth_provider_chk CHECK (auth_provider IN ('google')),
     CONSTRAINT users_role_chk CHECK (role IN ('writer','aspiring_writer','reader')),
     CONSTRAINT users_plan_chk CHECK (plan IN ('free')),
-    CONSTRAINT users_local_pw_chk
-        CHECK (auth_provider <> 'local' OR password_hash IS NOT NULL),
-    CONSTRAINT users_social_id_chk
-        CHECK (auth_provider = 'local' OR provider_user_id IS NOT NULL)
+    CONSTRAINT users_username_uq UNIQUE (username)
 );
-CREATE UNIQUE INDEX users_provider_uq ON platform.users (auth_provider, provider_user_id)
-    WHERE provider_user_id IS NOT NULL;
+CREATE UNIQUE INDEX users_provider_uq ON platform.users (auth_provider, provider_user_id);
 CREATE UNIQUE INDEX users_email_lower_uq ON platform.users (lower(email))
     WHERE email IS NOT NULL;
 
@@ -63,15 +57,6 @@ CREATE TABLE platform.refresh_tokens (
     {TS}
 );
 CREATE INDEX refresh_tokens_user_idx ON platform.refresh_tokens (user_id);
-
-CREATE TABLE platform.password_resets (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id uuid NOT NULL REFERENCES platform.users(id) ON DELETE CASCADE,
-    token_hash varchar(64) NOT NULL UNIQUE,
-    expires_at timestamptz NOT NULL,
-    used_at timestamptz,
-    {TS}
-);
 
 CREATE TABLE platform.teams (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

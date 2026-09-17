@@ -8,6 +8,7 @@ from starlette.exceptions import HTTPException
 from app.core.errors import AppError
 from app.core.response import ok
 from app.platform_.auth.router import router as auth_router
+from app.platform_.auth.router import users_router
 from app.platform_.projects.router import router as projects_router
 from app.platform_.teams.router import router as teams_router
 
@@ -35,9 +36,10 @@ async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
 
 @app.exception_handler(RequestValidationError)
 async def validation_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    # 명세 공통 코드는 INVALID_INPUT(400) 이다. VALIDATION_ERROR·422 는 명세에 없다.
     return _error(
-        422,
-        "VALIDATION_ERROR",
+        400,
+        "INVALID_INPUT",
         "요청 값이 올바르지 않습니다",
         {"fields": [{"loc": e["loc"], "msg": e["msg"]} for e in exc.errors()]},
     )
@@ -54,5 +56,5 @@ async def health() -> dict[str, Any]:
     return ok({"status": "ok"})
 
 
-for _router in (auth_router, teams_router, projects_router):
+for _router in (auth_router, users_router, teams_router, projects_router):
     app.include_router(_router, prefix="/v1")

@@ -8,7 +8,7 @@ from sqlalchemy import text
 from app.db.all_models import Base
 from app.db.session import engine
 
-EXPECTED_TABLE_COUNT = 38
+EXPECTED_TABLE_COUNT = 37
 SCHEMAS = ("platform", "content", "authoring", "insight", "ops")
 
 

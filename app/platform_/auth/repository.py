@@ -7,14 +7,23 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.platform_.auth.models import RefreshToken, User
 
 
-async def get_user_by_email(session: AsyncSession, email: str) -> User | None:
-    # lower(email) UNIQUE 부분 인덱스를 타야 한다.
-    stmt = select(User).where(func.lower(User.email) == email.lower())
+async def get_user_by_provider(
+    session: AsyncSession, auth_provider: str, provider_user_id: str
+) -> User | None:
+    """기존 사용자 판별은 (auth_provider, provider_user_id) 다. 이메일이 아니다."""
+    stmt = select(User).where(
+        User.auth_provider == auth_provider, User.provider_user_id == provider_user_id
+    )
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
 async def get_user(session: AsyncSession, user_id: UUID) -> User | None:
     return await session.get(User, user_id)
+
+
+async def username_exists(session: AsyncSession, username: str) -> bool:
+    stmt = select(User.id).where(User.username == username).limit(1)
+    return (await session.execute(stmt)).first() is not None
 
 
 async def add_user(session: AsyncSession, user: User) -> User:

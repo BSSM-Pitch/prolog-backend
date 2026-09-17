@@ -70,8 +70,8 @@ async def test_team_list_is_cursor_paginated(client: AsyncClient) -> None:
     assert second.json()["meta"]["next_cursor"] is None
 
     bad = await client.get("/teams?cursor=!!!", headers=user["headers"])
-    assert bad.status_code == 422
-    assert code(bad) == "VALIDATION_ERROR"
+    assert bad.status_code == 400
+    assert code(bad) == "INVALID_INPUT"
 
 
 async def test_invite_writes_outbox_event_in_same_transaction(
@@ -191,7 +191,7 @@ async def test_reject_and_revoke_invitation(client: AsyncClient) -> None:
         f"/teams/{team_id}/invitations/00000000-0000-0000-0000-000000000000",
         headers=owner["headers"],
     )
-    assert code(unknown) == "INVITATION_NOT_FOUND"
+    assert code(unknown) == "TEAM_INVITATION_NOT_FOUND"
 
 
 async def test_last_owner_cannot_be_removed_or_demoted(client: AsyncClient) -> None:
@@ -213,7 +213,7 @@ async def test_last_owner_cannot_be_removed_or_demoted(client: AsyncClient) -> N
         f"/teams/{team_id}/members/00000000-0000-0000-0000-000000000000",
         headers=owner["headers"],
     )
-    assert code(ghost) == "MEMBER_NOT_FOUND"
+    assert code(ghost) == "TEAM_MEMBER_NOT_FOUND"
 
 
 async def test_team_with_projects_cannot_be_deleted(client: AsyncClient) -> None:

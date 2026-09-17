@@ -11,7 +11,7 @@ from uuid import UUID
 
 from fastapi import Query
 
-from app.core.errors import ValidationError
+from app.core.errors import InvalidInput
 
 DEFAULT_LIMIT = 20
 MAX_LIMIT = 100
@@ -31,7 +31,7 @@ def decode_cursor(cursor: str) -> tuple[datetime, UUID]:
         created_at, _, row_id = base64.urlsafe_b64decode(padded).decode().partition("|")
         return datetime.fromisoformat(created_at), UUID(row_id)
     except (ValueError, binascii.Error, UnicodeDecodeError) as exc:
-        raise ValidationError("cursor 형식이 올바르지 않습니다", field="cursor") from exc
+        raise InvalidInput("cursor 형식이 올바르지 않습니다", field="cursor") from exc
 
 
 def next_cursor[T](rows: list[T], limit: int) -> tuple[list[T], dict[str, Any]]:

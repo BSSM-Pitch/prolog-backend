@@ -85,7 +85,7 @@ async def update_member_role(
 ) -> TeamMemberResponse:
     member = await repo.get_member(session, team_id, user_id)
     if member is None:
-        raise errors.MemberNotFound()
+        raise errors.TeamMemberNotFound()
     if (
         member.role == "owner"
         and role != "owner"
@@ -100,7 +100,7 @@ async def update_member_role(
 async def remove_member(session: AsyncSession, team_id: UUID, user_id: UUID) -> None:
     member = await repo.get_member(session, team_id, user_id)
     if member is None:
-        raise errors.MemberNotFound()
+        raise errors.TeamMemberNotFound()
     if member.role == "owner" and await repo.count_owners(session, team_id) == 1:
         raise errors.LastOwnerCannotLeave()
     await session.delete(member)
@@ -148,7 +148,7 @@ async def list_invitations(session: AsyncSession, team_id: UUID) -> list[Invitat
 async def _pending(session: AsyncSession, team_id: UUID, invitation_id: UUID) -> TeamInvitation:
     invitation = await repo.get_invitation(session, invitation_id)
     if invitation is None or invitation.team_id != team_id:
-        raise errors.InvitationNotFound()
+        raise errors.TeamInvitationNotFound()
     if invitation.status != "pending":
         raise errors.InvitationNotPending()
     return invitation
@@ -178,7 +178,7 @@ async def respond_invitation(
     invitation.responded_at = func.now()
     if accept:
         if await repo.get_member(session, team_id, user.id) is not None:
-            raise errors.AlreadyMember()
+            raise errors.AlreadyTeamMember()
         await repo.add_member(session, team_id, user.id, invitation.role)
         emit(
             session,
