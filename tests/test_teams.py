@@ -22,6 +22,7 @@ async def test_create_team_makes_creator_owner(client: AsyncClient) -> None:
         {
             "team_id": team_id,
             "user_id": user["id"],
+            "username": user["username"],
             "role": "owner",
             "joined_at": members.json()["data"][0]["joined_at"],
         }
@@ -270,3 +271,76 @@ async def test_member_can_leave_but_cannot_remove_others(client: AsyncClient) ->
     left = await client.delete(f"/teams/{team_id}/members/{guest['id']}", headers=guest["headers"])
     assert left.status_code == 204
     assert (await client.get(f"/teams/{team_id}", headers=guest["headers"])).status_code == 403
+
+
+async def test_team_response_schemas_match_spec(client: AsyncClient) -> None:
+    """응답 필드 집합을 명세와 대조한다 (TEAM 명세 §2.1~2.3 · §4.6 · §4.9)."""
+    owner = await signup(client, "schema@example.com")
+    guest = await signup(client, "schemaguest@example.com")
+
+    created = (await client.post("/teams", json={"name": "S"}, headers=owner["headers"])).json()
+    assert set(created["data"]) == {
+        "team_id",
+        "name",
+        "description",
+        "created_by",
+        "created_at",
+        "updated_at",
+    }
+    team_id = created["data"]["team_id"]
+    detail = await client.get(f"/teams/{team_id}", headers=owner["headers"])
+    assert set(detail.json()["data"]) == set(created["data"])
+
+    invitation = (
+        await client.post(
+            f"/teams/{team_id}/invitations",
+            json={"invited_email": guest["email"], "role": "member"},
+            headers=owner["headers"],
+        )
+    ).json()["data"]
+    assert set(invitation) == {
+        "invitation_id",
+        "team_id",
+        "invited_email",
+        "role",
+        "status",
+        "expires_at",
+        "created_at",
+    }
+
+    accepted = (
+        await client.post(
+            f"/teams/{team_id}/invitations/{invitation['invitation_id']}/accept",
+            headers=guest["headers"],
+        )
+    ).json()["data"]
+    # 명세 §4.9 의 응답은 TeamMember 다 (사용자 이름 포함은 목록 쪽 요구사항).
+    assert set(accepted) == {"team_id", "user_id", "role", "joined_at"}
+
+    members = (await client.get(f"/teams/{team_id}/members", headers=owner["headers"])).json()[
+        "data"
+    ]
+    assert {m["username"] for m in members} == {owner["username"], guest["username"]}
+    assert set(members[0]) == {"team_id", "user_id", "username", "role", "joined_at"}
+
+
+async def test_inviting_an_existing_member_is_409(client: AsyncClient) -> None:
+    """명세 §4.7: 이미 팀원이면 ALREADY_TEAM_MEMBER. 초대 생성 시점에 막는다."""
+    owner = await signup(client, "dupmem@example.com")
+    team_id = await create_team(client, owner["headers"])
+
+    res = await client.post(
+        f"/teams/{team_id}/invitations",
+        json={"invited_email": owner["email"], "role": "member"},
+        headers=owner["headers"],
+    )
+    assert res.status_code == 409
+    assert code(res) == "ALREADY_TEAM_MEMBER"
+
+    # 미가입 이메일은 초대된다 (명세 §4.7 비고).
+    fresh = await client.post(
+        f"/teams/{team_id}/invitations",
+        json={"invited_email": "nobody@example.com", "role": "member"},
+        headers=owner["headers"],
+    )
+    assert fresh.status_code == 201

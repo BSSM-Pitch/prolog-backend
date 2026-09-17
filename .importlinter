@@ -6,6 +6,7 @@ include_external_packages = True
 name = Ring 의존은 아래에서 위로 한 방향 (규칙 1)
 type = layers
 layers =
+    api
     insight
     authoring
     content

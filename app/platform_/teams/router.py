@@ -9,7 +9,6 @@ from app.core.response import ok
 from app.db.session import Session
 from app.platform_.teams import service
 from app.platform_.teams.schemas import (
-    InvitationCreate,
     TeamCreate,
     TeamMemberUpdate,
     TeamResponse,
@@ -58,11 +57,6 @@ async def delete_team(team_id: TeamId, session: Session) -> None:
     await service.delete_team(session, team_id)
 
 
-@router.get("/{teamId}/members", dependencies=[Member])
-async def list_members(team_id: TeamId, session: Session) -> dict[str, Any]:
-    return ok(await service.list_members(session, team_id))
-
-
 @router.patch("/{teamId}/members/{userId}", dependencies=[Owner])
 async def update_member_role(
     team_id: TeamId,
@@ -82,13 +76,6 @@ async def remove_member(
     role: MemberRole,
 ) -> None:
     await service.remove_member(session, team_id, user_id, user, role)
-
-
-@router.post("/{teamId}/invitations", status_code=status.HTTP_201_CREATED, dependencies=[Admin])
-async def invite(
-    team_id: TeamId, body: InvitationCreate, session: Session, user: User
-) -> dict[str, Any]:
-    return ok(await service.invite(session, team_id, user, body))
 
 
 @router.get("/{teamId}/invitations", dependencies=[Admin])

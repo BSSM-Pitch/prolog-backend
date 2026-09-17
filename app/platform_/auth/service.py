@@ -4,6 +4,7 @@ Google authorization code 는 1회용이다. 신규 사용자에게 400 을 던�
 재요청하게 하면 Google 이 거부하므로, 인증(=티켓 발급)과 가입 완료를 두 호출로 나눈다.
 """
 
+from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
@@ -133,3 +134,14 @@ async def update_me(session: AsyncSession, user_id: UUID, role: str) -> UserResp
 async def check_username(session: AsyncSession, username: str) -> UsernameCheckResponse:
     taken = await repo.username_exists(session, username)
     return UsernameCheckResponse(username=username, available=not taken)
+
+
+async def usernames_of(session: AsyncSession, user_ids: Sequence[UUID]) -> dict[UUID, str]:
+    """조합 레이어(app/api)가 멤버 목록에 이름을 붙일 때 쓴다 (CLAUDE.md §6.3)."""
+    return await repo.get_usernames(session, user_ids)
+
+
+async def find_user_id_by_email(session: AsyncSession, email: str) -> UUID | None:
+    """초대 대상이 이미 가입한 사용자인지. 미가입이면 None."""
+    user = await repo.get_user_by_email(session, email)
+    return user.id if user else None

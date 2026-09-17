@@ -22,6 +22,7 @@ async def test_create_personal_project(client: AsyncClient) -> None:
     assert members.json()["data"][0] == {
         "project_id": project["project_id"],
         "user_id": user["id"],
+        "username": user["username"],
         "role": "owner",
         "joined_at": members.json()["data"][0]["joined_at"],
     }
@@ -318,3 +319,66 @@ async def test_viewer_can_leave_but_cannot_remove_owner(client: AsyncClient) -> 
     assert (
         await client.get(f"/projects/{project['project_id']}", headers=viewer["headers"])
     ).status_code == 403
+
+
+async def test_project_response_schemas_match_spec(client: AsyncClient) -> None:
+    """응답 필드 집합을 명세와 대조한다 (PRJ 명세 §2.1~2.3 · §4.6 · §4.8)."""
+    owner = await signup(client, "pschema@example.com")
+    mate = await signup(client, "pschemamate@example.com")
+
+    project = await create_project(client, owner["headers"])
+    assert set(project) == {
+        "project_id",
+        "title",
+        "description",
+        "owner_type",
+        "team_id",
+        "created_by",
+        "created_at",
+        "updated_at",
+    }
+
+    invitation = (
+        await client.post(
+            f"/projects/{project['project_id']}/invitations",
+            json={"invited_email": mate["email"], "role": "editor"},
+            headers=owner["headers"],
+        )
+    ).json()["data"]
+    assert set(invitation) == {
+        "invitation_id",
+        "project_id",
+        "invited_email",
+        "role",
+        "status",
+        "expires_at",
+        "created_at",
+    }
+
+    accepted = (
+        await client.post(
+            f"/projects/{project['project_id']}/invitations/{invitation['invitation_id']}/accept",
+            headers=mate["headers"],
+        )
+    ).json()["data"]
+    assert set(accepted) == {"project_id", "user_id", "role", "joined_at"}
+
+    members = (
+        await client.get(f"/projects/{project['project_id']}/members", headers=owner["headers"])
+    ).json()["data"]
+    assert {m["username"] for m in members} == {owner["username"], mate["username"]}
+    assert set(members[0]) == {"project_id", "user_id", "username", "role", "joined_at"}
+
+
+async def test_inviting_an_existing_member_is_409(client: AsyncClient) -> None:
+    """명세 §4.7: 이미 멤버면 ALREADY_MEMBER. 초대 생성 시점에 막는다."""
+    owner = await signup(client, "pdupmem@example.com")
+    project = await create_project(client, owner["headers"])
+
+    res = await client.post(
+        f"/projects/{project['project_id']}/invitations",
+        json={"invited_email": owner["email"], "role": "editor"},
+        headers=owner["headers"],
+    )
+    assert res.status_code == 409
+    assert code(res) == "ALREADY_MEMBER"

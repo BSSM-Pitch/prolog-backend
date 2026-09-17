@@ -241,3 +241,7 @@ async def reject_invitation(
     await session.flush()
     await session.refresh(invitation)
     return _invitation(invitation)
+
+
+async def is_member(session: AsyncSession, project_id: UUID, user_id: UUID) -> bool:
+    return await repo.get_member(session, project_id, user_id) is not None

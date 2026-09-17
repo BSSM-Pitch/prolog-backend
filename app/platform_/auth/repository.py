@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from datetime import datetime
 from uuid import UUID
 
@@ -19,6 +20,20 @@ async def get_user_by_provider(
 
 async def get_user(session: AsyncSession, user_id: UUID) -> User | None:
     return await session.get(User, user_id)
+
+
+async def get_user_by_email(session: AsyncSession, email: str) -> User | None:
+    # lower(email) UNIQUE 부분 인덱스를 탄다.
+    stmt = select(User).where(func.lower(User.email) == email.lower())
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def get_usernames(session: AsyncSession, user_ids: Sequence[UUID]) -> dict[UUID, str]:
+    """표시용 username 일괄 조회. 멤버 수만큼 쿼리를 날리지 않는다."""
+    if not user_ids:
+        return {}
+    stmt = select(User.id, User.username).where(User.id.in_(user_ids))
+    return {row.id: row.username for row in (await session.execute(stmt))}
 
 
 async def username_exists(session: AsyncSession, username: str) -> bool:

@@ -9,7 +9,6 @@ from app.core.response import ok
 from app.db.session import Session
 from app.platform_.projects import service
 from app.platform_.projects.schemas import (
-    InvitationCreate,
     OwnerType,
     ProjectCreate,
     ProjectMemberUpdate,
@@ -65,11 +64,6 @@ async def delete_project(project_id: ProjectId, session: Session) -> None:
     await service.delete_project(session, project_id)
 
 
-@router.get("/{projectId}/members", dependencies=[Viewer])
-async def list_members(project_id: ProjectId, session: Session) -> dict[str, Any]:
-    return ok(await service.list_members(session, project_id))
-
-
 @router.patch("/{projectId}/members/{userId}", dependencies=[Owner])
 async def update_member_role(
     project_id: ProjectId,
@@ -88,13 +82,6 @@ async def remove_member(
     ctx: ViewerCtx,
 ) -> None:
     await service.remove_member(session, project_id, user_id, ctx)
-
-
-@router.post("/{projectId}/invitations", status_code=status.HTTP_201_CREATED, dependencies=[Owner])
-async def invite(
-    project_id: ProjectId, body: InvitationCreate, session: Session, user: User
-) -> dict[str, Any]:
-    return ok(await service.invite(session, project_id, user, body))
 
 
 @router.get("/{projectId}/invitations", dependencies=[Owner])
