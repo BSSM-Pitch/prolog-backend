@@ -17,7 +17,7 @@
 | 레포 경로 | `~/Desktop/전공동` |
 | 스택 | FastAPI · PostgreSQL · SQLAlchemy(asyncpg) · Alembic(psycopg) · uv |
 | 현재 단계 | Phase 0 — AUTH 계약 정렬 중 |
-| git | 초기화됨. 첫 커밋 `a6ea4e9` (84파일) |
+| git | 초기화됨. 첫 커밋 `a6ea4e9` (84파일) · CLAUDE.md 복원 `d00610a` · AUTH v0.2 `f586427` |
 
 ### 실행
 
@@ -48,7 +48,7 @@ cd ~/Desktop/전공동 && uv run ruff check . && uv run ruff format --check . \
 2. **테스트는 `_test`로 끝나는 DB에서만 돈다.** `tests/conftest.py`의 `pytest_configure` 가드를 제거하지 않는다.
    **`os.environ.setdefault("DATABASE_URL", ...)`를 되살리지 않는다** — 암묵 기본값이 있으면 가드가 영원히 발화하지 않는다.
    가드는 DB 이름 부분만 잘라 검사한다(호스트에 `_test`가 들어가도 통과하지 않게).
-3. **`TRUNCATE ... CASCADE`를 dev DB에 쓰지 않는다.** 38테이블 5스키마에서 참조 체인 전체가 비워진다.
+3. **`TRUNCATE ... CASCADE`를 dev DB에 쓰지 않는다.** 37테이블 5스키마에서 참조 체인 전체가 비워진다.
 4. **비밀번호를 저장하지 않는다.** Google OAuth 단일이다. bcrypt/argon2를 되살리지 않는다.
 5. **디스크 여유를 확인하고 시작한다.** 2026-09 작업 중 ENOSPC로 전체가 멈춘 적이 있다.
    `df -h /System/Volumes/Data`가 5GB 미만이면 작업을 시작하지 않는다.
@@ -258,7 +258,8 @@ TEAM 4.6·PRJ 4.6 모두 응답에 "(사용자 이름 포함)"을 명시한다. 
   `TEAM_HAS_ACTIVE_PROJECTS`로 번역해 처리한다 (승인된 설계).
   **IntegrityError는 제약 이름 상수로 분기한다.** 메시지 문자열 파싱은 PG 마이너 버전에 깨진다.
 - `teams.member_count`를 저장하지 않는다. 조회 시 집계한다 (동시 가입 경합).
-- 38테이블 중 Phase 0에서 **쓰는** 것은 platform 12개뿐이다. 나머지 26개도 제약을 박아 이미 만들었다.
+- 37테이블 중 Phase 0에서 **쓰는** 것은 platform 11개뿐이다. 나머지 26개도 제약을 박아 이미 만들었다.
+  (v0.2에서 `password_resets`를 지워 38 → 37, platform 12 → 11이 되었다.)
 
 ### v0.2 스키마 변경
 
@@ -296,26 +297,28 @@ Phase 1 착수 전 필요: localstack 또는 elasticmq. Redis도 아직 아무�
 
 ## 9. 지금 할 일
 
-**완료:** `.gitignore`·`.env.example` 확인, `git init`, `.env` 제외 검증,
+**완료 (저장소):** `.gitignore`·`.env.example` 확인, `git init`, `.env` 제외 검증,
 `pytest_configure` 가드, 게이트 5종, 첫 커밋 `a6ea4e9`.
 
-**다음 (AUTH v0.2):**
+**완료 (AUTH v0.2, `f586427`):**
 
-1. `0001_initial.py`를 §7 목록대로 수정 → `git commit --amend`
-2. Google ID 토큰 검증 포트 + fake 구현. `core/security`에서 bcrypt 제거
+1. `0001_initial.py`를 §7 목록대로 수정 (37테이블). **`--amend`는 하지 않았다** —
+   그 사이 `d00610a`가 올라와 첫 커밋이 HEAD가 아니게 되었다. 0001을 직접 고쳤으므로
+   마이그레이션 파일은 여전히 하나이고, 첫 커밋에 접어 넣으려면 rebase가 필요하다 (미결)
+2. Google ID 토큰 검증 포트(`auth/google.py`) + fake 주입. `core/security`·의존성에서 bcrypt 제거
 3. `app/platform_/auth/` 재작성 — `/auth/oauth/google` + `signup_ticket`, `/auth/signup`,
    `/users/check-username`
 4. 경로 정정 (`/auth/token/refresh`, `/users/me`) + `PATCH /users/me`
-5. 에러 코드 이름 정렬 (§5.5)
-6. 테스트 픽스처를 fake 토큰 기반으로 전환
+5. 에러 코드 이름 정렬 (§5.5, §6.1). `VALIDATION_ERROR(422)` → `INVALID_INPUT(400)`
+6. 테스트 픽스처를 fake Google 주입으로 전환. §10 필수 3종 추가 (28 → 33 테스트)
 
-**그다음 (TEAM·PRJ):**
+**다음 (TEAM·PRJ):**
 
-7. 감사 보고서 먼저 → 승인 후 수정
-8. `NOT_TEAM_MEMBER`, 팀 프로젝트 권한 완화, 멤버 목록 `username`, 초대 `token_hash`
-9. 누락 엔드포인트: `GET /teams/{teamId}/projects`,
+1. 감사 보고서 먼저 → 승인 후 수정
+2. `NOT_TEAM_MEMBER`, 팀 프로젝트 권한 완화, 멤버 목록 `username`, 초대 `token_hash`
+3. 누락 엔드포인트: `GET /teams/{teamId}/projects`,
    `PATCH/DELETE /teams/{teamId}/members/{userId}`, PRJ 멤버 역할 변경·제거
-10. PG16에서 전체 재실행 (compose 버전. 현재 dev·test 모두 PG15)
+4. PG16에서 전체 재실행 (compose 버전. 현재 dev·test 모두 PG15)
 
 ---
 
