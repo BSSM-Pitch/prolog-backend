@@ -16,7 +16,7 @@
 | 서비스 | StoryForge — AI 기반 스토리 구조 관리 IDE |
 | 레포 경로 | `~/Desktop/전공동` |
 | 스택 | FastAPI · PostgreSQL · SQLAlchemy(asyncpg) · Alembic(psycopg) · uv |
-| 현재 단계 | Phase 0 — AUTH 계약 정렬 중 |
+| 현재 단계 | Phase 0 — TEAM·PRJ 정렬 중 |
 | git | 초기화됨. 첫 커밋 `a6ea4e9` (84파일) · CLAUDE.md 복원 `d00610a` · AUTH v0.2 `f586427` |
 
 ### 실행
@@ -324,13 +324,12 @@ Phase 1 착수 전 필요: localstack 또는 elasticmq. Redis도 아직 아무�
 
 ## 10. 반드시 추가할 테스트
 
-현재 22 엔드포인트에 28 테스트로 얇다.
+현재 22 경로 · 33 오퍼레이션에 테스트 33개다 (`/v1/health` 제외).
 
-- **리프레시 토큰 재사용 거부** — 폐기 토큰 재제출이 401. 보안 위험이 가장 큰 경로
-- **테넌트 격리** — 사용자 A가 B의 팀/프로젝트를 읽지 못한다
-- **`signup_ticket` 오용 거부** — 티켓을 `Authorization: Bearer`로 제출하면 401
 - **만료 초대 수락** → 410 `INVITATION_EXPIRED`
 - **유일 owner 강등/탈퇴** → 409 `LAST_OWNER_CANNOT_LEAVE`
+
+리프레시 토큰 재사용 거부 · 테넌트 격리 · `signup_ticket` 오용 거부는 `f586427`에서 추가됨.
 
 ---
 
@@ -357,5 +356,9 @@ Phase 1 착수 전 필요: localstack 또는 elasticmq. Redis도 아직 아무�
   필요한 인덱스 `project_members(user_id)`는 이미 있다
 - outbox 릴레이 워커 (Phase 1) · Celery (Phase 2)
 - 비멤버 접근 시 403 vs 404. 명세·구현 모두 403. 바꾸려면 명세부터
+- **이메일 UNIQUE 충돌이 500이 된다.** `users_email_lower_uq` 위반에 매핑할 코드가 없다 —
+  `EMAIL_TAKEN`이 §5.5에서 삭제됐기 때문이다. 서로 다른 Google `sub`가 같은 이메일을 갖는
+  경우라 실무상 드물지만 구멍은 맞다. Notion에 `EMAIL_CONFLICT`(409) 추가를 검토하되,
+  **명세 수정이므로 TEAM·PRJ 감사 때 다른 변경 건과 묶는다** (정본을 여러 번 건드리지 않는다)
 - 프론트엔드 계약 미대조. `# ASSUMPTION:` 주석으로 표시되어 있으나,
   어긋나면 Phase 0 전체를 손봐야 한다 (ROADMAP 113행)
