@@ -85,11 +85,12 @@ CREATE TABLE platform.team_invitations (
     role varchar(20) NOT NULL DEFAULT 'member',
     status varchar(20) NOT NULL DEFAULT 'pending',
     expires_at timestamptz NOT NULL,
-    responded_at timestamptz,
+    token_hash varchar(64) NOT NULL UNIQUE,
+    accepted_at timestamptz,
     {TS},
     CONSTRAINT team_invitations_role_chk CHECK (role IN ('admin','member')),
     CONSTRAINT team_invitations_status_chk
-        CHECK (status IN ('pending','accepted','rejected','revoked','expired'))
+        CHECK (status IN ('pending','accepted','revoked','expired'))
 );
 CREATE UNIQUE INDEX team_invitations_pending_uq
     ON platform.team_invitations (team_id, lower(invited_email)) WHERE status = 'pending';
@@ -130,11 +131,12 @@ CREATE TABLE platform.project_invitations (
     role varchar(20) NOT NULL DEFAULT 'editor',
     status varchar(20) NOT NULL DEFAULT 'pending',
     expires_at timestamptz NOT NULL,
-    responded_at timestamptz,
+    token_hash varchar(64) NOT NULL UNIQUE,
+    accepted_at timestamptz,
     {TS},
     CONSTRAINT project_invitations_role_chk CHECK (role IN ('editor','viewer')),
     CONSTRAINT project_invitations_status_chk
-        CHECK (status IN ('pending','accepted','rejected','revoked','expired'))
+        CHECK (status IN ('pending','accepted','revoked','expired'))
 );
 CREATE UNIQUE INDEX project_invitations_pending_uq
     ON platform.project_invitations (project_id, lower(invited_email)) WHERE status = 'pending';

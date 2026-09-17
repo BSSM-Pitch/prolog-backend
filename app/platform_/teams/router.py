@@ -8,7 +8,7 @@ from app.core.pagination import DEFAULT_LIMIT, Cursor, Limit, decode_cursor, nex
 from app.core.response import ok
 from app.db.session import Session
 from app.platform_.teams import service
-from app.platform_.teams.schemas import TeamCreate, TeamMemberUpdate, TeamUpdate
+from app.platform_.teams.schemas import InvitationAccept, TeamCreate, TeamMemberUpdate, TeamUpdate
 
 router = APIRouter(prefix="/teams", tags=["TEAM"])
 
@@ -96,7 +96,8 @@ async def revoke_invitation(
 async def accept_invitation(
     team_id: TeamId,
     invitation_id: Annotated[UUID, Path(alias="invitationId")],
+    body: InvitationAccept,
     session: Session,
     user: User,
 ) -> dict[str, Any]:
-    return ok(await service.accept_invitation(session, team_id, invitation_id, user))
+    return ok(await service.accept_invitation(session, team_id, invitation_id, user, body.token))

@@ -44,4 +44,6 @@ class ProjectInvitation(Base, Timestamps):
     role: Mapped[str] = mapped_column(String(20))
     status: Mapped[str] = mapped_column(String(20), default="pending")
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # 초대 링크는 랜덤 값의 sha256 만 저장한다. 원문은 생성 응답에만 나간다 (CLAUDE.md §6.4).
+    token_hash: Mapped[str] = mapped_column(String(64))
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

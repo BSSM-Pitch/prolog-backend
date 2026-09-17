@@ -9,6 +9,7 @@ from app.core.response import ok
 from app.db.session import Session
 from app.platform_.projects import service
 from app.platform_.projects.schemas import (
+    InvitationAccept,
     OwnerType,
     ProjectCreate,
     ProjectMemberUpdate,
@@ -102,7 +103,8 @@ async def revoke_invitation(
 async def accept_invitation(
     project_id: ProjectId,
     invitation_id: Annotated[UUID, Path(alias="invitationId")],
+    body: InvitationAccept,
     session: Session,
     user: User,
 ) -> dict[str, Any]:
-    return ok(await service.accept_invitation(session, project_id, invitation_id, user))
+    return ok(await service.accept_invitation(session, project_id, invitation_id, user, body.token))

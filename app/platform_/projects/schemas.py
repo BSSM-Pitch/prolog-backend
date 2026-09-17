@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 ProjectRole = Literal["owner", "editor", "viewer"]
 # 초대로는 owner 를 줄 수 없다 (명세 §2.3). DDL CHECK 도 같다.
@@ -56,6 +56,8 @@ class InvitationCreate(BaseModel):
 
 
 class InvitationResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     invitation_id: UUID = Field(validation_alias="id")
     project_id: UUID
     invited_email: str
@@ -63,3 +65,15 @@ class InvitationResponse(BaseModel):
     status: str
     expires_at: datetime
     created_at: datetime
+
+
+class InvitationCreatedResponse(InvitationResponse):
+    """생성 응답에만 원문 토큰을 담는다. DB 에는 sha256 만 있다 (CLAUDE.md §6.4)."""
+
+    token: str
+
+
+class InvitationAccept(BaseModel):
+    """수락 권한은 이메일 일치가 아니라 **토큰 소지**로 판정한다 (CLAUDE.md §6.4)."""
+
+    token: str = Field(min_length=1)

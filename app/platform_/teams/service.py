@@ -1,5 +1,6 @@
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
+from secrets import compare_digest
 from uuid import UUID
 
 from sqlalchemy import func
@@ -9,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core import errors
 from app.core.config import settings
 from app.core.deps import TEAM_ROLE_RANK, CurrentUser
+from app.core.security import new_opaque_token, sha256
 from app.events.outbox import emit
 from app.platform_.teams import repository as repo
 from app.platform_.teams.models import (
@@ -20,6 +22,7 @@ from app.platform_.teams.models import (
 )
 from app.platform_.teams.schemas import (
     InvitationCreate,
+    InvitationCreatedResponse,
     InvitationResponse,
     TeamCreate,
     TeamMemberResponse,
@@ -143,10 +146,12 @@ async def remove_member(
 
 async def invite(
     session: AsyncSession, team_id: UUID, user: CurrentUser, body: InvitationCreate
-) -> InvitationResponse:
+) -> InvitationCreatedResponse:
+    token, token_hash = new_opaque_token()
     invitation = TeamInvitation(
         team_id=team_id,
         invited_email=str(body.invited_email),
+        token_hash=token_hash,
         invited_by=user.id,
         role=body.role,
         status="pending",
@@ -174,7 +179,7 @@ async def invite(
             "expires_at": invitation.expires_at.isoformat(),
         },
     )
-    return _invitation(invitation)
+    return InvitationCreatedResponse(**_invitation(invitation).model_dump(), token=token)
 
 
 async def list_invitations(session: AsyncSession, team_id: UUID) -> list[InvitationResponse]:
@@ -193,31 +198,31 @@ async def _pending(session: AsyncSession, team_id: UUID, invitation_id: UUID) ->
 async def revoke_invitation(session: AsyncSession, team_id: UUID, invitation_id: UUID) -> None:
     invitation = await _pending(session, team_id, invitation_id)
     invitation.status = "revoked"
-    invitation.responded_at = func.now()
     await session.flush()
 
 
 async def _claim(
-    session: AsyncSession, team_id: UUID, invitation_id: UUID, user: CurrentUser
+    session: AsyncSession, team_id: UUID, invitation_id: UUID, token: str
 ) -> TeamInvitation:
     invitation = await _pending(session, team_id, invitation_id)
+    # 토큰 소지가 곧 권한이다. 초대받은 주소와 로그인 주소가 달라도 된다 (CLAUDE.md §6.4).
+    # 틀린 토큰은 "그런 초대는 없다"로 답한다 — 명세에 없는 코드를 만들지 않는다.
+    if not compare_digest(sha256(token), invitation.token_hash):
+        raise errors.TeamInvitationNotFound()
     if invitation.expires_at <= datetime.now(UTC):
         raise errors.InvitationExpired()
-    # ASSUMPTION: §6.4 는 token_hash 링크로 바꾸라고 하지만 컬럼이 아직 없다 (감사 A표 P3).
-    if not user.email or user.email.lower() != invitation.invited_email.lower():
-        raise errors.InvitationEmailMismatch()
     return invitation
 
 
 async def accept_invitation(
-    session: AsyncSession, team_id: UUID, invitation_id: UUID, user: CurrentUser
+    session: AsyncSession, team_id: UUID, invitation_id: UUID, user: CurrentUser, token: str
 ) -> TeamMemberResponse:
     """명세 §4.9: 응답은 생성된 TeamMember 다."""
-    invitation = await _claim(session, team_id, invitation_id, user)
+    invitation = await _claim(session, team_id, invitation_id, token)
     if await repo.get_member(session, team_id, user.id) is not None:
         raise errors.AlreadyTeamMember()
     invitation.status = "accepted"
-    invitation.responded_at = func.now()
+    invitation.accepted_at = func.now()
     member = await repo.add_member(session, team_id, user.id, invitation.role)
     emit(
         session,

@@ -17,7 +17,7 @@
 | 레포 경로 | `~/Desktop/전공동` |
 | 스택 | FastAPI · PostgreSQL · SQLAlchemy(asyncpg) · Alembic(psycopg) · uv |
 | 현재 단계 | Phase 0 — TEAM·PRJ 정렬 중 |
-| git | `a6ea4e9` 첫 커밋(84파일) → `d00610a` CLAUDE.md 복원 → `f586427` AUTH v0.2 → `66b4f67` 감사 P0 → `3f0eca7` 감사 P1 → `87c9006` 조합 레이어 |
+| git | `a6ea4e9` 첫 커밋(84파일) → `d00610a` CLAUDE.md 복원 → `f586427` AUTH v0.2 → `66b4f67` 감사 P0 → `3f0eca7` 감사 P1 → `87c9006` 조합 레이어 → `a382a5c` 감사 P2 |
 
 ### 실행
 
@@ -250,12 +250,21 @@ TEAM 4.6·PRJ 4.6 모두 응답에 "(사용자 이름 포함)"을 명시한다. 
 `invited_email == JWT.email` 매칭을 쓰지 않는다. 초대받은 주소와 Google 로그인 주소가
 다른 경우가 흔하다(회사 메일로 초대, 개인 지메일로 로그인).
 
-> ⚠️ **정정.** 이전 판의 "ERD에 `token_hash` UK 컬럼이 이미 있다"는 **오기다.**
-> `0001_initial.py`의 `team_invitations`·`project_invitations`에는 `token_hash`도 `accepted_at`도
-> **없다.** ERD와 DDL이 어긋나 있고 **정본은 DDL이다**(§7). 전환하려면 컬럼 추가가 선행되어야 하고,
-> 첫 커밋 이후이므로 새 마이그레이션이 필요하다.
+**구현됨.** `0001_initial.py`에 `token_hash varchar(64) NOT NULL UNIQUE`를 넣고
+`responded_at`을 `accepted_at`으로 대체했다(거절 엔드포인트가 없으므로 "응답"의 유일한 의미가
+수락이다. 취소 시각은 트리거가 유지하는 `updated_at`이 갖는다).
 
-누락된 컬럼: `token_hash`, `accepted_at`. (`invited_by` FK는 있다.)
+토큰은 **서명하지 않는다.** `secrets.token_urlsafe(48)`의 sha256만 저장하고 원문은 **초대 생성
+응답에만** 담는다. 수락은 `POST .../invitations/{invitationId}/accept` 본문의 `{"token": "..."}`를
+`compare_digest`로 대조한다. 틀린 토큰은 `TEAM_INVITATION_NOT_FOUND`/`INVITATION_NOT_FOUND`(404) —
+명세에 없는 코드를 만들지 않는다. `INVITATION_EMAIL_MISMATCH`는 삭제됐다.
+
+JWT를 쓰지 않는 이유: 만료·폐기가 이미 행(`status`·`expires_at`)에 있어 서명 토큰을 써도 결국
+DB를 봐야 하고, 서명 키가 유출되면 초대를 위조할 수 있다. 해시 저장은 DB가 유출돼도 링크를
+복원할 수 없다. `refresh_tokens`가 쓰는 패턴과 같다.
+
+> ⚠️ 이전 판의 "ERD에 `token_hash` UK 컬럼이 이미 있다"는 **오기였다.** DDL에 없었고
+> **정본은 DDL이다**(§7). ERD 쪽 표기는 아직 대조하지 않았다.
 
 ### 6.5 명세에 없는 것을 만들지 않는다
 
@@ -333,24 +342,40 @@ Phase 1 착수 전 필요: localstack 또는 elasticmq. Redis도 아직 아무�
 5. 에러 코드 이름 정렬 (§5.5, §6.1). `VALIDATION_ERROR(422)` → `INVALID_INPUT(400)`
 6. 테스트 픽스처를 fake Google 주입으로 전환. §10 필수 3종 추가 (28 → 33 테스트)
 
-**다음 (TEAM·PRJ):**
+**완료 (TEAM·PRJ 감사):** 엔드포인트 24종을 Notion TEAM·PRJ 명세와 1:1 대조한 뒤
+승인받은 순서로 처리했다.
 
-1. 감사 보고서 먼저 → 승인 후 수정
-2. `NOT_TEAM_MEMBER`, 팀 프로젝트 권한 완화, 멤버 목록 `username`, 초대 `token_hash`
-3. 누락 엔드포인트: `GET /teams/{teamId}/projects`,
-   `PATCH/DELETE /teams/{teamId}/members/{userId}`, PRJ 멤버 역할 변경·제거
-4. PG16에서 전체 재실행 (compose 버전. 현재 dev·test 모두 PG15)
+- **P0** `66b4f67` — 팀 프로젝트 락아웃 해소(팀 멤버십을 프로젝트 권한으로 해석),
+  생성 권한 완화 + `NOT_TEAM_MEMBER`
+- **P1** `3f0eca7` — 식별자 필드명(`team_id`·`project_id`·`invitation_id`),
+  `projects.name → title`, 초대 필드명, 수락 응답을 Member 로, 본인 탈퇴,
+  IntegrityError 제약 이름 분기, `GET /projects` 팀 프로젝트 포함 + 쿼리 필터
+- **P2** `a382a5c` — 조합 레이어 정착(멤버 목록 `username`, 초대 시점 `ALREADY_*`),
+  계약 외 표면 제거(`reject` 2개·PRJ `GET /invitations`), `GET /teams/{teamId}/projects`,
+  `member_count` 집계, 초대 role 에서 `owner` 제외
+- **P3** — `INVALID_OWNER_TYPE → INVALID_INPUT`, 초대 `token_hash` 전환(§6.4),
+  만료 초대 410 · 초대 취소 테스트
+
+**다음:**
+
+1. **명세 수정 제안 6건을 Notion 에 반영** — PRJ status 에 `revoked` 없음, PRJ 초대 `expires_at`
+   없음, `DUPLICATE_INVITATION`·`INVITATION_NOT_PENDING` 미정의, `EMAIL_CONFLICT`(409),
+   ERD 의 `token_hash` 표기, TEAM §4.11 권한 미지정. 코드가 아니라 문서 작업이다
+2. `manuscript_count` 실제 집계 — **Phase 1 착수 조건**(§12)
+3. PG16에서 전체 재실행 (compose 버전. 현재 dev·test 모두 PG15)
 
 ---
 
 ## 10. 반드시 추가할 테스트
 
-현재 22 경로 · 33 오퍼레이션에 테스트 33개다 (`/v1/health` 제외).
+현재 21 경로 · 31 오퍼레이션에 테스트 49개다 (`/v1/health` 제외).
+**TEAM·PRJ 24개 오퍼레이션에 빠짐없이 테스트가 닿는다.**
 
-- **만료 초대 수락** → 410 `INVITATION_EXPIRED`
-- **유일 owner 강등/탈퇴** → 409 `LAST_OWNER_CANNOT_LEAVE`
+이 절의 목록은 비었다 — 5종 모두 들어갔다. 리프레시 토큰 재사용 거부 · 테넌트 격리 ·
+`signup_ticket` 오용 거부는 `f586427`, 유일 owner 409 는 그 이전, 만료 초대 410 은 P3 에서.
 
-리프레시 토큰 재사용 거부 · 테넌트 격리 · `signup_ticket` 오용 거부는 `f586427`에서 추가됨.
+**다음에 얇은 곳:** 호출은 모두 닿지만 응답 **필드 집합**을 단언하는 테스트는 TEAM·PRJ 각 1개뿐이다
+(`test_*_response_schemas_match_spec`). 새 필드가 조용히 새는 것을 막으려면 이 방식을 넓힌다.
 
 ---
 
@@ -380,5 +405,10 @@ Phase 1 착수 전 필요: localstack 또는 elasticmq. Redis도 아직 아무�
   `EMAIL_TAKEN`이 §5.5에서 삭제됐기 때문이다. 서로 다른 Google `sub`가 같은 이메일을 갖는
   경우라 실무상 드물지만 구멍은 맞다. Notion에 `EMAIL_CONFLICT`(409) 추가를 검토하되,
   **명세 수정이므로 TEAM·PRJ 감사 때 다른 변경 건과 묶는다** (정본을 여러 번 건드리지 않는다)
+- **`manuscript_count` 가 상수 0이다 — Phase 1 착수 조건.**
+  `content.manuscripts` 는 Ring 2 라 `platform_` 에서 셀 수 없다(규칙 1). Phase 0 에는 원고 생성
+  경로가 없어 실제로 0 이지만, **MSU(Phase 1)가 들어오는 순간 거짓이 된다.** 조합 레이어에서
+  실제 집계로 바꾸는 작업을 Phase 1 착수 전에 끝낸다. 지금 프로젝트 응답을 반환하는 엔드포인트는
+  모두 모듈 라우터에 있으므로, 옮기든 content 조회를 조합 레이어에 두든 설계 결정이 하나 남아 있다
 - 프론트엔드 계약 미대조. `# ASSUMPTION:` 주석으로 표시되어 있으나,
   어긋나면 Phase 0 전체를 손봐야 한다 (ROADMAP 113행)

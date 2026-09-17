@@ -1,5 +1,11 @@
-from httpx import AsyncClient
+from datetime import UTC, datetime, timedelta
+from uuid import UUID
 
+from httpx import AsyncClient
+from sqlalchemy import update
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.platform_.projects.models import ProjectInvitation
 from tests.conftest import code, signup
 
 
@@ -34,7 +40,7 @@ async def test_owner_type_and_team_id_must_agree(client: AsyncClient) -> None:
         "/projects", json={"title": "x", "owner_type": "team"}, headers=user["headers"]
     )
     assert res.status_code == 400
-    assert code(res) == "INVALID_OWNER_TYPE"
+    assert code(res) == "INVALID_INPUT"
 
 
 async def join_team(client: AsyncClient, owner: dict, guest: dict, team_id: str, role: str) -> None:
@@ -47,6 +53,7 @@ async def join_team(client: AsyncClient, owner: dict, guest: dict, team_id: str,
     ).json()["data"]
     res = await client.post(
         f"/teams/{team_id}/invitations/{invitation['invitation_id']}/accept",
+        json={"token": invitation["token"]},
         headers=guest["headers"],
     )
     assert res.status_code == 200, res.text
@@ -176,6 +183,7 @@ async def test_project_role_hierarchy(client: AsyncClient) -> None:
     ).json()["data"]
     await client.post(
         f"/projects/{project['project_id']}/invitations/{invitation['invitation_id']}/accept",
+        json={"token": invitation["token"]},
         headers=viewer["headers"],
     )
 
@@ -231,6 +239,7 @@ async def test_member_role_update_and_removal(client: AsyncClient) -> None:
     ).json()["data"]
     await client.post(
         f"/projects/{project['project_id']}/invitations/{invitation['invitation_id']}/accept",
+        json={"token": invitation["token"]},
         headers=mate["headers"],
     )
 
@@ -277,6 +286,7 @@ async def test_phase0_done_criteria(client: AsyncClient) -> None:
     ).json()["data"]
     accepted = await client.post(
         f"/projects/{project['project_id']}/invitations/{invitation['invitation_id']}/accept",
+        json={"token": invitation["token"]},
         headers=colleague["headers"],
     )
     assert accepted.status_code == 200
@@ -305,6 +315,7 @@ async def test_viewer_can_leave_but_cannot_remove_owner(client: AsyncClient) -> 
     ).json()["data"]
     await client.post(
         f"/projects/{project['project_id']}/invitations/{invitation['invitation_id']}/accept",
+        json={"token": invitation["token"]},
         headers=viewer["headers"],
     )
 
@@ -356,11 +367,13 @@ async def test_project_response_schemas_match_spec(client: AsyncClient) -> None:
         "status",
         "expires_at",
         "created_at",
+        "token",  # 원문 토큰은 생성 응답에만 (§6.4)
     }
 
     accepted = (
         await client.post(
             f"/projects/{project['project_id']}/invitations/{invitation['invitation_id']}/accept",
+            json={"token": invitation["token"]},
             headers=mate["headers"],
         )
     ).json()["data"]
@@ -398,3 +411,66 @@ async def test_invitation_cannot_grant_owner(client: AsyncClient) -> None:
     )
     assert res.status_code == 400
     assert code(res) == "INVALID_INPUT"
+
+
+async def test_expired_invitation_is_410(client: AsyncClient, db: AsyncSession) -> None:
+    """CLAUDE.md §10 — 만료 초대 수락은 410 INVITATION_EXPIRED."""
+    owner = await signup(client, "pexp@example.com")
+    guest = await signup(client, "pexpguest@example.com")
+    project = await create_project(client, owner["headers"])
+
+    invitation = (
+        await client.post(
+            f"/projects/{project['project_id']}/invitations",
+            json={"invited_email": guest["email"], "role": "editor"},
+            headers=owner["headers"],
+        )
+    ).json()["data"]
+    await db.execute(
+        update(ProjectInvitation)
+        .where(ProjectInvitation.id == UUID(invitation["invitation_id"]))
+        .values(expires_at=datetime.now(UTC) - timedelta(days=1))
+    )
+    await db.commit()
+
+    res = await client.post(
+        f"/projects/{project['project_id']}/invitations/{invitation['invitation_id']}/accept",
+        json={"token": invitation["token"]},
+        headers=guest["headers"],
+    )
+    assert res.status_code == 410
+    assert code(res) == "INVITATION_EXPIRED"
+
+
+async def test_revoke_project_invitation(client: AsyncClient) -> None:
+    """PRJ 명세 §4.9 — 초대 취소. 취소된 초대는 수락할 수 없다."""
+    owner = await signup(client, "prev@example.com")
+    guest = await signup(client, "prevguest@example.com")
+    project = await create_project(client, owner["headers"])
+
+    invitation = (
+        await client.post(
+            f"/projects/{project['project_id']}/invitations",
+            json={"invited_email": guest["email"], "role": "editor"},
+            headers=owner["headers"],
+        )
+    ).json()["data"]
+
+    revoked = await client.delete(
+        f"/projects/{project['project_id']}/invitations/{invitation['invitation_id']}",
+        headers=owner["headers"],
+    )
+    assert revoked.status_code == 204
+
+    dead = await client.post(
+        f"/projects/{project['project_id']}/invitations/{invitation['invitation_id']}/accept",
+        json={"token": invitation["token"]},
+        headers=guest["headers"],
+    )
+    assert code(dead) == "INVITATION_NOT_PENDING"
+
+    unknown = await client.delete(
+        f"/projects/{project['project_id']}/invitations/00000000-0000-0000-0000-000000000000",
+        headers=owner["headers"],
+    )
+    assert code(unknown) == "INVITATION_NOT_FOUND"

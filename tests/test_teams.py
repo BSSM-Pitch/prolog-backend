@@ -1,8 +1,12 @@
+from datetime import UTC, datetime, timedelta
+from uuid import UUID
+
 from httpx import AsyncClient
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.events.models import OutboxEvent
+from app.platform_.teams.models import TeamInvitation
 from tests.conftest import code, signup
 
 
@@ -126,15 +130,18 @@ async def test_accept_invitation_adds_member(client: AsyncClient, db: AsyncSessi
         )
     ).json()["data"]
 
+    # 틀린 토큰은 "그런 초대는 없다"로 답한다 (§6.4).
     wrong = await client.post(
         f"/teams/{team_id}/invitations/{invitation['invitation_id']}/accept",
+        json={"token": "not-the-token"},
         headers=outsider["headers"],
     )
-    assert wrong.status_code == 403
-    assert code(wrong) == "INVITATION_EMAIL_MISMATCH"
+    assert wrong.status_code == 404
+    assert code(wrong) == "TEAM_INVITATION_NOT_FOUND"
 
     accepted = await client.post(
         f"/teams/{team_id}/invitations/{invitation['invitation_id']}/accept",
+        json={"token": invitation["token"]},
         headers=guest["headers"],
     )
     assert accepted.status_code == 200
@@ -153,6 +160,7 @@ async def test_accept_invitation_adds_member(client: AsyncClient, db: AsyncSessi
 
     replay = await client.post(
         f"/teams/{team_id}/invitations/{invitation['invitation_id']}/accept",
+        json={"token": invitation["token"]},
         headers=guest["headers"],
     )
     assert replay.status_code == 409
@@ -260,6 +268,7 @@ async def test_member_can_leave_but_cannot_remove_others(client: AsyncClient) ->
         ).json()["data"]
         await client.post(
             f"/teams/{team_id}/invitations/{invitation['invitation_id']}/accept",
+            json={"token": invitation["token"]},
             headers=who["headers"],
         )
 
@@ -310,11 +319,13 @@ async def test_team_response_schemas_match_spec(client: AsyncClient) -> None:
         "status",
         "expires_at",
         "created_at",
+        "token",  # 원문 토큰은 생성 응답에만 (§6.4)
     }
 
     accepted = (
         await client.post(
             f"/teams/{team_id}/invitations/{invitation['invitation_id']}/accept",
+            json={"token": invitation["token"]},
             headers=guest["headers"],
         )
     ).json()["data"]
@@ -369,6 +380,7 @@ async def test_member_count_is_aggregated(client: AsyncClient) -> None:
     ).json()["data"]
     await client.post(
         f"/teams/{team_id}/invitations/{invitation['invitation_id']}/accept",
+        json={"token": invitation["token"]},
         headers=guest["headers"],
     )
 
@@ -415,3 +427,85 @@ async def test_team_projects_endpoint(client: AsyncClient) -> None:
     # 비소속자는 팀 경로 자체를 못 본다
     denied = await client.get(f"/teams/{team_id}/projects", headers=outsider["headers"])
     assert denied.status_code == 403
+
+
+async def test_invitation_token_not_email_decides_acceptance(client: AsyncClient) -> None:
+    """초대받은 주소와 로그인 주소가 달라도 토큰만 맞으면 수락된다 (CLAUDE.md §6.4).
+
+    회사 메일로 초대받고 개인 지메일로 로그인하는 경우가 흔하다.
+    """
+    owner = await signup(client, "tok@example.com")
+    guest = await signup(client, "personal@gmail.example")
+    team_id = await create_team(client, owner["headers"])
+
+    invitation = (
+        await client.post(
+            f"/teams/{team_id}/invitations",
+            json={"invited_email": "work@company.example", "role": "member"},
+            headers=owner["headers"],
+        )
+    ).json()["data"]
+    assert invitation["invited_email"] == "work@company.example"
+
+    accepted = await client.post(
+        f"/teams/{team_id}/invitations/{invitation['invitation_id']}/accept",
+        json={"token": invitation["token"]},
+        headers=guest["headers"],
+    )
+    assert accepted.status_code == 200
+    assert accepted.json()["data"]["user_id"] == guest["id"]
+
+
+async def test_expired_invitation_is_410(client: AsyncClient, db: AsyncSession) -> None:
+    """CLAUDE.md §10 — 만료 초대 수락은 410 INVITATION_EXPIRED."""
+    owner = await signup(client, "exp@example.com")
+    guest = await signup(client, "expguest@example.com")
+    team_id = await create_team(client, owner["headers"])
+
+    invitation = (
+        await client.post(
+            f"/teams/{team_id}/invitations",
+            json={"invited_email": guest["email"], "role": "member"},
+            headers=owner["headers"],
+        )
+    ).json()["data"]
+    await db.execute(
+        update(TeamInvitation)
+        .where(TeamInvitation.id == UUID(invitation["invitation_id"]))
+        .values(expires_at=datetime.now(UTC) - timedelta(days=1))
+    )
+    await db.commit()
+
+    res = await client.post(
+        f"/teams/{team_id}/invitations/{invitation['invitation_id']}/accept",
+        json={"token": invitation["token"]},
+        headers=guest["headers"],
+    )
+    assert res.status_code == 410
+    assert code(res) == "INVITATION_EXPIRED"
+
+
+async def test_list_invitations(client: AsyncClient) -> None:
+    """TEAM 명세 §4.8 — owner|admin 만 조회. 원문 토큰은 목록에 없다 (§6.4)."""
+    owner = await signup(client, "li@example.com")
+    guest = await signup(client, "liguest@example.com")
+    team_id = await create_team(client, owner["headers"])
+
+    invitation = (
+        await client.post(
+            f"/teams/{team_id}/invitations",
+            json={"invited_email": guest["email"], "role": "member"},
+            headers=owner["headers"],
+        )
+    ).json()["data"]
+
+    listed = await client.get(f"/teams/{team_id}/invitations", headers=owner["headers"])
+    assert listed.status_code == 200
+    rows = listed.json()["data"]
+    assert [r["invitation_id"] for r in rows] == [invitation["invitation_id"]]
+    assert "token" not in rows[0]
+
+    # 멤버가 아닌 사용자는 팀 경로 자체가 막힌다
+    assert (
+        await client.get(f"/teams/{team_id}/invitations", headers=guest["headers"])
+    ).status_code == 403

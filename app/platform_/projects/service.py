@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from secrets import compare_digest
 from uuid import UUID
 
 from sqlalchemy import func
@@ -8,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core import errors
 from app.core.config import settings
 from app.core.deps import CurrentUser, ProjectContext, team_ids_of, team_role_of
+from app.core.security import new_opaque_token, sha256
 from app.events.outbox import emit
 from app.platform_.projects import repository as repo
 from app.platform_.projects.models import (
@@ -18,6 +20,7 @@ from app.platform_.projects.models import (
 )
 from app.platform_.projects.schemas import (
     InvitationCreate,
+    InvitationCreatedResponse,
     InvitationResponse,
     ProjectCreate,
     ProjectMemberResponse,
@@ -42,7 +45,7 @@ async def create_project(
     session: AsyncSession, user: CurrentUser, body: ProjectCreate
 ) -> ProjectResponse:
     if (body.owner_type == "team") != (body.team_id is not None):
-        raise errors.InvalidOwnerType()
+        raise errors.InvalidInput("owner_type 과 team_id 조합이 올바르지 않습니다")
     if body.team_id is not None:
         # 요구되는 것은 팀 소속 여부뿐이다. 팀원 누구나 만든다 (CLAUDE.md §6.2).
         # 팀 멤버십 확인은 core.deps 의 raw SQL 이 담당한다(TEAM 모듈 동기 호출 금지, 규칙 3).
@@ -150,10 +153,12 @@ async def remove_member(
 
 async def invite(
     session: AsyncSession, project_id: UUID, user: CurrentUser, body: InvitationCreate
-) -> InvitationResponse:
+) -> InvitationCreatedResponse:
+    token, token_hash = new_opaque_token()
     invitation = ProjectInvitation(
         project_id=project_id,
         invited_email=str(body.invited_email),
+        token_hash=token_hash,
         invited_by=user.id,
         role=body.role,
         status="pending",
@@ -180,7 +185,7 @@ async def invite(
             "expires_at": invitation.expires_at.isoformat(),
         },
     )
-    return _invitation(invitation)
+    return InvitationCreatedResponse(**_invitation(invitation).model_dump(), token=token)
 
 
 async def _pending(
@@ -197,31 +202,31 @@ async def _pending(
 async def revoke_invitation(session: AsyncSession, project_id: UUID, invitation_id: UUID) -> None:
     invitation = await _pending(session, project_id, invitation_id)
     invitation.status = "revoked"
-    invitation.responded_at = func.now()
     await session.flush()
 
 
 async def _claim(
-    session: AsyncSession, project_id: UUID, invitation_id: UUID, user: CurrentUser
+    session: AsyncSession, project_id: UUID, invitation_id: UUID, token: str
 ) -> ProjectInvitation:
     invitation = await _pending(session, project_id, invitation_id)
+    # 토큰 소지가 곧 권한이다. 초대받은 주소와 로그인 주소가 달라도 된다 (CLAUDE.md §6.4).
+    # 틀린 토큰은 "그런 초대는 없다"로 답한다 — 명세에 없는 코드를 만들지 않는다.
+    if not compare_digest(sha256(token), invitation.token_hash):
+        raise errors.InvitationNotFound()
     if invitation.expires_at <= datetime.now(UTC):
         raise errors.InvitationExpired()
-    # ASSUMPTION: §6.4 는 token_hash 링크로 바꾸라고 하지만 컬럼이 아직 없다 (감사 A표 P3).
-    if not user.email or user.email.lower() != invitation.invited_email.lower():
-        raise errors.InvitationEmailMismatch()
     return invitation
 
 
 async def accept_invitation(
-    session: AsyncSession, project_id: UUID, invitation_id: UUID, user: CurrentUser
+    session: AsyncSession, project_id: UUID, invitation_id: UUID, user: CurrentUser, token: str
 ) -> ProjectMemberResponse:
     """명세 §4.8: 응답은 생성된 ProjectMember 다."""
-    invitation = await _claim(session, project_id, invitation_id, user)
+    invitation = await _claim(session, project_id, invitation_id, token)
     if await repo.get_member(session, project_id, user.id) is not None:
         raise errors.AlreadyMember()
     invitation.status = "accepted"
-    invitation.responded_at = func.now()
+    invitation.accepted_at = func.now()
     member = await repo.add_member(session, project_id, user.id, invitation.role)
     await session.flush()
     await session.refresh(member)

@@ -52,6 +52,8 @@ class InvitationCreate(BaseModel):
 
 
 class InvitationResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     invitation_id: UUID = Field(validation_alias="id")
     team_id: UUID
     invited_email: str
@@ -59,3 +61,15 @@ class InvitationResponse(BaseModel):
     status: str
     expires_at: datetime
     created_at: datetime
+
+
+class InvitationCreatedResponse(InvitationResponse):
+    """생성 응답에만 원문 토큰을 담는다. DB 에는 sha256 만 있다 (CLAUDE.md §6.4)."""
+
+    token: str
+
+
+class InvitationAccept(BaseModel):
+    """수락 권한은 이메일 일치가 아니라 **토큰 소지**로 판정한다 (CLAUDE.md §6.4)."""
+
+    token: str = Field(min_length=1)
