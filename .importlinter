@@ -1,0 +1,55 @@
+[importlinter]
+root_package = app
+include_external_packages = True
+
+[importlinter:contract:rings]
+name = Ring 의존은 아래에서 위로 한 방향 (규칙 1)
+type = layers
+layers =
+    insight
+    authoring
+    content
+    platform_
+containers =
+    app
+
+[importlinter:contract:ring1-independent]
+name = Ring 1 모듈끼리 동기 호출 금지 (규칙 3)
+type = independence
+modules =
+    app.platform_.auth
+    app.platform_.teams
+    app.platform_.projects
+    app.platform_.notifications
+
+[importlinter:contract:ring3-independent]
+name = Ring 3 모듈끼리 동기 호출 금지 (규칙 3)
+type = independence
+modules =
+    app.authoring.nlcd
+    app.authoring.ass
+    app.authoring.rex
+
+[importlinter:contract:ring4-independent]
+name = Ring 4 모듈끼리 동기 호출 금지 (규칙 3)
+type = independence
+modules =
+    app.insight.scds
+    app.insight.ssm
+    app.insight.aiq
+    app.insight.rcv
+    app.insight.fts
+
+[importlinter:contract:core-is-a-leaf]
+name = core/domain 은 어떤 모듈도 import 하지 않는다 (규칙 4)
+type = forbidden
+source_modules =
+    app.core
+    app.domain
+forbidden_modules =
+    app.platform_
+    app.content
+    app.authoring
+    app.insight
+    app.jobs
+    app.events
