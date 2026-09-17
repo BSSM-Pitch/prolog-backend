@@ -33,44 +33,125 @@ async def test_owner_type_and_team_id_must_agree(client: AsyncClient) -> None:
     assert code(res) == "INVALID_OWNER_TYPE"
 
 
-async def test_team_project_requires_team_admin(client: AsyncClient) -> None:
-    owner = await signup(client, "towner@example.com")
-    member = await signup(client, "tmember@example.com")
-    team_id = (await client.post("/teams", json={"name": "팀"}, headers=owner["headers"])).json()[
-        "data"
-    ]["id"]
-
+async def join_team(client: AsyncClient, owner: dict, guest: dict, team_id: str, role: str) -> None:
     invitation = (
         await client.post(
             f"/teams/{team_id}/invitations",
-            json={"email": "tmember@example.com", "role": "member"},
+            json={"email": guest["email"], "role": role},
             headers=owner["headers"],
         )
     ).json()["data"]
-    await client.post(
-        f"/teams/{team_id}/invitations/{invitation['id']}/accept", headers=member["headers"]
+    res = await client.post(
+        f"/teams/{team_id}/invitations/{invitation['id']}/accept", headers=guest["headers"]
     )
+    assert res.status_code == 200, res.text
+
+
+async def test_any_team_member_can_create_team_project(client: AsyncClient) -> None:
+    """팀 프로젝트 생성에 요구되는 것은 팀 소속 여부뿐이다 (CLAUDE.md §6.2).
+
+    이전 구현은 owner|admin 을 요구했고 테스트가 그 위반을 고정하고 있었다.
+    """
+    owner = await signup(client, "towner@example.com")
+    member = await signup(client, "tmember@example.com")
+    outsider = await signup(client, "nope@example.com")
+    team_id = (await client.post("/teams", json={"name": "팀"}, headers=owner["headers"])).json()[
+        "data"
+    ]["id"]
+    await join_team(client, owner, member, team_id, "member")
 
     project = await create_project(
-        client, owner["headers"], owner_type="team", team_id=team_id, name="팀 프로젝트"
+        client, member["headers"], owner_type="team", team_id=team_id, name="팀원이 만든다"
     )
     assert project["team_id"] == team_id
 
-    # role=member 는 팀 프로젝트를 만들 수 없다.
-    denied = await client.post(
-        "/projects",
-        json={"name": "몰래", "owner_type": "team", "team_id": team_id},
-        headers=member["headers"],
-    )
-    assert denied.status_code == 403
-
-    outsider = await signup(client, "nope@example.com")
+    # 비소속자는 일반 FORBIDDEN 이 아니라 NOT_TEAM_MEMBER 다 (§6.1).
     stranger = await client.post(
         "/projects",
         json={"name": "몰래", "owner_type": "team", "team_id": team_id},
         headers=outsider["headers"],
     )
     assert stranger.status_code == 403
+    assert code(stranger) == "NOT_TEAM_MEMBER"
+
+    # 없는 팀이면 TEAM_NOT_FOUND (PRJ 명세 §1.4).
+    ghost = await client.post(
+        "/projects",
+        json={
+            "name": "유령",
+            "owner_type": "team",
+            "team_id": "00000000-0000-0000-0000-000000000000",
+        },
+        headers=member["headers"],
+    )
+    assert ghost.status_code == 404
+    assert code(ghost) == "TEAM_NOT_FOUND"
+
+
+async def test_team_project_is_not_locked_out_from_the_team(client: AsyncClient) -> None:
+    """감사에서 실측한 락아웃 8종의 회귀 방지.
+
+    팀 프로젝트는 `project_members` 에 생성자만 들어간다. 팀원의 권한은
+    `project_role_of` 가 `team_members` 를 함께 읽어 해석한다 — 그게 깨지면
+    팀 프로젝트가 개인 프로젝트로 퇴화한다.
+    """
+    owner = await signup(client, "lockowner@example.com")
+    admin = await signup(client, "lockadmin@example.com")
+    member = await signup(client, "lockmember@example.com")
+    outsider = await signup(client, "lockout@example.com")
+    team_id = (await client.post("/teams", json={"name": "T"}, headers=owner["headers"])).json()[
+        "data"
+    ]["id"]
+    await join_team(client, owner, admin, team_id, "admin")
+    await join_team(client, owner, member, team_id, "member")
+
+    # [1] 일반 팀원도 만든다  [2] admin 도 만든다
+    await create_project(client, member["headers"], owner_type="team", team_id=team_id, name="M")
+    project = await create_project(
+        client, admin["headers"], owner_type="team", team_id=team_id, name="A"
+    )
+    pid = project["id"]
+
+    # [3] 생성자 [4] 팀 owner [5] 다른 팀원 — 전원 조회된다
+    for actor in (admin, owner, member):
+        assert (await client.get(f"/projects/{pid}", headers=actor["headers"])).status_code == 200
+
+    # 팀원은 editor 다: 수정은 되고 삭제·초대는 안 된다 (TEAM_MEMBER_PROJECT_ROLE)
+    edited = await client.patch(
+        f"/projects/{pid}", json={"description": "팀원이 고친다"}, headers=member["headers"]
+    )
+    assert edited.status_code == 200
+    assert (await client.delete(f"/projects/{pid}", headers=member["headers"])).status_code == 403
+    invited = await client.post(
+        f"/projects/{pid}/invitations",
+        json={"email": "x@example.com", "role": "viewer"},
+        headers=member["headers"],
+    )
+    assert invited.status_code == 403
+
+    # [6][7] 목록에는 아직 안 뜬다 — GET /projects 가 project_members 만 조인한다.
+    # 감사 A표 P2(팀 프로젝트 포함) 미결이라 현재 동작을 그대로 고정해 둔다.
+    assert [
+        p["name"] for p in (await client.get("/projects", headers=owner["headers"])).json()["data"]
+    ] == []
+    assert [
+        p["name"] for p in (await client.get("/projects", headers=member["headers"])).json()["data"]
+    ] == ["M"]
+
+    # [8] 비소속자는 생성도 조회도 막힌다
+    assert (await client.get(f"/projects/{pid}", headers=outsider["headers"])).status_code == 403
+    denied = await client.post(
+        "/projects",
+        json={"name": "몰래", "owner_type": "team", "team_id": team_id},
+        headers=outsider["headers"],
+    )
+    assert code(denied) == "NOT_TEAM_MEMBER"
+
+    # 개인 프로젝트는 팀 해석의 영향을 받지 않는다
+    personal = await create_project(client, owner["headers"], name="개인")
+    assert (
+        await client.get(f"/projects/{personal['id']}", headers=member["headers"])
+    ).status_code == 403
 
 
 async def test_project_role_hierarchy(client: AsyncClient) -> None:

@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import errors
 from app.core.config import settings
-from app.core.deps import CurrentUser, assert_team_role
+from app.core.deps import CurrentUser, team_role_of
 from app.events.outbox import emit
 from app.platform_.projects import repository as repo
 from app.platform_.projects.models import Project, ProjectInvitation
@@ -35,9 +35,11 @@ async def create_project(
     if (body.owner_type == "team") != (body.team_id is not None):
         raise errors.InvalidOwnerType()
     if body.team_id is not None:
-        # ASSUMPTION: 팀 프로젝트는 팀의 owner/admin 만 만든다.
+        # 요구되는 것은 팀 소속 여부뿐이다. 팀원 누구나 만든다 (CLAUDE.md §6.2).
         # 팀 멤버십 확인은 core.deps 의 raw SQL 이 담당한다(TEAM 모듈 동기 호출 금지, 규칙 3).
-        await assert_team_role(session, body.team_id, user.id, "admin")
+        # 팀이 없으면 team_role_of 가 TEAM_NOT_FOUND(404) 를 던진다 (PRJ 명세 §1.4).
+        if await team_role_of(session, body.team_id, user.id) is None:
+            raise errors.NotTeamMember()
 
     project = Project(
         name=body.name,
@@ -48,8 +50,8 @@ async def create_project(
     )
     session.add(project)
     await session.flush()
-    # ASSUMPTION: 팀 프로젝트라도 project_members 는 생성자만 넣는다.
-    # require_project_role 이 보는 값을 단일 출처로 두려면 팀 멤버 자동 승격은 하지 않는다.
+    # 팀 프로젝트라도 project_members 에는 생성자만 넣는다. 나머지 팀원의 권한은
+    # project_role_of 가 team_members 를 함께 읽어 해석한다 (core/deps.py).
     await repo.add_member(session, project.id, user.id, "owner")
     return _project(project)
 

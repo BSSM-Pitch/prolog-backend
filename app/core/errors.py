@@ -55,6 +55,8 @@ TeamMemberNotFound = _err("TEAM_MEMBER_NOT_FOUND", 404, "팀 멤버를 찾을 �
 # --- PRJ ----------------------------------------------------------------
 ProjectNotFound = _err("PROJECT_NOT_FOUND", 404, "프로젝트를 찾을 수 없습니다")
 InvalidOwnerType = _err("INVALID_OWNER_TYPE", 400, "owner_type 과 team_id 조합이 올바르지 않습니다")
+# 팀 프로젝트를 만들려는 비소속자. 일반 FORBIDDEN 이 아니다 (CLAUDE.md §6.1·§6.2).
+NotTeamMember = _err("NOT_TEAM_MEMBER", 403, "해당 팀의 멤버가 아닙니다")
 AlreadyMember = _err("ALREADY_MEMBER", 409, "이미 멤버입니다")
 InvitationNotFound = _err("INVITATION_NOT_FOUND", 404, "초대를 찾을 수 없습니다")
 MemberNotFound = _err("MEMBER_NOT_FOUND", 404, "멤버를 찾을 수 없습니다")

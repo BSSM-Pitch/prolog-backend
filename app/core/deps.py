@@ -26,6 +26,11 @@ TeamRole = str  # owner | admin | member     (team_members.role)
 PROJECT_ROLE_RANK: dict[str, int] = {"viewer": 0, "editor": 1, "owner": 2}
 TEAM_ROLE_RANK: dict[str, int] = {"member": 0, "admin": 1, "owner": 2}
 
+# ASSUMPTION: 팀 프로젝트에서 팀원이 갖는 프로젝트 role 을 명세가 정하지 않는다.
+# PRJ §4.2·TEAM §5 가 "함께 작업"을 요구하므로 viewer 로는 부족하고, owner 를 주면
+# 삭제(원고 cascade)·멤버 관리까지 팀원 전원에게 열린다. 조회+수정까지인 editor 로 둔다.
+TEAM_MEMBER_PROJECT_ROLE = "editor"
+
 
 @dataclass(frozen=True)
 class CurrentUser:
@@ -55,15 +60,23 @@ class ProjectContext:
 
 
 async def project_role_of(session: AsyncSession, project_id: UUID, user_id: UUID) -> str | None:
-    """(존재하지 않는 프로젝트) → PROJECT_NOT_FOUND, (멤버 아님) → None."""
+    """(존재하지 않는 프로젝트) → PROJECT_NOT_FOUND, (권한 없음) → None.
+
+    팀 프로젝트는 **팀 소속만으로도** 권한이 생긴다. 팀 멤버를 ``project_members`` 로
+    승격하지 않기 때문에, 이 조회가 두 출처를 합치는 유일한 지점이다.
+    명시적 ``project_members`` 행이 더 높으면 그쪽이 이긴다.
+    """
     row = (
         await session.execute(
             text(
                 """
-                SELECT m.role AS role
+                SELECT m.role AS role,
+                       (t.user_id IS NOT NULL) AS is_team_member
                   FROM platform.projects p
                   LEFT JOIN platform.project_members m
                          ON m.project_id = p.id AND m.user_id = :user_id
+                  LEFT JOIN platform.team_members t
+                         ON t.team_id = p.team_id AND t.user_id = :user_id
                  WHERE p.id = :project_id
                 """
             ),
@@ -72,7 +85,12 @@ async def project_role_of(session: AsyncSession, project_id: UUID, user_id: UUID
     ).first()
     if row is None:
         raise errors.ProjectNotFound()
-    return row.role
+    role: str | None = row.role
+    if row.is_team_member and (
+        role is None or PROJECT_ROLE_RANK[role] < PROJECT_ROLE_RANK[TEAM_MEMBER_PROJECT_ROLE]
+    ):
+        return TEAM_MEMBER_PROJECT_ROLE
+    return role
 
 
 def require_project_role(min_role: ProjectRole):  # type: ignore[no-untyped-def]
