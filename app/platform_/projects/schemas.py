@@ -5,6 +5,8 @@ from uuid import UUID
 from pydantic import BaseModel, EmailStr, Field
 
 ProjectRole = Literal["owner", "editor", "viewer"]
+# 초대로는 owner 를 줄 수 없다 (명세 §2.3). DDL CHECK 도 같다.
+ProjectInviteRole = Literal["editor", "viewer"]
 OwnerType = Literal["personal", "team"]
 
 
@@ -30,7 +32,10 @@ class ProjectResponse(BaseModel):
     created_by: UUID
     created_at: datetime
     updated_at: datetime
-    # manuscript_count 는 명세 §2.1 에 있으나 아직 없다 (감사 A표 P2).
+    # ponytail: content.manuscripts 는 Ring 2 라 platform_ 에서 셀 수 없다(규칙 1).
+    # Phase 0 에는 원고 쓰기 경로 자체가 없어 실제로 0 이다. MSU(Phase 1) 가 들어오면
+    # 조합 레이어에서 실제 집계로 채운다 — 그 전까지는 상수다.
+    manuscript_count: int = 0
 
 
 class ProjectMemberResponse(BaseModel):
@@ -47,14 +52,14 @@ class ProjectMemberUpdate(BaseModel):
 
 class InvitationCreate(BaseModel):
     invited_email: EmailStr
-    role: ProjectRole = "editor"
+    role: ProjectInviteRole = "editor"
 
 
 class InvitationResponse(BaseModel):
     invitation_id: UUID = Field(validation_alias="id")
     project_id: UUID
     invited_email: str
-    role: ProjectRole
+    role: ProjectInviteRole
     status: str
     expires_at: datetime
     created_at: datetime

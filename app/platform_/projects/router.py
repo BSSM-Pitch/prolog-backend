@@ -84,11 +84,6 @@ async def remove_member(
     await service.remove_member(session, project_id, user_id, ctx)
 
 
-@router.get("/{projectId}/invitations", dependencies=[Owner])
-async def list_invitations(project_id: ProjectId, session: Session) -> dict[str, Any]:
-    return ok(await service.list_invitations(session, project_id))
-
-
 @router.delete(
     "/{projectId}/invitations/{invitationId}",
     status_code=status.HTTP_204_NO_CONTENT,
@@ -102,7 +97,7 @@ async def revoke_invitation(
     await service.revoke_invitation(session, project_id, invitation_id)
 
 
-# 수락/거절은 아직 멤버가 아닌 사용자가 호출한다 → require_project_role 을 걸지 않는다.
+# 수락은 아직 멤버가 아닌 사용자가 호출한다 → require_project_role 을 걸지 않는다.
 @router.post("/{projectId}/invitations/{invitationId}/accept")
 async def accept_invitation(
     project_id: ProjectId,
@@ -111,13 +106,3 @@ async def accept_invitation(
     user: User,
 ) -> dict[str, Any]:
     return ok(await service.accept_invitation(session, project_id, invitation_id, user))
-
-
-@router.post("/{projectId}/invitations/{invitationId}/reject")
-async def reject_invitation(
-    project_id: ProjectId,
-    invitation_id: Annotated[UUID, Path(alias="invitationId")],
-    session: Session,
-    user: User,
-) -> dict[str, Any]:
-    return ok(await service.reject_invitation(session, project_id, invitation_id, user))

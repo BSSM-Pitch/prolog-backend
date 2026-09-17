@@ -14,12 +14,13 @@ from fastapi import APIRouter, Depends, Path, status
 
 from app.core import errors
 from app.core.deps import User, require_project_role, require_team_role
+from app.core.pagination import DEFAULT_LIMIT, Cursor, Limit, decode_cursor, next_cursor
 from app.core.response import ok
 from app.db.session import Session
 from app.platform_.auth import service as auth
 from app.platform_.projects import service as projects
 from app.platform_.projects.schemas import InvitationCreate as ProjectInvitationCreate
-from app.platform_.projects.schemas import ProjectMemberResponse
+from app.platform_.projects.schemas import ProjectMemberResponse, ProjectResponse
 from app.platform_.teams import service as teams
 from app.platform_.teams.schemas import InvitationCreate as TeamInvitationCreate
 from app.platform_.teams.schemas import TeamMemberResponse
@@ -94,3 +95,27 @@ async def invite_to_project(
     if invited is not None and await projects.is_member(session, project_id, invited):
         raise errors.AlreadyMember()
     return ok(await projects.invite(session, project_id, user, body))
+
+
+@router.get("/teams/{teamId}/projects", tags=["TEAM"], dependencies=[TeamMember])
+async def list_team_projects(
+    team_id: TeamId,
+    session: Session,
+    user: User,
+    limit: Limit = DEFAULT_LIMIT,
+    cursor: Cursor = None,
+) -> dict[str, Any]:
+    """TEAM 명세 §4.13 — PRJ `GET /projects?team_id=` 와 같은 데이터.
+
+    TEAM 경로인데 PRJ 데이터를 돌려주므로 조합 레이어에 둔다.
+    """
+    rows = await projects.list_projects(
+        session,
+        user,
+        limit,
+        decode_cursor(cursor) if cursor else None,
+        owner_type="team",
+        team_id=team_id,
+    )
+    page, meta = next_cursor(rows, limit)
+    return ok([ProjectResponse.model_validate(p, from_attributes=True) for p in page], meta)

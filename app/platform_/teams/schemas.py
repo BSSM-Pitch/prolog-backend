@@ -2,9 +2,11 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 TeamRole = Literal["owner", "admin", "member"]
+# 초대로는 owner 를 줄 수 없다 (명세 §2.3). DDL CHECK 도 같다.
+TeamInviteRole = Literal["admin", "member"]
 
 
 class TeamCreate(BaseModel):
@@ -19,13 +21,16 @@ class TeamUpdate(BaseModel):
 
 class TeamResponse(BaseModel):
     # 명세 §2.1 의 식별자 필드명은 team_id 다. ORM 의 id 를 alias 로 읽는다.
+    model_config = ConfigDict(populate_by_name=True)
+
     team_id: UUID = Field(validation_alias="id")
     name: str
     description: str | None
     created_by: UUID
     created_at: datetime
     updated_at: datetime
-    # member_count 는 명세 §2.1 에 있으나 아직 없다 (감사 A표 P2).
+    # 저장하지 않는다. 조회 시 집계한다 — 동시 가입 경합으로 카운터가 틀어진다(CLAUDE.md §7).
+    member_count: int
 
 
 class TeamMemberResponse(BaseModel):
@@ -43,14 +48,14 @@ class TeamMemberUpdate(BaseModel):
 
 class InvitationCreate(BaseModel):
     invited_email: EmailStr
-    role: TeamRole = "member"
+    role: TeamInviteRole = "member"
 
 
 class InvitationResponse(BaseModel):
     invitation_id: UUID = Field(validation_alias="id")
     team_id: UUID
     invited_email: str
-    role: TeamRole
+    role: TeamInviteRole
     status: str
     expires_at: datetime
     created_at: datetime

@@ -162,7 +162,8 @@ async def test_accept_invitation_adds_member(client: AsyncClient, db: AsyncSessi
     assert types == ["team.invited", "team.member_joined"]
 
 
-async def test_reject_and_revoke_invitation(client: AsyncClient) -> None:
+async def test_revoke_invitation(client: AsyncClient) -> None:
+    """초대자의 취소(DELETE)만 있다. 거절 엔드포인트는 명세에 없다 (CLAUDE.md §6.5)."""
     owner = await signup(client, "rev@example.com")
     guest = await signup(client, "revguest@example.com")
     team_id = await create_team(client, owner["headers"])
@@ -174,28 +175,30 @@ async def test_reject_and_revoke_invitation(client: AsyncClient) -> None:
             headers=owner["headers"],
         )
     ).json()["data"]
-    rejected = await client.post(
-        f"/teams/{team_id}/invitations/{first['invitation_id']}/reject", headers=guest["headers"]
-    )
-    assert rejected.json()["data"]["status"] == "rejected"
-
-    # 거절 후에는 pending 이 없으므로 재초대가 가능하다.
-    second = (
+    assert (
         await client.post(
-            f"/teams/{team_id}/invitations",
-            json={"invited_email": "revguest@example.com"},
-            headers=owner["headers"],
+            f"/teams/{team_id}/invitations/{first['invitation_id']}/reject",
+            headers=guest["headers"],
         )
-    ).json()["data"]
+    ).status_code == 404  # 라우트 자체가 없다
+
     assert (
         await client.delete(
-            f"/teams/{team_id}/invitations/{second['invitation_id']}", headers=owner["headers"]
+            f"/teams/{team_id}/invitations/{first['invitation_id']}", headers=owner["headers"]
         )
     ).status_code == 204
     stale = await client.delete(
-        f"/teams/{team_id}/invitations/{second['invitation_id']}", headers=owner["headers"]
+        f"/teams/{team_id}/invitations/{first['invitation_id']}", headers=owner["headers"]
     )
     assert code(stale) == "INVITATION_NOT_PENDING"
+
+    # 취소 후에는 pending 이 없으므로 재초대가 가능하다.
+    second = await client.post(
+        f"/teams/{team_id}/invitations",
+        json={"invited_email": "revguest@example.com"},
+        headers=owner["headers"],
+    )
+    assert second.status_code == 201
 
     unknown = await client.delete(
         f"/teams/{team_id}/invitations/00000000-0000-0000-0000-000000000000",
@@ -284,6 +287,7 @@ async def test_team_response_schemas_match_spec(client: AsyncClient) -> None:
         "name",
         "description",
         "created_by",
+        "member_count",
         "created_at",
         "updated_at",
     }
@@ -344,3 +348,70 @@ async def test_inviting_an_existing_member_is_409(client: AsyncClient) -> None:
         headers=owner["headers"],
     )
     assert fresh.status_code == 201
+
+
+async def test_member_count_is_aggregated(client: AsyncClient) -> None:
+    """teams.member_count 는 저장하지 않고 조회 시 집계한다 (CLAUDE.md §7)."""
+    owner = await signup(client, "cnt@example.com")
+    guest = await signup(client, "cntguest@example.com")
+    team_id = await create_team(client, owner["headers"])
+
+    assert (await client.get(f"/teams/{team_id}", headers=owner["headers"])).json()["data"][
+        "member_count"
+    ] == 1
+
+    invitation = (
+        await client.post(
+            f"/teams/{team_id}/invitations",
+            json={"invited_email": guest["email"], "role": "member"},
+            headers=owner["headers"],
+        )
+    ).json()["data"]
+    await client.post(
+        f"/teams/{team_id}/invitations/{invitation['invitation_id']}/accept",
+        headers=guest["headers"],
+    )
+
+    assert (await client.get(f"/teams/{team_id}", headers=owner["headers"])).json()["data"][
+        "member_count"
+    ] == 2
+    listed = (await client.get("/teams", headers=guest["headers"])).json()["data"]
+    assert [t["member_count"] for t in listed] == [2]
+
+
+async def test_invitation_cannot_grant_owner(client: AsyncClient) -> None:
+    """초대로 부여할 수 있는 역할은 admin|member 다 (명세 §2.3)."""
+    owner = await signup(client, "noowner@example.com")
+    team_id = await create_team(client, owner["headers"])
+    res = await client.post(
+        f"/teams/{team_id}/invitations",
+        json={"invited_email": "x@example.com", "role": "owner"},
+        headers=owner["headers"],
+    )
+    assert res.status_code == 400
+    assert code(res) == "INVALID_INPUT"
+
+
+async def test_team_projects_endpoint(client: AsyncClient) -> None:
+    """TEAM 명세 §4.13 — 팀 소속 프로젝트 목록."""
+    owner = await signup(client, "tp@example.com")
+    outsider = await signup(client, "tpout@example.com")
+    team_id = await create_team(client, owner["headers"])
+
+    await client.post(
+        "/projects",
+        json={"title": "팀 것", "owner_type": "team", "team_id": team_id},
+        headers=owner["headers"],
+    )
+    await client.post(
+        "/projects", json={"title": "개인 것", "owner_type": "personal"}, headers=owner["headers"]
+    )
+
+    listed = await client.get(f"/teams/{team_id}/projects", headers=owner["headers"])
+    assert listed.status_code == 200
+    assert [p["title"] for p in listed.json()["data"]] == ["팀 것"]
+    assert listed.json()["meta"] == {"next_cursor": None}
+
+    # 비소속자는 팀 경로 자체를 못 본다
+    denied = await client.get(f"/teams/{team_id}/projects", headers=outsider["headers"])
+    assert denied.status_code == 403

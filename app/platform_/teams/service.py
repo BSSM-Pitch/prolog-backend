@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
@@ -27,8 +28,27 @@ from app.platform_.teams.schemas import (
 )
 
 
-def _team(team: Team) -> TeamResponse:
-    return TeamResponse.model_validate(team, from_attributes=True)
+def _to_response(team: Team, member_count: int) -> TeamResponse:
+    return TeamResponse(
+        team_id=team.id,
+        name=team.name,
+        description=team.description,
+        created_by=team.created_by,
+        created_at=team.created_at,
+        updated_at=team.updated_at,
+        member_count=member_count,
+    )
+
+
+async def _team(session: AsyncSession, team: Team) -> TeamResponse:
+    counts = await repo.member_counts(session, [team.id])
+    return _to_response(team, counts.get(team.id, 0))
+
+
+async def to_responses(session: AsyncSession, teams: Sequence[Team]) -> list[TeamResponse]:
+    """목록용. 팀 수만큼 집계 쿼리를 날리지 않는다."""
+    counts = await repo.member_counts(session, [t.id for t in teams])
+    return [_to_response(t, counts.get(t.id, 0)) for t in teams]
 
 
 def _invitation(row: TeamInvitation) -> InvitationResponse:
@@ -44,7 +64,7 @@ async def create_team(session: AsyncSession, user: CurrentUser, body: TeamCreate
     session.add(team)
     await session.flush()
     await repo.add_member(session, team.id, user.id, "owner")
-    return _team(team)
+    return await _team(session, team)
 
 
 async def list_teams(
@@ -57,7 +77,7 @@ async def get_team(session: AsyncSession, team_id: UUID) -> TeamResponse:
     team = await repo.get_team(session, team_id)
     if team is None:
         raise errors.TeamNotFound()
-    return _team(team)
+    return await _team(session, team)
 
 
 async def update_team(session: AsyncSession, team_id: UUID, body: TeamUpdate) -> TeamResponse:
@@ -67,7 +87,7 @@ async def update_team(session: AsyncSession, team_id: UUID, body: TeamUpdate) ->
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(team, field, value)
     await session.flush()
-    return _team(team)
+    return await _team(session, team)
 
 
 async def delete_team(session: AsyncSession, team_id: UUID) -> None:
@@ -214,17 +234,6 @@ async def accept_invitation(
     await session.flush()
     await session.refresh(member)
     return _member(member)
-
-
-async def reject_invitation(
-    session: AsyncSession, team_id: UUID, invitation_id: UUID, user: CurrentUser
-) -> InvitationResponse:
-    invitation = await _claim(session, team_id, invitation_id, user)
-    invitation.status = "rejected"
-    invitation.responded_at = func.now()
-    await session.flush()
-    await session.refresh(invitation)
-    return _invitation(invitation)
 
 
 async def is_member(session: AsyncSession, team_id: UUID, user_id: UUID) -> bool:

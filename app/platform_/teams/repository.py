@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from datetime import datetime
 from uuid import UUID
 
@@ -37,6 +38,18 @@ async def list_members(session: AsyncSession, team_id: UUID) -> list[TeamMember]
 
 async def get_member(session: AsyncSession, team_id: UUID, user_id: UUID) -> TeamMember | None:
     return await session.get(TeamMember, {"team_id": team_id, "user_id": user_id})
+
+
+async def member_counts(session: AsyncSession, team_ids: Sequence[UUID]) -> dict[UUID, int]:
+    """teams.member_count 는 저장하지 않는다. 조회 시 집계한다 (CLAUDE.md §7)."""
+    if not team_ids:
+        return {}
+    stmt = (
+        select(TeamMember.team_id, func.count())
+        .where(TeamMember.team_id.in_(team_ids))
+        .group_by(TeamMember.team_id)
+    )
+    return {row[0]: row[1] for row in (await session.execute(stmt))}
 
 
 async def count_owners(session: AsyncSession, team_id: UUID) -> int:

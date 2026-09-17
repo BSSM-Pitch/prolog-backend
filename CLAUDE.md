@@ -17,7 +17,7 @@
 | 레포 경로 | `~/Desktop/전공동` |
 | 스택 | FastAPI · PostgreSQL · SQLAlchemy(asyncpg) · Alembic(psycopg) · uv |
 | 현재 단계 | Phase 0 — TEAM·PRJ 정렬 중 |
-| git | 초기화됨. 첫 커밋 `a6ea4e9` (84파일) · CLAUDE.md 복원 `d00610a` · AUTH v0.2 `f586427` |
+| git | `a6ea4e9` 첫 커밋(84파일) → `d00610a` CLAUDE.md 복원 → `f586427` AUTH v0.2 → `66b4f67` 감사 P0 → `3f0eca7` 감사 P1 → `87c9006` 조합 레이어 |
 
 ### 실행
 
@@ -61,6 +61,7 @@ cd ~/Desktop/전공동 && uv run ruff check . && uv run ruff format --check . \
 
 | Ring | 패키지 | 모듈 |
 | --- | --- | --- |
+| — | `app.api` | 조합 레이어. 모든 Ring 위에 있다 (아래 규칙 참조) |
 | 1 | `app.platform_` | `auth` · `teams` · `projects` · `notifications` |
 | 2 | `app.content` | (Phase 1에서 MSU·챕터) |
 | 3 | `app.authoring` | `nlcd` · `ass` · `rex` |
@@ -73,7 +74,7 @@ cd ~/Desktop/전공동 && uv run ruff check . && uv run ruff format --check . \
 
 | 계약 | 내용 |
 | --- | --- |
-| `rings` (규칙 1) | 의존은 `insight → authoring → content → platform_` 한 방향 |
+| `rings` (규칙 1) | 의존은 `api → insight → authoring → content → platform_` 한 방향 |
 | `ring1-independent` (규칙 3) | `auth`·`teams`·`projects`·`notifications` 끼리 동기 호출 금지 |
 | `ring3-independent` (규칙 3) | `nlcd`·`ass`·`rex` 끼리 동기 호출 금지 |
 | `ring4-independent` (규칙 3) | `scds`·`ssm`·`aiq`·`rcv`·`fts` 끼리 동기 호출 금지 |
@@ -81,15 +82,30 @@ cd ~/Desktop/전공동 && uv run ruff check . && uv run ruff format --check . \
 
 **계약을 느슨하게 고쳐서 통과시키지 않는다.** 통과하지 못하는 코드는 커밋하지 않는다.
 
-### 승인된 예외 1건
+### 승인된 예외 — 범위로 정의한다
 
-`app/core/deps.py`가 platform 멤버십 테이블을 **원시 SQL로** 읽는다
-(`require_project_role` / `require_team_role` / `assert_team_role`).
+`app/core/deps.py`가 platform 멤버십 테이블(`team_members` · `project_members`)을
+**권한 판정 목적으로** 원시 SQL로 읽는다. **이것이 예외의 범위다. 함수 개수는 기준이 아니다** —
+권한 판정에 필요하면 함수를 더 만들어도 같은 예외 안이고, 목적이 다르면 함수가 하나여도 범위 밖이다.
+
+범위 안: 역할 조회·권한 임계값 비교·소속 여부로 접근을 가르는 것
+(`require_project_role` / `require_team_role` / `assert_team_role` / `team_ids_of`).
+
+**범위 밖: 표시용 데이터(username 등)와 리소스 존재 확인.**
+이건 `app/api/` 조합 레이어에서 각 모듈을 호출해 처리한다. `core`에 끌어들이지 않는다.
 
 import가 아니라 SQL이므로 `core-is-a-leaf` 계약에 걸리지 않는다. **그래서 위험하다** —
-린터가 지켜주지 못하는 지점이다. 이 예외를 두 번째로 늘리지 않는다.
-늘려야 할 상황이면 `platform`을 `app/domain/`의 공유 커널로 승격해
-계약으로 표현 가능한 정상 관계로 만들자고 제안한다 (ROADMAP P2의 선택지 2).
+린터가 지켜주지 못하는 지점이다. 범위를 넘겨야 할 상황이면 `platform`을 `app/domain/`의
+공유 커널로 승격해 계약으로 표현 가능한 정상 관계로 만들자고 제안한다 (ROADMAP P2의 선택지 2).
+
+### `app/api/` — 조합 레이어
+
+**두 개 이상 모듈의 데이터가 한 응답에 필요할 때만 여기로 올린다.** 그 외 엔드포인트는
+모듈 라우터에 남는다. 모듈끼리는 서로를 import 하지 못하지만(규칙 3) 이 레이어는 모든 Ring
+위에 있어 각 모듈을 호출해 응답을 합칠 수 있다. 반대 방향(모듈 → `api`)은 `rings` 계약이 막는다.
+
+현재 올라와 있는 것: 멤버 목록(`username` 합성) · 초대 생성(`invited_email` → 사용자 조회) ·
+`GET /teams/{teamId}/projects`(TEAM 경로에 PRJ 데이터).
 
 원시 SQL 문자열은 `test_schema.py`의 모델↔DB 대칭 검사 **바깥**이다.
 컬럼을 리네임하면 mypy도 테스트도 잡지 못한다. 직접 확인한다.
@@ -231,10 +247,15 @@ TEAM 4.6·PRJ 4.6 모두 응답에 "(사용자 이름 포함)"을 명시한다. 
 
 ### 6.4 초대는 `token_hash` 링크로 처리한다
 
-`invited_email == JWT.email` 매칭을 쓰지 않는다. ERD의 `team_invitations`·`project_invitations`에
-**`token_hash` UK 컬럼이 이미 있다.** 초대받은 주소와 Google 로그인 주소가 다른 경우가 흔하다.
+`invited_email == JWT.email` 매칭을 쓰지 않는다. 초대받은 주소와 Google 로그인 주소가
+다른 경우가 흔하다(회사 메일로 초대, 개인 지메일로 로그인).
 
-누락되기 쉬운 컬럼: `token_hash`, `invited_by` FK, `accepted_at`.
+> ⚠️ **정정.** 이전 판의 "ERD에 `token_hash` UK 컬럼이 이미 있다"는 **오기다.**
+> `0001_initial.py`의 `team_invitations`·`project_invitations`에는 `token_hash`도 `accepted_at`도
+> **없다.** ERD와 DDL이 어긋나 있고 **정본은 DDL이다**(§7). 전환하려면 컬럼 추가가 선행되어야 하고,
+> 첫 커밋 이후이므로 새 마이그레이션이 필요하다.
+
+누락된 컬럼: `token_hash`, `accepted_at`. (`invited_by` FK는 있다.)
 
 ### 6.5 명세에 없는 것을 만들지 않는다
 
@@ -349,7 +370,6 @@ Phase 1 착수 전 필요: localstack 또는 elasticmq. Redis도 아직 아무�
 
 ## 12. 미결 항목
 
-- **P2. 멤버 목록에 사람 이름이 없다** (§6.3) — 결정 필요
 - **P3. 초대 메일 발송 없음** — Phase 1(NOTI)에서 해결. "내게 온 초대 목록" API도 없다.
   수락 방식은 `token_hash`로 전환 결정됨 (§6.4)
 - 권한 Redis 캐시. ERD가 `(project_id, user_id) → role`을 60초 TTL 캐싱, 멤버 변경 시 무효화로 규정.

@@ -187,10 +187,12 @@ async def test_project_role_hierarchy(client: AsyncClient) -> None:
         f"/projects/{project['project_id']}", json={"title": "고침"}, headers=viewer["headers"]
     )
     assert denied.status_code == 403
-    # viewer < owner → 초대 목록 금지
+    # viewer < owner → 초대 생성 금지
     assert (
-        await client.get(
-            f"/projects/{project['project_id']}/invitations", headers=viewer["headers"]
+        await client.post(
+            f"/projects/{project['project_id']}/invitations",
+            json={"invited_email": "someone@example.com", "role": "viewer"},
+            headers=viewer["headers"],
         )
     ).status_code == 403
 
@@ -334,6 +336,7 @@ async def test_project_response_schemas_match_spec(client: AsyncClient) -> None:
         "owner_type",
         "team_id",
         "created_by",
+        "manuscript_count",
         "created_at",
         "updated_at",
     }
@@ -382,3 +385,16 @@ async def test_inviting_an_existing_member_is_409(client: AsyncClient) -> None:
     )
     assert res.status_code == 409
     assert code(res) == "ALREADY_MEMBER"
+
+
+async def test_invitation_cannot_grant_owner(client: AsyncClient) -> None:
+    """초대로 부여할 수 있는 역할은 editor|viewer 다 (명세 §2.3)."""
+    owner = await signup(client, "pnoowner@example.com")
+    project = await create_project(client, owner["headers"])
+    res = await client.post(
+        f"/projects/{project['project_id']}/invitations",
+        json={"invited_email": "x@example.com", "role": "owner"},
+        headers=owner["headers"],
+    )
+    assert res.status_code == 400
+    assert code(res) == "INVALID_INPUT"

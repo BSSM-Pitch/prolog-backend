@@ -87,7 +87,7 @@ CREATE TABLE platform.team_invitations (
     expires_at timestamptz NOT NULL,
     responded_at timestamptz,
     {TS},
-    CONSTRAINT team_invitations_role_chk CHECK (role IN ('owner','admin','member')),
+    CONSTRAINT team_invitations_role_chk CHECK (role IN ('admin','member')),
     CONSTRAINT team_invitations_status_chk
         CHECK (status IN ('pending','accepted','rejected','revoked','expired'))
 );
@@ -132,7 +132,7 @@ CREATE TABLE platform.project_invitations (
     expires_at timestamptz NOT NULL,
     responded_at timestamptz,
     {TS},
-    CONSTRAINT project_invitations_role_chk CHECK (role IN ('owner','editor','viewer')),
+    CONSTRAINT project_invitations_role_chk CHECK (role IN ('editor','viewer')),
     CONSTRAINT project_invitations_status_chk
         CHECK (status IN ('pending','accepted','rejected','revoked','expired'))
 );

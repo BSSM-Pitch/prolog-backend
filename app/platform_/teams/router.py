@@ -8,12 +8,7 @@ from app.core.pagination import DEFAULT_LIMIT, Cursor, Limit, decode_cursor, nex
 from app.core.response import ok
 from app.db.session import Session
 from app.platform_.teams import service
-from app.platform_.teams.schemas import (
-    TeamCreate,
-    TeamMemberUpdate,
-    TeamResponse,
-    TeamUpdate,
-)
+from app.platform_.teams.schemas import TeamCreate, TeamMemberUpdate, TeamUpdate
 
 router = APIRouter(prefix="/teams", tags=["TEAM"])
 
@@ -39,7 +34,7 @@ async def list_teams(
 ) -> dict[str, Any]:
     rows = await service.list_teams(session, user, limit, decode_cursor(cursor) if cursor else None)
     page, meta = next_cursor(rows, limit)
-    return ok([TeamResponse.model_validate(t, from_attributes=True) for t in page], meta)
+    return ok(await service.to_responses(session, page), meta)
 
 
 @router.get("/{teamId}", dependencies=[Member])
@@ -96,7 +91,7 @@ async def revoke_invitation(
     await service.revoke_invitation(session, team_id, invitation_id)
 
 
-# 초대 수락/거절은 아직 멤버가 아닌 사용자가 호출한다 → require_team_role 로 막을 수 없다.
+# 초대 수락은 아직 멤버가 아닌 사용자가 호출한다 → require_team_role 로 막을 수 없다.
 @router.post("/{teamId}/invitations/{invitationId}/accept")
 async def accept_invitation(
     team_id: TeamId,
@@ -105,13 +100,3 @@ async def accept_invitation(
     user: User,
 ) -> dict[str, Any]:
     return ok(await service.accept_invitation(session, team_id, invitation_id, user))
-
-
-@router.post("/{teamId}/invitations/{invitationId}/reject")
-async def reject_invitation(
-    team_id: TeamId,
-    invitation_id: Annotated[UUID, Path(alias="invitationId")],
-    session: Session,
-    user: User,
-) -> dict[str, Any]:
-    return ok(await service.reject_invitation(session, team_id, invitation_id, user))

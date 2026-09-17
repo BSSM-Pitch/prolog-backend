@@ -77,12 +77,3 @@ async def add_member(
 
 async def get_invitation(session: AsyncSession, invitation_id: UUID) -> ProjectInvitation | None:
     return await session.get(ProjectInvitation, invitation_id)
-
-
-async def list_invitations(session: AsyncSession, project_id: UUID) -> list[ProjectInvitation]:
-    stmt = (
-        select(ProjectInvitation)
-        .where(ProjectInvitation.project_id == project_id)
-        .order_by(ProjectInvitation.created_at.desc())
-    )
-    return list((await session.execute(stmt)).scalars())

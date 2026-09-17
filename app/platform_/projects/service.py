@@ -183,10 +183,6 @@ async def invite(
     return _invitation(invitation)
 
 
-async def list_invitations(session: AsyncSession, project_id: UUID) -> list[InvitationResponse]:
-    return [_invitation(i) for i in await repo.list_invitations(session, project_id)]
-
-
 async def _pending(
     session: AsyncSession, project_id: UUID, invitation_id: UUID
 ) -> ProjectInvitation:
@@ -230,17 +226,6 @@ async def accept_invitation(
     await session.flush()
     await session.refresh(member)
     return _member(member)
-
-
-async def reject_invitation(
-    session: AsyncSession, project_id: UUID, invitation_id: UUID, user: CurrentUser
-) -> InvitationResponse:
-    invitation = await _claim(session, project_id, invitation_id, user)
-    invitation.status = "rejected"
-    invitation.responded_at = func.now()
-    await session.flush()
-    await session.refresh(invitation)
-    return _invitation(invitation)
 
 
 async def is_member(session: AsyncSession, project_id: UUID, user_id: UUID) -> bool:
