@@ -20,6 +20,8 @@ router = APIRouter(prefix="/teams", tags=["TEAM"])
 
 TeamId = Annotated[UUID, Path(alias="teamId")]
 Member = Depends(require_team_role("member"))
+# 본인 탈퇴가 있어 role 값 자체가 필요하다 (명세 §4.12).
+MemberRole = Annotated[str, Depends(require_team_role("member"))]
 Admin = Depends(require_team_role("admin"))
 Owner = Depends(require_team_role("owner"))
 
@@ -71,17 +73,15 @@ async def update_member_role(
     return ok(await service.update_member_role(session, team_id, user_id, body.role))
 
 
-@router.delete(
-    "/{teamId}/members/{userId}",
-    status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Owner],
-)
+@router.delete("/{teamId}/members/{userId}", status_code=status.HTTP_204_NO_CONTENT)
 async def remove_member(
     team_id: TeamId,
     user_id: Annotated[UUID, Path(alias="userId")],
     session: Session,
+    user: User,
+    role: MemberRole,
 ) -> None:
-    await service.remove_member(session, team_id, user_id)
+    await service.remove_member(session, team_id, user_id, user, role)
 
 
 @router.post("/{teamId}/invitations", status_code=status.HTTP_201_CREATED, dependencies=[Admin])
@@ -117,7 +117,7 @@ async def accept_invitation(
     session: Session,
     user: User,
 ) -> dict[str, Any]:
-    return ok(await service.respond_invitation(session, team_id, invitation_id, user, accept=True))
+    return ok(await service.accept_invitation(session, team_id, invitation_id, user))
 
 
 @router.post("/{teamId}/invitations/{invitationId}/reject")
@@ -127,4 +127,4 @@ async def reject_invitation(
     session: Session,
     user: User,
 ) -> dict[str, Any]:
-    return ok(await service.respond_invitation(session, team_id, invitation_id, user, accept=False))
+    return ok(await service.reject_invitation(session, team_id, invitation_id, user))

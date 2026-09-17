@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import func, literal, select, tuple_
+from sqlalchemy import func, literal, or_, select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.platform_.projects.models import Project, ProjectInvitation, ProjectMember
@@ -12,15 +12,29 @@ async def get_project(session: AsyncSession, project_id: UUID) -> Project | None
 
 
 async def list_projects_of_user(
-    session: AsyncSession, user_id: UUID, limit: int, cursor: tuple[datetime, UUID] | None
+    session: AsyncSession,
+    user_id: UUID,
+    team_ids: list[UUID],
+    limit: int,
+    cursor: tuple[datetime, UUID] | None,
+    owner_type: str | None = None,
+    team_id: UUID | None = None,
 ) -> list[Project]:
+    """직접 멤버인 프로젝트 + 소속 팀의 팀 프로젝트 (명세 §4.1).
+
+    ``team_ids`` 는 core.deps 가 읽어 넘긴다. 이 모듈은 남의 테이블을 읽지 않는다.
+    """
+    mine = Project.id.in_(select(ProjectMember.project_id).where(ProjectMember.user_id == user_id))
     stmt = (
         select(Project)
-        .join(ProjectMember, ProjectMember.project_id == Project.id)
-        .where(ProjectMember.user_id == user_id)
+        .where(or_(mine, Project.team_id.in_(team_ids)))
         .order_by(Project.created_at.desc(), Project.id.desc())
         .limit(limit + 1)
     )
+    if owner_type is not None:
+        stmt = stmt.where(Project.owner_type == owner_type)
+    if team_id is not None:
+        stmt = stmt.where(Project.team_id == team_id)
     if cursor is not None:
         stmt = stmt.where(
             tuple_(Project.created_at, Project.id) < tuple_(literal(cursor[0]), literal(cursor[1]))

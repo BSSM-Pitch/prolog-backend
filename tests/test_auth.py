@@ -99,12 +99,14 @@ async def test_tenant_isolation_between_users(client: AsyncClient) -> None:
     b = await signup(client, "b@ex.com")
     team_id = (await client.post("/teams", json={"name": "A 팀"}, headers=a["headers"])).json()[
         "data"
-    ]["id"]
+    ]["team_id"]
     project_id = (
         await client.post(
-            "/projects", json={"name": "A 프로젝트", "owner_type": "personal"}, headers=a["headers"]
+            "/projects",
+            json={"title": "A 프로젝트", "owner_type": "personal"},
+            headers=a["headers"],
         )
-    ).json()["data"]["id"]
+    ).json()["data"]["project_id"]
 
     assert (await client.get(f"/teams/{team_id}", headers=b["headers"])).status_code == 403
     assert (await client.get(f"/projects/{project_id}", headers=b["headers"])).status_code == 403

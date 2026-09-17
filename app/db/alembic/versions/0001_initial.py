@@ -97,7 +97,7 @@ CREATE INDEX team_invitations_email_idx ON platform.team_invitations (lower(invi
 
 CREATE TABLE platform.projects (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    name varchar(100) NOT NULL,
+    title varchar(100) NOT NULL,
     description text,
     owner_type varchar(20) NOT NULL,
     team_id uuid REFERENCES platform.teams(id) ON DELETE RESTRICT,

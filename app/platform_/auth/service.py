@@ -46,17 +46,6 @@ def _user_response(user: User) -> UserResponse:
     )
 
 
-def _constraint_name(exc: IntegrityError) -> str | None:
-    """제약 **이름**으로 분기한다. 메시지 문자열 파싱은 PG 마이너 버전에 깨진다(CLAUDE.md §6)."""
-    err: BaseException | None = exc.orig
-    while err is not None:
-        name = getattr(err, "constraint_name", None)
-        if name:
-            return str(name)
-        err = err.__cause__
-    return None
-
-
 async def _issue(session: AsyncSession, user: User) -> TokenResponse:
     plain, token_hash = new_opaque_token()
     expires_at = datetime.now(UTC) + timedelta(seconds=settings.refresh_token_ttl_seconds)
@@ -96,7 +85,7 @@ async def signup(session: AsyncSession, body: SignupRequest) -> SessionResponse:
     try:
         await repo.add_user(session, user)
     except IntegrityError as exc:
-        constraint = _constraint_name(exc)
+        constraint = errors.constraint_name(exc)
         if constraint == USERNAME_UQ:
             # 사전 SELECT 로는 경합을 막을 수 없어 제약을 신뢰한다.
             raise errors.UsernameTaken() from exc

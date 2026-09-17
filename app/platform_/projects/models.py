@@ -7,13 +7,16 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, Timestamps, fk_uuid, pk
 
+# IntegrityError 는 제약 이름으로 분기한다(CLAUDE.md §7).
+PROJECT_INVITATIONS_PENDING_UQ = "project_invitations_pending_uq"
+
 
 class Project(Base, Timestamps):
     __tablename__ = "projects"
     __table_args__ = {"schema": "platform"}
 
     id: Mapped[UUID] = pk()
-    name: Mapped[str] = mapped_column(String(100))
+    title: Mapped[str] = mapped_column(String(100))
     description: Mapped[str | None] = mapped_column(Text)
     owner_type: Mapped[str] = mapped_column(String(20))  # personal | team
     team_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True))

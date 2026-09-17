@@ -1,15 +1,16 @@
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Path, status
+from fastapi import APIRouter, Depends, Path, Query, status
 
-from app.core.deps import User, require_project_role
+from app.core.deps import ProjectContext, User, require_project_role
 from app.core.pagination import DEFAULT_LIMIT, Cursor, Limit, decode_cursor, next_cursor
 from app.core.response import ok
 from app.db.session import Session
 from app.platform_.projects import service
 from app.platform_.projects.schemas import (
     InvitationCreate,
+    OwnerType,
     ProjectCreate,
     ProjectMemberUpdate,
     ProjectResponse,
@@ -22,6 +23,8 @@ ProjectId = Annotated[UUID, Path(alias="projectId")]
 Viewer = Depends(require_project_role("viewer"))
 Editor = Depends(require_project_role("editor"))
 Owner = Depends(require_project_role("owner"))
+# 본인 탈퇴가 있어 컨텍스트(역할·호출자)가 필요하다 (명세 §4.11).
+ViewerCtx = Annotated[ProjectContext, Depends(require_project_role("viewer"))]
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
@@ -35,9 +38,11 @@ async def list_projects(
     user: User,
     limit: Limit = DEFAULT_LIMIT,
     cursor: Cursor = None,
+    owner_type: Annotated[OwnerType | None, Query()] = None,
+    team_id: Annotated[UUID | None, Query()] = None,
 ) -> dict[str, Any]:
     rows = await service.list_projects(
-        session, user, limit, decode_cursor(cursor) if cursor else None
+        session, user, limit, decode_cursor(cursor) if cursor else None, owner_type, team_id
     )
     page, meta = next_cursor(rows, limit)
     return ok([ProjectResponse.model_validate(p, from_attributes=True) for p in page], meta)
@@ -75,17 +80,14 @@ async def update_member_role(
     return ok(await service.update_member_role(session, project_id, user_id, body.role))
 
 
-@router.delete(
-    "/{projectId}/members/{userId}",
-    status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Owner],
-)
+@router.delete("/{projectId}/members/{userId}", status_code=status.HTTP_204_NO_CONTENT)
 async def remove_member(
     project_id: ProjectId,
     user_id: Annotated[UUID, Path(alias="userId")],
     session: Session,
+    ctx: ViewerCtx,
 ) -> None:
-    await service.remove_member(session, project_id, user_id)
+    await service.remove_member(session, project_id, user_id, ctx)
 
 
 @router.post("/{projectId}/invitations", status_code=status.HTTP_201_CREATED, dependencies=[Owner])
@@ -121,9 +123,7 @@ async def accept_invitation(
     session: Session,
     user: User,
 ) -> dict[str, Any]:
-    return ok(
-        await service.respond_invitation(session, project_id, invitation_id, user, accept=True)
-    )
+    return ok(await service.accept_invitation(session, project_id, invitation_id, user))
 
 
 @router.post("/{projectId}/invitations/{invitationId}/reject")
@@ -133,6 +133,4 @@ async def reject_invitation(
     session: Session,
     user: User,
 ) -> dict[str, Any]:
-    return ok(
-        await service.respond_invitation(session, project_id, invitation_id, user, accept=False)
-    )
+    return ok(await service.reject_invitation(session, project_id, invitation_id, user))

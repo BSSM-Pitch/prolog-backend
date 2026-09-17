@@ -7,6 +7,12 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, Timestamps, fk_uuid, pk
 
+# IntegrityError 는 제약 이름으로 분기한다(CLAUDE.md §7).
+TEAM_INVITATIONS_PENDING_UQ = "team_invitations_pending_uq"
+# platform.projects 의 FK (PG 자동 명명). teams 는 projects 를 import 하지 않으므로
+# 이름만 문자열로 둔다.
+PROJECTS_TEAM_FK = "projects_team_id_fkey"
+
 
 class Team(Base, Timestamps):
     __tablename__ = "teams"

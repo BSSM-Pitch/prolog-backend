@@ -7,10 +7,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import errors
 from app.core.config import settings
-from app.core.deps import CurrentUser
+from app.core.deps import TEAM_ROLE_RANK, CurrentUser
 from app.events.outbox import emit
 from app.platform_.teams import repository as repo
-from app.platform_.teams.models import Team, TeamInvitation
+from app.platform_.teams.models import (
+    PROJECTS_TEAM_FK,
+    TEAM_INVITATIONS_PENDING_UQ,
+    Team,
+    TeamInvitation,
+    TeamMember,
+)
 from app.platform_.teams.schemas import (
     InvitationCreate,
     InvitationResponse,
@@ -27,6 +33,10 @@ def _team(team: Team) -> TeamResponse:
 
 def _invitation(row: TeamInvitation) -> InvitationResponse:
     return InvitationResponse.model_validate(row, from_attributes=True)
+
+
+def _member(row: TeamMember) -> TeamMemberResponse:
+    return TeamMemberResponse.model_validate(row, from_attributes=True)
 
 
 async def create_team(session: AsyncSession, user: CurrentUser, body: TeamCreate) -> TeamResponse:
@@ -70,14 +80,13 @@ async def delete_team(session: AsyncSession, team_id: UUID) -> None:
     except IntegrityError as exc:
         # projects.team_id 가 ON DELETE RESTRICT 다. 사전 카운트는 PRJ 테이블을 읽어야 해서
         # 같은 Ring 동기 호출이 되므로(규칙 3), 제약 위반을 그대로 409 로 번역한다.
-        raise errors.TeamHasActiveProjects() from exc
+        if errors.constraint_name(exc) == PROJECTS_TEAM_FK:
+            raise errors.TeamHasActiveProjects() from exc
+        raise
 
 
 async def list_members(session: AsyncSession, team_id: UUID) -> list[TeamMemberResponse]:
-    return [
-        TeamMemberResponse.model_validate(m, from_attributes=True)
-        for m in await repo.list_members(session, team_id)
-    ]
+    return [_member(m) for m in await repo.list_members(session, team_id)]
 
 
 async def update_member_role(
@@ -94,10 +103,15 @@ async def update_member_role(
         raise errors.LastOwnerCannotLeave()
     member.role = role
     await session.flush()
-    return TeamMemberResponse.model_validate(member, from_attributes=True)
+    return _member(member)
 
 
-async def remove_member(session: AsyncSession, team_id: UUID, user_id: UUID) -> None:
+async def remove_member(
+    session: AsyncSession, team_id: UUID, user_id: UUID, actor: CurrentUser, actor_role: str
+) -> None:
+    # 본인 탈퇴 또는 owner|admin 의 팀원 제거 (TEAM 명세 §4.12).
+    if user_id != actor.id and TEAM_ROLE_RANK[actor_role] < TEAM_ROLE_RANK["admin"]:
+        raise errors.Forbidden()
     member = await repo.get_member(session, team_id, user_id)
     if member is None:
         raise errors.TeamMemberNotFound()
@@ -112,7 +126,7 @@ async def invite(
 ) -> InvitationResponse:
     invitation = TeamInvitation(
         team_id=team_id,
-        invited_email=str(body.email),
+        invited_email=str(body.invited_email),
         invited_by=user.id,
         role=body.role,
         status="pending",
@@ -122,7 +136,9 @@ async def invite(
     try:
         await session.flush()
     except IntegrityError as exc:
-        raise errors.DuplicateInvitation() from exc
+        if errors.constraint_name(exc) == TEAM_INVITATIONS_PENDING_UQ:
+            raise errors.DuplicateInvitation() from exc
+        raise
     # 알림 생성 API 는 없다. 도메인 변경과 같은 트랜잭션에서 outbox 로 넘긴다(§8).
     emit(
         session,
@@ -161,37 +177,51 @@ async def revoke_invitation(session: AsyncSession, team_id: UUID, invitation_id:
     await session.flush()
 
 
-async def respond_invitation(
-    session: AsyncSession,
-    team_id: UUID,
-    invitation_id: UUID,
-    user: CurrentUser,
-    accept: bool,
-) -> InvitationResponse:
+async def _claim(
+    session: AsyncSession, team_id: UUID, invitation_id: UUID, user: CurrentUser
+) -> TeamInvitation:
     invitation = await _pending(session, team_id, invitation_id)
     if invitation.expires_at <= datetime.now(UTC):
         raise errors.InvitationExpired()
+    # ASSUMPTION: §6.4 는 token_hash 링크로 바꾸라고 하지만 컬럼이 아직 없다 (감사 A표 P3).
     if not user.email or user.email.lower() != invitation.invited_email.lower():
         raise errors.InvitationEmailMismatch()
+    return invitation
 
-    invitation.status = "accepted" if accept else "rejected"
+
+async def accept_invitation(
+    session: AsyncSession, team_id: UUID, invitation_id: UUID, user: CurrentUser
+) -> TeamMemberResponse:
+    """명세 §4.9: 응답은 생성된 TeamMember 다."""
+    invitation = await _claim(session, team_id, invitation_id, user)
+    if await repo.get_member(session, team_id, user.id) is not None:
+        raise errors.AlreadyTeamMember()
+    invitation.status = "accepted"
     invitation.responded_at = func.now()
-    if accept:
-        if await repo.get_member(session, team_id, user.id) is not None:
-            raise errors.AlreadyTeamMember()
-        await repo.add_member(session, team_id, user.id, invitation.role)
-        emit(
-            session,
-            aggregate_type="team",
-            aggregate_id=team_id,
-            event_type="team.member_joined",
-            payload={
-                "team_id": str(team_id),
-                "user_id": str(user.id),
-                "role": invitation.role,
-                "invitation_id": str(invitation.id),
-            },
-        )
+    member = await repo.add_member(session, team_id, user.id, invitation.role)
+    emit(
+        session,
+        aggregate_type="team",
+        aggregate_id=team_id,
+        event_type="team.member_joined",
+        payload={
+            "team_id": str(team_id),
+            "user_id": str(user.id),
+            "role": invitation.role,
+            "invitation_id": str(invitation.id),
+        },
+    )
+    await session.flush()
+    await session.refresh(member)
+    return _member(member)
+
+
+async def reject_invitation(
+    session: AsyncSession, team_id: UUID, invitation_id: UUID, user: CurrentUser
+) -> InvitationResponse:
+    invitation = await _claim(session, team_id, invitation_id, user)
+    invitation.status = "rejected"
+    invitation.responded_at = func.now()
     await session.flush()
     await session.refresh(invitation)
     return _invitation(invitation)

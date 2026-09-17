@@ -6,6 +6,8 @@
 
 from typing import Any
 
+from sqlalchemy.exc import IntegrityError
+
 
 class AppError(Exception):
     code = "INTERNAL_ERROR"
@@ -70,3 +72,18 @@ LastOwnerCannotLeave = _err("LAST_OWNER_CANNOT_LEAVE", 409, "마지막 소유자
 
 # --- 잡 파이프라인 (Phase 2 에서 사용) ----------------------------------
 InvalidStatusTransition = _err("INVALID_STATUS_TRANSITION", 409, "허용되지 않는 상태 전이입니다")
+
+
+def constraint_name(exc: IntegrityError) -> str | None:
+    """IntegrityError 를 일으킨 제약의 **이름**.
+
+    메시지 문자열 파싱은 PG 마이너 버전에 깨진다(CLAUDE.md §7). 드라이버가 예외 체인
+    어딘가에 붙여 주는 ``constraint_name`` 을 찾아 올린다.
+    """
+    err: BaseException | None = exc.orig
+    while err is not None:
+        name = getattr(err, "constraint_name", None)
+        if name:
+            return str(name)
+        err = err.__cause__
+    return None

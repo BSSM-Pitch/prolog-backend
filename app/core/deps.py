@@ -140,6 +140,20 @@ async def assert_team_role(
     return role
 
 
+async def team_ids_of(session: AsyncSession, user_id: UUID) -> list[UUID]:
+    """사용자가 속한 팀 id.
+
+    팀 프로젝트를 목록에 포함시키려면 ``projects`` 쪽에서 팀 소속을 알아야 한다.
+    멤버십 조회는 이 파일로 수렴시킨다 — 모듈이 남의 테이블을 직접 읽기 시작하면
+    §3의 예외가 두 번째로 늘어난다.
+    """
+    rows = await session.execute(
+        text("SELECT team_id FROM platform.team_members WHERE user_id = :user_id"),
+        {"user_id": user_id},
+    )
+    return [row.team_id for row in rows]
+
+
 def require_team_role(min_role: TeamRole):  # type: ignore[no-untyped-def]
     async def dependency(
         session: Session,

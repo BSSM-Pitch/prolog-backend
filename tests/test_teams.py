@@ -9,7 +9,7 @@ from tests.conftest import code, signup
 async def create_team(client: AsyncClient, headers: dict, name: str = "팀") -> str:
     res = await client.post("/teams", json={"name": name}, headers=headers)
     assert res.status_code == 201, res.text
-    return res.json()["data"]["id"]
+    return res.json()["data"]["team_id"]
 
 
 async def test_create_team_makes_creator_owner(client: AsyncClient) -> None:
@@ -20,6 +20,7 @@ async def test_create_team_makes_creator_owner(client: AsyncClient) -> None:
     assert members.status_code == 200
     assert members.json()["data"] == [
         {
+            "team_id": team_id,
             "user_id": user["id"],
             "role": "owner",
             "joined_at": members.json()["data"][0]["joined_at"],
@@ -82,7 +83,7 @@ async def test_invite_writes_outbox_event_in_same_transaction(
 
     res = await client.post(
         f"/teams/{team_id}/invitations",
-        json={"email": "friend@example.com", "role": "member"},
+        json={"invited_email": "friend@example.com", "role": "member"},
         headers=owner["headers"],
     )
     assert res.status_code == 201
@@ -97,13 +98,13 @@ async def test_invite_writes_outbox_event_in_same_transaction(
 async def test_duplicate_pending_invitation_is_409(client: AsyncClient) -> None:
     owner = await signup(client, "dupinv@example.com")
     team_id = await create_team(client, owner["headers"])
-    payload = {"email": "friend@example.com", "role": "member"}
+    payload = {"invited_email": "friend@example.com", "role": "member"}
     assert (
         await client.post(f"/teams/{team_id}/invitations", json=payload, headers=owner["headers"])
     ).status_code == 201
     again = await client.post(
         f"/teams/{team_id}/invitations",
-        json={"email": "FRIEND@example.com", "role": "member"},
+        json={"invited_email": "FRIEND@example.com", "role": "member"},
         headers=owner["headers"],
     )
     assert again.status_code == 409
@@ -119,22 +120,29 @@ async def test_accept_invitation_adds_member(client: AsyncClient, db: AsyncSessi
     invitation = (
         await client.post(
             f"/teams/{team_id}/invitations",
-            json={"email": "guest@example.com", "role": "admin"},
+            json={"invited_email": "guest@example.com", "role": "admin"},
             headers=owner["headers"],
         )
     ).json()["data"]
 
     wrong = await client.post(
-        f"/teams/{team_id}/invitations/{invitation['id']}/accept", headers=outsider["headers"]
+        f"/teams/{team_id}/invitations/{invitation['invitation_id']}/accept",
+        headers=outsider["headers"],
     )
     assert wrong.status_code == 403
     assert code(wrong) == "INVITATION_EMAIL_MISMATCH"
 
     accepted = await client.post(
-        f"/teams/{team_id}/invitations/{invitation['id']}/accept", headers=guest["headers"]
+        f"/teams/{team_id}/invitations/{invitation['invitation_id']}/accept",
+        headers=guest["headers"],
     )
     assert accepted.status_code == 200
-    assert accepted.json()["data"]["status"] == "accepted"
+    assert accepted.json()["data"] == {
+        "team_id": team_id,
+        "user_id": guest["id"],
+        "role": "admin",
+        "joined_at": accepted.json()["data"]["joined_at"],
+    }
 
     members = (await client.get(f"/teams/{team_id}/members", headers=guest["headers"])).json()
     assert {m["user_id"]: m["role"] for m in members["data"]} == {
@@ -143,7 +151,8 @@ async def test_accept_invitation_adds_member(client: AsyncClient, db: AsyncSessi
     }
 
     replay = await client.post(
-        f"/teams/{team_id}/invitations/{invitation['id']}/accept", headers=guest["headers"]
+        f"/teams/{team_id}/invitations/{invitation['invitation_id']}/accept",
+        headers=guest["headers"],
     )
     assert replay.status_code == 409
     assert code(replay) == "INVITATION_NOT_PENDING"
@@ -160,12 +169,12 @@ async def test_reject_and_revoke_invitation(client: AsyncClient) -> None:
     first = (
         await client.post(
             f"/teams/{team_id}/invitations",
-            json={"email": "revguest@example.com"},
+            json={"invited_email": "revguest@example.com"},
             headers=owner["headers"],
         )
     ).json()["data"]
     rejected = await client.post(
-        f"/teams/{team_id}/invitations/{first['id']}/reject", headers=guest["headers"]
+        f"/teams/{team_id}/invitations/{first['invitation_id']}/reject", headers=guest["headers"]
     )
     assert rejected.json()["data"]["status"] == "rejected"
 
@@ -173,17 +182,17 @@ async def test_reject_and_revoke_invitation(client: AsyncClient) -> None:
     second = (
         await client.post(
             f"/teams/{team_id}/invitations",
-            json={"email": "revguest@example.com"},
+            json={"invited_email": "revguest@example.com"},
             headers=owner["headers"],
         )
     ).json()["data"]
     assert (
         await client.delete(
-            f"/teams/{team_id}/invitations/{second['id']}", headers=owner["headers"]
+            f"/teams/{team_id}/invitations/{second['invitation_id']}", headers=owner["headers"]
         )
     ).status_code == 204
     stale = await client.delete(
-        f"/teams/{team_id}/invitations/{second['id']}", headers=owner["headers"]
+        f"/teams/{team_id}/invitations/{second['invitation_id']}", headers=owner["headers"]
     )
     assert code(stale) == "INVITATION_NOT_PENDING"
 
@@ -221,7 +230,7 @@ async def test_team_with_projects_cannot_be_deleted(client: AsyncClient) -> None
     team_id = await create_team(client, owner["headers"])
     created = await client.post(
         "/projects",
-        json={"name": "팀 프로젝트", "owner_type": "team", "team_id": team_id},
+        json={"title": "팀 프로젝트", "owner_type": "team", "team_id": team_id},
         headers=owner["headers"],
     )
     assert created.status_code == 201
@@ -229,3 +238,35 @@ async def test_team_with_projects_cannot_be_deleted(client: AsyncClient) -> None
     res = await client.delete(f"/teams/{team_id}", headers=owner["headers"])
     assert res.status_code == 409
     assert code(res) == "TEAM_HAS_ACTIVE_PROJECTS"
+
+
+async def test_member_can_leave_but_cannot_remove_others(client: AsyncClient) -> None:
+    """본인 탈퇴 또는 owner|admin 의 팀원 제거 (TEAM 명세 §4.12)."""
+    owner = await signup(client, "leaveowner@example.com")
+    guest = await signup(client, "leaveguest@example.com")
+    other = await signup(client, "leaveother@example.com")
+    team_id = await create_team(client, owner["headers"])
+    for who in (guest, other):
+        invitation = (
+            await client.post(
+                f"/teams/{team_id}/invitations",
+                json={"invited_email": who["email"], "role": "member"},
+                headers=owner["headers"],
+            )
+        ).json()["data"]
+        await client.post(
+            f"/teams/{team_id}/invitations/{invitation['invitation_id']}/accept",
+            headers=who["headers"],
+        )
+
+    # member 는 남을 제거하지 못한다
+    denied = await client.delete(
+        f"/teams/{team_id}/members/{other['id']}", headers=guest["headers"]
+    )
+    assert denied.status_code == 403
+    assert code(denied) == "FORBIDDEN"
+
+    # 본인은 나갈 수 있다
+    left = await client.delete(f"/teams/{team_id}/members/{guest['id']}", headers=guest["headers"])
+    assert left.status_code == 204
+    assert (await client.get(f"/teams/{team_id}", headers=guest["headers"])).status_code == 403

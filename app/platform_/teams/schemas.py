@@ -18,17 +18,20 @@ class TeamUpdate(BaseModel):
 
 
 class TeamResponse(BaseModel):
-    id: UUID
+    # 명세 §2.1 의 식별자 필드명은 team_id 다. ORM 의 id 를 alias 로 읽는다.
+    team_id: UUID = Field(validation_alias="id")
     name: str
     description: str | None
     created_by: UUID
     created_at: datetime
     updated_at: datetime
+    # member_count 는 명세 §2.1 에 있으나 아직 없다 (감사 A표 P2).
 
 
 class TeamMemberResponse(BaseModel):
-    # ASSUMPTION: 표시용 nickname/email 은 넣지 않는다. platform.users 는 AUTH 소유이고
-    # 같은 Ring 안의 동기 호출이 금지되어 있다(규칙 3). 표시 데이터는 별도 결정이 필요하다.
+    # ASSUMPTION: 표시용 username 은 아직 넣지 않는다. platform.users 는 AUTH 소유이고
+    # 같은 Ring 안의 동기 호출이 금지되어 있다(규칙 3). §6.3 결정 대기.
+    team_id: UUID
     user_id: UUID
     role: TeamRole
     joined_at: datetime
@@ -39,12 +42,12 @@ class TeamMemberUpdate(BaseModel):
 
 
 class InvitationCreate(BaseModel):
-    email: EmailStr
+    invited_email: EmailStr
     role: TeamRole = "member"
 
 
 class InvitationResponse(BaseModel):
-    id: UUID
+    invitation_id: UUID = Field(validation_alias="id")
     team_id: UUID
     invited_email: str
     role: TeamRole

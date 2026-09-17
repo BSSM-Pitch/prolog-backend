@@ -7,10 +7,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import errors
 from app.core.config import settings
-from app.core.deps import CurrentUser, team_role_of
+from app.core.deps import CurrentUser, ProjectContext, team_ids_of, team_role_of
 from app.events.outbox import emit
 from app.platform_.projects import repository as repo
-from app.platform_.projects.models import Project, ProjectInvitation
+from app.platform_.projects.models import (
+    PROJECT_INVITATIONS_PENDING_UQ,
+    Project,
+    ProjectInvitation,
+    ProjectMember,
+)
 from app.platform_.projects.schemas import (
     InvitationCreate,
     InvitationResponse,
@@ -29,6 +34,10 @@ def _invitation(row: ProjectInvitation) -> InvitationResponse:
     return InvitationResponse.model_validate(row, from_attributes=True)
 
 
+def _member(row: ProjectMember) -> ProjectMemberResponse:
+    return ProjectMemberResponse.model_validate(row, from_attributes=True)
+
+
 async def create_project(
     session: AsyncSession, user: CurrentUser, body: ProjectCreate
 ) -> ProjectResponse:
@@ -42,7 +51,7 @@ async def create_project(
             raise errors.NotTeamMember()
 
     project = Project(
-        name=body.name,
+        title=body.title,
         description=body.description,
         owner_type=body.owner_type,
         team_id=body.team_id,
@@ -57,9 +66,23 @@ async def create_project(
 
 
 async def list_projects(
-    session: AsyncSession, user: CurrentUser, limit: int, cursor: tuple[datetime, UUID] | None
+    session: AsyncSession,
+    user: CurrentUser,
+    limit: int,
+    cursor: tuple[datetime, UUID] | None,
+    owner_type: str | None = None,
+    team_id: UUID | None = None,
 ) -> list[Project]:
-    return await repo.list_projects_of_user(session, user.id, limit, cursor)
+    """명세 §4.1: 개인 + 참여 팀. 팀 소속은 core.deps 가 읽어 넘겨준다(§3)."""
+    return await repo.list_projects_of_user(
+        session,
+        user.id,
+        await team_ids_of(session, user.id),
+        limit,
+        cursor,
+        owner_type,
+        team_id,
+    )
 
 
 async def get_project(session: AsyncSession, project_id: UUID) -> ProjectResponse:
@@ -90,10 +113,7 @@ async def delete_project(session: AsyncSession, project_id: UUID) -> None:
 
 
 async def list_members(session: AsyncSession, project_id: UUID) -> list[ProjectMemberResponse]:
-    return [
-        ProjectMemberResponse.model_validate(m, from_attributes=True)
-        for m in await repo.list_members(session, project_id)
-    ]
+    return [_member(m) for m in await repo.list_members(session, project_id)]
 
 
 async def update_member_role(
@@ -110,10 +130,15 @@ async def update_member_role(
         raise errors.LastOwnerCannotLeave()
     member.role = role
     await session.flush()
-    return ProjectMemberResponse.model_validate(member, from_attributes=True)
+    return _member(member)
 
 
-async def remove_member(session: AsyncSession, project_id: UUID, user_id: UUID) -> None:
+async def remove_member(
+    session: AsyncSession, project_id: UUID, user_id: UUID, ctx: ProjectContext
+) -> None:
+    # 본인 탈퇴 또는 owner 의 멤버 제거 (PRJ 명세 §4.11).
+    if user_id != ctx.user.id and ctx.role != "owner":
+        raise errors.Forbidden()
     member = await repo.get_member(session, project_id, user_id)
     if member is None:
         raise errors.MemberNotFound()
@@ -128,7 +153,7 @@ async def invite(
 ) -> InvitationResponse:
     invitation = ProjectInvitation(
         project_id=project_id,
-        invited_email=str(body.email),
+        invited_email=str(body.invited_email),
         invited_by=user.id,
         role=body.role,
         status="pending",
@@ -138,7 +163,9 @@ async def invite(
     try:
         await session.flush()
     except IntegrityError as exc:
-        raise errors.DuplicateInvitation() from exc
+        if errors.constraint_name(exc) == PROJECT_INVITATIONS_PENDING_UQ:
+            raise errors.DuplicateInvitation() from exc
+        raise
     emit(
         session,
         aggregate_type="project_invitation",
@@ -178,25 +205,39 @@ async def revoke_invitation(session: AsyncSession, project_id: UUID, invitation_
     await session.flush()
 
 
-async def respond_invitation(
-    session: AsyncSession,
-    project_id: UUID,
-    invitation_id: UUID,
-    user: CurrentUser,
-    accept: bool,
-) -> InvitationResponse:
+async def _claim(
+    session: AsyncSession, project_id: UUID, invitation_id: UUID, user: CurrentUser
+) -> ProjectInvitation:
     invitation = await _pending(session, project_id, invitation_id)
     if invitation.expires_at <= datetime.now(UTC):
         raise errors.InvitationExpired()
+    # ASSUMPTION: §6.4 는 token_hash 링크로 바꾸라고 하지만 컬럼이 아직 없다 (감사 A표 P3).
     if not user.email or user.email.lower() != invitation.invited_email.lower():
         raise errors.InvitationEmailMismatch()
+    return invitation
 
-    invitation.status = "accepted" if accept else "rejected"
+
+async def accept_invitation(
+    session: AsyncSession, project_id: UUID, invitation_id: UUID, user: CurrentUser
+) -> ProjectMemberResponse:
+    """명세 §4.8: 응답은 생성된 ProjectMember 다."""
+    invitation = await _claim(session, project_id, invitation_id, user)
+    if await repo.get_member(session, project_id, user.id) is not None:
+        raise errors.AlreadyMember()
+    invitation.status = "accepted"
     invitation.responded_at = func.now()
-    if accept:
-        if await repo.get_member(session, project_id, user.id) is not None:
-            raise errors.AlreadyMember()
-        await repo.add_member(session, project_id, user.id, invitation.role)
+    member = await repo.add_member(session, project_id, user.id, invitation.role)
+    await session.flush()
+    await session.refresh(member)
+    return _member(member)
+
+
+async def reject_invitation(
+    session: AsyncSession, project_id: UUID, invitation_id: UUID, user: CurrentUser
+) -> InvitationResponse:
+    invitation = await _claim(session, project_id, invitation_id, user)
+    invitation.status = "rejected"
+    invitation.responded_at = func.now()
     await session.flush()
     await session.refresh(invitation)
     return _invitation(invitation)
