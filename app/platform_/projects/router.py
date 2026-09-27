@@ -1,21 +1,13 @@
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Path, Query, status
+from fastapi import APIRouter, Depends, Path, status
 
 from app.core.deps import ProjectContext, User, require_project_role
-from app.core.pagination import DEFAULT_LIMIT, Cursor, Limit, decode_cursor, next_cursor
 from app.core.response import ok
 from app.db.session import Session
 from app.platform_.projects import service
-from app.platform_.projects.schemas import (
-    InvitationAccept,
-    OwnerType,
-    ProjectCreate,
-    ProjectMemberUpdate,
-    ProjectResponse,
-    ProjectUpdate,
-)
+from app.platform_.projects.schemas import InvitationAccept, ProjectMemberUpdate
 
 router = APIRouter(prefix="/projects", tags=["PRJ"])
 
@@ -25,39 +17,6 @@ Editor = Depends(require_project_role("editor"))
 Owner = Depends(require_project_role("owner"))
 # 본인 탈퇴가 있어 컨텍스트(역할·호출자)가 필요하다 (명세 §4.11).
 ViewerCtx = Annotated[ProjectContext, Depends(require_project_role("viewer"))]
-
-
-@router.post("", status_code=status.HTTP_201_CREATED)
-async def create_project(body: ProjectCreate, session: Session, user: User) -> dict[str, Any]:
-    return ok(await service.create_project(session, user, body))
-
-
-@router.get("")
-async def list_projects(
-    session: Session,
-    user: User,
-    limit: Limit = DEFAULT_LIMIT,
-    cursor: Cursor = None,
-    owner_type: Annotated[OwnerType | None, Query()] = None,
-    team_id: Annotated[UUID | None, Query()] = None,
-) -> dict[str, Any]:
-    rows = await service.list_projects(
-        session, user, limit, decode_cursor(cursor) if cursor else None, owner_type, team_id
-    )
-    page, meta = next_cursor(rows, limit)
-    return ok([ProjectResponse.model_validate(p, from_attributes=True) for p in page], meta)
-
-
-@router.get("/{projectId}", dependencies=[Viewer])
-async def get_project(project_id: ProjectId, session: Session) -> dict[str, Any]:
-    return ok(await service.get_project(session, project_id))
-
-
-@router.patch("/{projectId}", dependencies=[Editor])
-async def update_project(
-    project_id: ProjectId, body: ProjectUpdate, session: Session
-) -> dict[str, Any]:
-    return ok(await service.update_project(session, project_id, body))
 
 
 @router.delete("/{projectId}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Owner])

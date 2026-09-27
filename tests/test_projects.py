@@ -474,3 +474,37 @@ async def test_revoke_project_invitation(client: AsyncClient) -> None:
         headers=owner["headers"],
     )
     assert code(unknown) == "INVITATION_NOT_FOUND"
+
+
+async def test_manuscript_count_is_aggregated(client: AsyncClient, db: AsyncSession) -> None:
+    """PRJ 명세 §2.1 의 manuscript_count. content(Ring 2) 를 조합 레이어가 세어 붙인다."""
+    from app.content.manuscripts.models import Manuscript
+
+    user = await signup(client, "mc@example.com")
+    project = await create_project(client, user["headers"])
+    assert project["manuscript_count"] == 0
+
+    db.add(
+        Manuscript(
+            project_id=UUID(project["project_id"]),
+            title="원고",
+            source_type="editor",
+            content="",
+            status="draft",
+        )
+    )
+    await db.commit()
+
+    detail = await client.get(f"/projects/{project['project_id']}", headers=user["headers"])
+    assert detail.json()["data"]["manuscript_count"] == 1
+
+    listed = await client.get("/projects", headers=user["headers"])
+    assert [p["manuscript_count"] for p in listed.json()["data"]] == [1]
+
+    # 수정 응답도 같은 필드 집합을 유지한다 (엔드포인트마다 달라지지 않는다)
+    patched = await client.patch(
+        f"/projects/{project['project_id']}",
+        json={"title": "고침"},
+        headers=user["headers"],
+    )
+    assert patched.json()["data"]["manuscript_count"] == 1

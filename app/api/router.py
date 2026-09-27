@@ -10,8 +10,9 @@ AUTH·TEAM·PRJ 를 각각 호출해 응답을 합칠 수 있다. `.importlinter
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Path, status
+from fastapi import APIRouter, Depends, Path, Query, status
 
+from app.content.manuscripts import service as manuscripts
 from app.core import errors
 from app.core.deps import User, require_project_role, require_team_role
 from app.core.pagination import DEFAULT_LIMIT, Cursor, Limit, decode_cursor, next_cursor
@@ -20,7 +21,13 @@ from app.db.session import Session
 from app.platform_.auth import service as auth
 from app.platform_.projects import service as projects
 from app.platform_.projects.schemas import InvitationCreate as ProjectInvitationCreate
-from app.platform_.projects.schemas import ProjectMemberResponse, ProjectResponse
+from app.platform_.projects.schemas import (
+    OwnerType,
+    ProjectCreate,
+    ProjectMemberResponse,
+    ProjectResponse,
+    ProjectUpdate,
+)
 from app.platform_.teams import service as teams
 from app.platform_.teams.schemas import InvitationCreate as TeamInvitationCreate
 from app.platform_.teams.schemas import TeamMemberResponse
@@ -32,6 +39,7 @@ ProjectId = Annotated[UUID, Path(alias="projectId")]
 TeamMember = Depends(require_team_role("member"))
 TeamAdmin = Depends(require_team_role("admin"))
 ProjectViewer = Depends(require_project_role("viewer"))
+ProjectEditor = Depends(require_project_role("editor"))
 ProjectOwner = Depends(require_project_role("owner"))
 
 
@@ -119,3 +127,56 @@ async def list_team_projects(
     )
     page, meta = next_cursor(rows, limit)
     return ok([ProjectResponse.model_validate(p, from_attributes=True) for p in page], meta)
+
+
+# --- PRJ: Project 응답은 manuscript_count 때문에 두 모듈의 데이터가 필요하다 ---------
+# content 는 Ring 2 라 platform_.projects 가 직접 셀 수 없다(규칙 1). 그래서 Project 를
+# 돌려주는 엔드포인트는 모두 이 레이어에 있다. 필드 집합이 엔드포인트마다 달라지지 않게
+# 읽기만 올리지 않고 생성·수정까지 함께 올렸다.
+
+
+async def _with_count(session: Session, response: ProjectResponse) -> ProjectResponse:
+    counts = await manuscripts.manuscript_counts(session, [response.project_id])
+    return response.model_copy(update={"manuscript_count": counts.get(response.project_id, 0)})
+
+
+@router.post("/projects", status_code=status.HTTP_201_CREATED, tags=["PRJ"])
+async def create_project(body: ProjectCreate, session: Session, user: User) -> dict[str, Any]:
+    return ok(await _with_count(session, await projects.create_project(session, user, body)))
+
+
+@router.get("/projects", tags=["PRJ"])
+async def list_projects(
+    session: Session,
+    user: User,
+    limit: Limit = DEFAULT_LIMIT,
+    cursor: Cursor = None,
+    owner_type: Annotated[OwnerType | None, Query()] = None,
+    team_id: Annotated[UUID | None, Query()] = None,
+) -> dict[str, Any]:
+    rows = await projects.list_projects(
+        session, user, limit, decode_cursor(cursor) if cursor else None, owner_type, team_id
+    )
+    page, page_meta = next_cursor(rows, limit)
+    counts = await manuscripts.manuscript_counts(session, [p.id for p in page])
+    return ok(
+        [
+            ProjectResponse.model_validate(p, from_attributes=True).model_copy(
+                update={"manuscript_count": counts.get(p.id, 0)}
+            )
+            for p in page
+        ],
+        page_meta,
+    )
+
+
+@router.get("/projects/{projectId}", tags=["PRJ"], dependencies=[ProjectViewer])
+async def get_project(project_id: ProjectId, session: Session) -> dict[str, Any]:
+    return ok(await _with_count(session, await projects.get_project(session, project_id)))
+
+
+@router.patch("/projects/{projectId}", tags=["PRJ"], dependencies=[ProjectEditor])
+async def update_project(
+    project_id: ProjectId, body: ProjectUpdate, session: Session
+) -> dict[str, Any]:
+    return ok(await _with_count(session, await projects.update_project(session, project_id, body)))
