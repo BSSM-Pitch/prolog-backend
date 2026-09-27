@@ -371,7 +371,9 @@ Phase 1 착수 전 필요: localstack 또는 elasticmq. Redis도 아직 아무�
    - **MSU: `source_type`(`file`→`upload`) · `file_url`→`file_key` · `status` enum ·
      업로드 방식(multipart→presigned URL + `.../file/complete` 콜백) · `Manuscript.error` 삭제 ·
      챕터 경로(`/manuscripts/{m}/chapters`→`/projects/{p}/chapters`) ·
-     `FILE_TOO_LARGE`(413) 도달 불가 · "업로드된 파일 없음" 코드 부재(지금은 `INVALID_INPUT`)**
+     `FILE_TOO_LARGE`(413) 도달 불가 · "업로드된 파일 없음" 코드 부재(지금은 `INVALID_INPUT`) ·
+     **추출 지원 형식 목록 부재** — `UNSUPPORTED_FILE_FORMAT` 이 전제하는 목록이 명세에 없다.
+     지금은 `txt`·`docx` 2종이고 `pdf` 는 발급은 되지만 추출에서 실패한다**
 2. NOTI 명세 §3 의 6~10번(알림 설정·이메일 연동) — 설정 테이블 구조가 명세와 다르다
 3. `manuscript_versions` 디바운스 — ROADMAP §12-3 미결. 정하지 말고 물어라
 
@@ -423,5 +425,10 @@ Phase 1 착수 전 필요: localstack 또는 elasticmq. Redis도 아직 아무�
   **명세 수정이므로 TEAM·PRJ 감사 때 다른 변경 건과 묶는다** (정본을 여러 번 건드리지 않는다)
 - **해소됨 — `manuscript_count`** (`205d0dd`). Project 응답을 반환하는 엔드포인트를 전부
   조합 레이어로 올리고 `content.manuscripts` 를 `GROUP BY` 로 세어 붙인다
+- **업로드 콜백 유실 시 원고가 `draft` 에 영구히 머문다 — 별개 스위퍼가 필요하다.**
+  presigned URL 만 받고 `.../file/complete` 를 부르지 않으면 **잡이 아예 만들어지지 않는다.**
+  Phase 2 의 좀비 회수는 `running` 잡을 대상으로 하므로 이 경우는 아무도 줍지 않는다.
+  필요한 것: `source_type='upload'` · `file_key IS NOT NULL` · `extraction_job_id IS NULL` 이고
+  발급 후 N분이 지난 원고를 훑는 스위퍼. N 과 처리(재촉/만료)는 정해지지 않았다
 - 프론트엔드 계약 미대조. `# ASSUMPTION:` 주석으로 표시되어 있으나,
   어긋나면 Phase 0 전체를 손봐야 한다 (ROADMAP 113행)

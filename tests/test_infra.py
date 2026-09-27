@@ -27,7 +27,7 @@ async def test_relay_publishes_each_event_once(db: AsyncSession) -> None:
     assert await relay_once(db, queue, batch=10) == 1
 
     name, body = queue.sent[0]
-    assert name == "io"
+    assert name == "notify"  # 잡이 아닌 도메인 이벤트
     assert body["event_type"] == "team.invited"
     assert body["payload"] == {"team_id": "t1"}
     assert body["event_id"] == str(event.id)

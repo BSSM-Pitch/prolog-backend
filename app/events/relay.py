@@ -16,7 +16,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.events.models import OutboxEvent
-from app.events.queue import IO_QUEUE, Queue
+from app.events.queue import NOTIFY_QUEUE, Queue
 
 
 def message(event: OutboxEvent) -> dict[str, Any]:
@@ -31,6 +31,18 @@ def message(event: OutboxEvent) -> dict[str, Any]:
     }
 
 
+def route(event: OutboxEvent) -> str:
+    """이벤트가 갈 큐.
+
+    잡 이벤트는 잡이 지정한 큐(io·ai)로, 나머지 도메인 이벤트는 알림 큐로 간다.
+    **한 큐에 소비자가 둘이면** SQS 가 메시지를 하나에게만 주므로 notifier 가 잡 메시지를
+    받아 지워 버린다. 큐를 나누는 것이 소비자를 늘리는 것보다 싸다.
+    """
+    if event.aggregate_type == "job":
+        return str(event.payload.get("queue", NOTIFY_QUEUE))
+    return NOTIFY_QUEUE
+
+
 async def relay_once(session: AsyncSession, queue: Queue, batch: int = 100) -> int:
     """한 배치를 보내고 보낸 개수를 돌려준다. 커밋까지 한다."""
     stmt = (
@@ -42,7 +54,7 @@ async def relay_once(session: AsyncSession, queue: Queue, batch: int = 100) -> i
     )
     events = list((await session.execute(stmt)).scalars())
     for event in events:
-        await asyncio.to_thread(queue.send, IO_QUEUE, message(event))
+        await asyncio.to_thread(queue.send, route(event), message(event))
         event.published_at = func.now()
     await session.commit()
     return len(events)

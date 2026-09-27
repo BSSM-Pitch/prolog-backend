@@ -89,13 +89,16 @@ class FakeStorage:
     새 인스턴스를 만들므로 클래스 변수로 둔다.
     """
 
-    uploaded: ClassVar[set[str]] = set()
+    uploaded: ClassVar[dict[str, bytes]] = {}
 
     def presigned_put(self, key: str, content_type: str) -> PresignedUpload:
         return PresignedUpload(url=f"https://s3.test/{key}?signature=fake", expires_in=600)
 
     def exists(self, key: str) -> bool:
         return key in FakeStorage.uploaded
+
+    def read(self, key: str) -> bytes:
+        return FakeStorage.uploaded[key]
 
 
 class FakeQueue:

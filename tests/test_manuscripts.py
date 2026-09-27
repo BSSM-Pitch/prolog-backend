@@ -244,7 +244,7 @@ async def test_upload_complete_creates_the_extraction_job(
     assert early.status_code == 400
     assert code(early) == "INVALID_INPUT"
 
-    FakeStorage.uploaded.add(issued["file_key"])
+    FakeStorage.uploaded[issued["file_key"]] = "1화.".encode()
     done = await client.post(
         f"/projects/{pid}/manuscripts/{mid}/file/complete", headers=user["headers"]
     )

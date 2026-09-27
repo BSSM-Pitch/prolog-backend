@@ -15,6 +15,8 @@ from app.core.config import settings
 
 IO_QUEUE = "io"
 AI_QUEUE = "ai"
+# 알림용. 잡과 같은 큐를 쓰면 notifier 와 extractor 가 서로의 메시지를 받아 지운다.
+NOTIFY_QUEUE = "notify"
 
 
 class Message(NamedTuple):

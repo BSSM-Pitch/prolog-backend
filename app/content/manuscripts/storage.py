@@ -38,6 +38,10 @@ class Storage(Protocol):
         """업로드 완료 콜백이 객체 존재를 확인할 때 쓴다 (head_object)."""
         ...
 
+    def read(self, key: str) -> bytes:
+        """추출 워커가 원본을 내려받는다."""
+        ...
+
 
 def object_key(project_id: UUID, manuscript_id: UUID, file_format: str) -> str:
     return f"manuscripts/{project_id}/{manuscript_id}.{file_format}"
@@ -95,6 +99,12 @@ class S3Storage:
                 return False
             raise
         return True
+
+    def read(self, key: str) -> bytes:
+        self._ensure_bucket()
+        body = self._client.get_object(Bucket=settings.s3_bucket, Key=key)["Body"]
+        data: bytes = body.read()
+        return data
 
 
 _storage = S3Storage()

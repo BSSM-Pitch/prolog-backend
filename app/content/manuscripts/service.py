@@ -36,6 +36,7 @@ from app.content.manuscripts.storage import (
     object_key,
 )
 from app.core import errors
+from app.events.outbox import emit
 from app.jobs import service as jobs
 
 CHAPTER_NO_UQ = "chapters_manuscript_no_uq"
@@ -195,6 +196,20 @@ async def complete_upload(
     )
     manuscript.status = "processing"
     manuscript.extraction_job_id = job.id
+    # 잡을 워커에게 알리는 경로도 outbox 다 — 도메인 변경과 같은 트랜잭션에 실린다(§8).
+    emit(
+        session,
+        aggregate_type="job",
+        aggregate_id=job.id,
+        event_type="job.queued",
+        payload={
+            "job_id": str(job.id),
+            "job_type": EXTRACTION_JOB_TYPE,
+            "queue": job.queue,
+            "project_id": str(project_id),
+            "manuscript_id": str(manuscript_id),
+        },
+    )
     await session.flush()
     return await _one(session, manuscript)
 
