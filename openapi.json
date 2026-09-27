@@ -1,6 +1,84 @@
 {
   "components": {
     "schemas": {
+      "ChapterCreate": {
+        "properties": {
+          "chapter_no": {
+            "minimum": 1.0,
+            "title": "Chapter No",
+            "type": "integer"
+          },
+          "content": {
+            "default": "",
+            "title": "Content",
+            "type": "string"
+          },
+          "manuscript_id": {
+            "format": "uuid",
+            "title": "Manuscript Id",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "manuscript_id",
+          "chapter_no"
+        ],
+        "title": "ChapterCreate",
+        "type": "object"
+      },
+      "ChapterUpdate": {
+        "properties": {
+          "chapter_no": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chapter No"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "title": "ChapterUpdate",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -27,6 +105,75 @@
           "token"
         ],
         "title": "InvitationAccept",
+        "type": "object"
+      },
+      "ManuscriptCreate": {
+        "properties": {
+          "source_type": {
+            "default": "editor",
+            "enum": [
+              "editor",
+              "upload"
+            ],
+            "title": "Source Type",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "ManuscriptCreate",
+        "type": "object"
+      },
+      "ManuscriptUpdate": {
+        "properties": {
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
+          "source_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "editor",
+                  "upload"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Type"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "title": "ManuscriptUpdate",
         "type": "object"
       },
       "NotificationRead": {
@@ -274,6 +421,21 @@
           }
         },
         "title": "TeamUpdate",
+        "type": "object"
+      },
+      "UploadRequest": {
+        "properties": {
+          "file_format": {
+            "maxLength": 10,
+            "minLength": 1,
+            "title": "File Format",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_format"
+        ],
+        "title": "UploadRequest",
         "type": "object"
       },
       "UserUpdate": {
@@ -1147,6 +1309,308 @@
         ]
       }
     },
+    "/v1/projects/{projectId}/chapters": {
+      "get": {
+        "operationId": "list_chapters_v1_projects__projectId__chapters_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "manuscript_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Manuscript Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Chapters V1 Projects  Projectid  Chapters Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Chapters",
+        "tags": [
+          "MSU"
+        ]
+      },
+      "post": {
+        "operationId": "create_chapter_v1_projects__projectId__chapters_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChapterCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Create Chapter V1 Projects  Projectid  Chapters Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Chapter",
+        "tags": [
+          "MSU"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/chapters/{chapterId}": {
+      "delete": {
+        "operationId": "delete_chapter_v1_projects__projectId__chapters__chapterId__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "chapterId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Chapterid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Chapter",
+        "tags": [
+          "MSU"
+        ]
+      },
+      "get": {
+        "operationId": "get_chapter_v1_projects__projectId__chapters__chapterId__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "chapterId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Chapterid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Chapter V1 Projects  Projectid  Chapters  Chapterid  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Chapter",
+        "tags": [
+          "MSU"
+        ]
+      },
+      "patch": {
+        "operationId": "update_chapter_v1_projects__projectId__chapters__chapterId__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "chapterId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Chapterid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChapterUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Update Chapter V1 Projects  Projectid  Chapters  Chapterid  Patch",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Chapter",
+        "tags": [
+          "MSU"
+        ]
+      }
+    },
     "/v1/projects/{projectId}/invitations": {
       "post": {
         "operationId": "invite_to_project_v1_projects__projectId__invitations_post",
@@ -1325,6 +1789,390 @@
         "summary": "Accept Invitation",
         "tags": [
           "PRJ"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/manuscripts": {
+      "get": {
+        "operationId": "list_manuscripts_v1_projects__projectId__manuscripts_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Manuscripts V1 Projects  Projectid  Manuscripts Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Manuscripts",
+        "tags": [
+          "MSU"
+        ]
+      },
+      "post": {
+        "operationId": "create_manuscript_v1_projects__projectId__manuscripts_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManuscriptCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Create Manuscript V1 Projects  Projectid  Manuscripts Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Manuscript",
+        "tags": [
+          "MSU"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/manuscripts/{manuscriptId}": {
+      "delete": {
+        "operationId": "delete_manuscript_v1_projects__projectId__manuscripts__manuscriptId__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "manuscriptId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Manuscriptid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Manuscript",
+        "tags": [
+          "MSU"
+        ]
+      },
+      "get": {
+        "operationId": "get_manuscript_v1_projects__projectId__manuscripts__manuscriptId__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "manuscriptId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Manuscriptid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Manuscript V1 Projects  Projectid  Manuscripts  Manuscriptid  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Manuscript",
+        "tags": [
+          "MSU"
+        ]
+      },
+      "patch": {
+        "operationId": "update_manuscript_v1_projects__projectId__manuscripts__manuscriptId__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "manuscriptId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Manuscriptid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManuscriptUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Update Manuscript V1 Projects  Projectid  Manuscripts  Manuscriptid  Patch",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Manuscript",
+        "tags": [
+          "MSU"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/manuscripts/{manuscriptId}/file": {
+      "post": {
+        "description": "presigned URL 발급 — multipart 가 아니다. 클라이언트가 S3 로 직접 올린다.",
+        "operationId": "request_upload_v1_projects__projectId__manuscripts__manuscriptId__file_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "manuscriptId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Manuscriptid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Request Upload V1 Projects  Projectid  Manuscripts  Manuscriptid  File Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Request Upload",
+        "tags": [
+          "MSU"
         ]
       }
     },

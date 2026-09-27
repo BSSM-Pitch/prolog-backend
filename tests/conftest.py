@@ -9,6 +9,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.content.manuscripts.storage import PresignedUpload, storage
 from app.core.config import settings
 from app.db.session import SessionFactory, engine
 from app.main import app
@@ -74,6 +75,13 @@ async def db() -> AsyncIterator[AsyncSession]:
         yield session
 
 
+class FakeStorage:
+    """스토리지 포트의 테스트 구현. presigned URL 발급에 S3 를 부르지 않는다."""
+
+    def presigned_put(self, key: str, content_type: str) -> PresignedUpload:
+        return PresignedUpload(url=f"https://s3.test/{key}?signature=fake", expires_in=600)
+
+
 class FakeQueue:
     """큐 포트의 테스트 구현. 테스트가 elasticmq 를 띄우지 않아도 되게 한다."""
 
@@ -98,6 +106,7 @@ class FakeGoogle:
 
 
 app.dependency_overrides[google_oauth] = FakeGoogle
+app.dependency_overrides[storage] = FakeStorage
 
 
 def oauth_code(email: str) -> str:

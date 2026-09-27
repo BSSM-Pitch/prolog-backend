@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException
 
 from app.api.router import router as api_router
+from app.content.manuscripts.router import router as manuscripts_router
 from app.core.errors import AppError
 from app.core.response import ok
 from app.platform_.auth.router import router as auth_router
@@ -64,6 +65,7 @@ for _router in (
     teams_router,
     projects_router,
     notifications_router,
+    manuscripts_router,
     api_router,
 ):
     app.include_router(_router, prefix="/v1")

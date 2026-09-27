@@ -1,0 +1,80 @@
+from datetime import datetime
+from typing import Literal
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict, Field
+
+# DDL 이 정본이다 (CLAUDE.md §7). 명세의 `file`·`extraction_failed` 가 아니다.
+SourceType = Literal["editor", "upload"]
+ManuscriptStatus = Literal["draft", "processing", "ready", "failed"]
+
+
+class ManuscriptCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    source_type: SourceType = "editor"
+
+
+class ManuscriptUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    content: str | None = None
+    # 명세 §4.4 는 변경 **시도** 에 409 를 요구한다. 스키마에서 막으면 400 이 나가므로 받는다.
+    source_type: SourceType | None = None
+
+
+class ManuscriptResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    manuscript_id: UUID = Field(validation_alias="id")
+    project_id: UUID
+    title: str
+    source_type: SourceType
+    # 명세는 `file_url` 이지만 DB 에는 key 만 둔다 — URL 은 만료된다 (§7).
+    file_key: str | None
+    content: str | None
+    # 같은 모듈의 chapters 를 세어 채운다.
+    chapter_count: int = 0
+    status: ManuscriptStatus
+    # 실패 사유는 여기가 아니라 이 잡에 있다. 상태를 두 곳에 두지 않는다.
+    extraction_job_id: UUID | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class UploadRequest(BaseModel):
+    # Literal 로 막으면 400 INVALID_INPUT 이 나간다. 명세 §1.4 는 UNSUPPORTED_FILE_FORMAT
+    # 을 요구하므로 문자열로 받고 서비스에서 검사한다.
+    file_format: str = Field(min_length=1, max_length=10)
+
+
+class UploadResponse(BaseModel):
+    """presigned URL 발급 결과. 실제 업로드는 클라이언트가 S3 로 직접 한다."""
+
+    manuscript_id: UUID
+    file_key: str
+    upload_url: str
+    expires_in: int
+    status: ManuscriptStatus
+    extraction_job_id: UUID
+
+
+class ChapterCreate(BaseModel):
+    manuscript_id: UUID
+    chapter_no: int = Field(ge=1)
+    title: str | None = Field(default=None, max_length=200)
+    content: str = ""
+
+
+class ChapterUpdate(BaseModel):
+    chapter_no: int | None = Field(default=None, ge=1)
+    title: str | None = Field(default=None, max_length=200)
+    content: str | None = None
+
+
+class ChapterResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    chapter_id: UUID = Field(validation_alias="id")
+    manuscript_id: UUID
+    chapter_no: int
+    title: str | None
+    content: str

@@ -1,15 +1,43 @@
-"""MSU 모듈 (Ring 2).
+"""MSU (Ring 2).
 
-지금은 조합 레이어가 프로젝트 응답에 원고 수를 채울 때 쓰는 집계만 있다.
-원고 CRUD 는 명세 충돌 확인 후에 붙인다 (보고 참조).
+**DDL 이 정본이다** (CLAUDE.md §7). 명세와 다음이 다르고, 확정 결정은 DDL 쪽이다:
+`source_type` 은 `editor|upload`(명세 `file` 아님), 파일은 `file_key`(URL 저장 금지),
+`status` 는 `draft|processing|ready|failed`.
+
+실패 사유 컬럼을 두지 않는다. 추출 실패는 `extraction_job_id` 가 가리키는 잡에 남는다 —
+같은 상태를 두 곳에 두지 않는다.
 """
 
 from collections.abc import Sequence
+from datetime import datetime
 from uuid import UUID
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.content.manuscripts import repository as repo
+from app.content.manuscripts.models import Chapter, Manuscript
+from app.content.manuscripts.schemas import (
+    ChapterCreate,
+    ChapterResponse,
+    ChapterUpdate,
+    ManuscriptCreate,
+    ManuscriptResponse,
+    ManuscriptUpdate,
+    UploadRequest,
+    UploadResponse,
+)
+from app.content.manuscripts.storage import (
+    SUPPORTED_FORMATS,
+    Storage,
+    content_type_of,
+    object_key,
+)
+from app.core import errors
+from app.jobs import service as jobs
+
+CHAPTER_NO_UQ = "chapters_manuscript_no_uq"
+EXTRACTION_JOB_TYPE = "manuscript_extraction"
 
 
 async def manuscript_counts(session: AsyncSession, project_ids: Sequence[UUID]) -> dict[UUID, int]:
@@ -19,3 +47,190 @@ async def manuscript_counts(session: AsyncSession, project_ids: Sequence[UUID]) 
     조합 레이어가 이 함수를 호출해 프로젝트 응답에 합친다.
     """
     return await repo.count_by_projects(session, project_ids)
+
+
+def _response(manuscript: Manuscript, chapter_count: int) -> ManuscriptResponse:
+    return ManuscriptResponse.model_validate(manuscript, from_attributes=True).model_copy(
+        update={"chapter_count": chapter_count}
+    )
+
+
+async def _one(session: AsyncSession, manuscript: Manuscript) -> ManuscriptResponse:
+    counts = await repo.chapter_counts(session, [manuscript.id])
+    return _response(manuscript, counts.get(manuscript.id, 0))
+
+
+async def to_responses(
+    session: AsyncSession, rows: Sequence[Manuscript]
+) -> list[ManuscriptResponse]:
+    """목록용. 원고 수만큼 집계 쿼리를 날리지 않는다."""
+    counts = await repo.chapter_counts(session, [m.id for m in rows])
+    return [_response(m, counts.get(m.id, 0)) for m in rows]
+
+
+async def _get(session: AsyncSession, project_id: UUID, manuscript_id: UUID) -> Manuscript:
+    manuscript = await repo.get_manuscript(session, project_id, manuscript_id)
+    if manuscript is None:
+        raise errors.ManuscriptNotFound()
+    return manuscript
+
+
+async def create(
+    session: AsyncSession, project_id: UUID, body: ManuscriptCreate
+) -> ManuscriptResponse:
+    """에디터 원고는 빈 본문으로 즉시 `ready`, 업로드 원고는 파일이 오기 전까지 `draft`."""
+    editor = body.source_type == "editor"
+    manuscript = await repo.add_manuscript(
+        session,
+        Manuscript(
+            project_id=project_id,
+            title=body.title,
+            source_type=body.source_type,
+            content="" if editor else None,
+            status="ready" if editor else "draft",
+        ),
+    )
+    return await _one(session, manuscript)
+
+
+async def get(session: AsyncSession, project_id: UUID, manuscript_id: UUID) -> ManuscriptResponse:
+    return await _one(session, await _get(session, project_id, manuscript_id))
+
+
+async def list_manuscripts(
+    session: AsyncSession, project_id: UUID, limit: int, cursor: tuple[datetime, UUID] | None
+) -> list[Manuscript]:
+    return await repo.list_manuscripts(session, project_id, limit, cursor)
+
+
+async def update(
+    session: AsyncSession, project_id: UUID, manuscript_id: UUID, body: ManuscriptUpdate
+) -> ManuscriptResponse:
+    manuscript = await _get(session, project_id, manuscript_id)
+    if body.source_type is not None and body.source_type != manuscript.source_type:
+        raise errors.SourceTypeImmutable()
+    if body.title is not None:
+        manuscript.title = body.title
+    if body.content is not None:
+        manuscript.content = body.content
+    await session.flush()
+    return await _one(session, manuscript)
+
+
+async def delete(session: AsyncSession, project_id: UUID, manuscript_id: UUID) -> None:
+    await session.delete(await _get(session, project_id, manuscript_id))
+    await session.flush()
+
+
+async def request_upload(
+    session: AsyncSession,
+    project_id: UUID,
+    manuscript_id: UUID,
+    body: UploadRequest,
+    storage: Storage,
+    user_id: UUID,
+) -> UploadResponse:
+    """presigned URL 을 발급하고 추출 잡을 건다. 파일 바이트는 서버를 지나지 않는다."""
+    manuscript = await _get(session, project_id, manuscript_id)
+    if manuscript.source_type != "upload":
+        raise errors.InvalidInput("업로드 원고가 아닙니다")
+    if body.file_format not in SUPPORTED_FORMATS:
+        raise errors.UnsupportedFileFormat(details={"supported": list(SUPPORTED_FORMATS)})
+
+    key = object_key(project_id, manuscript_id, body.file_format)
+    presigned = storage.presigned_put(key, content_type_of(body.file_format))
+    job = await jobs.create(
+        session,
+        project_id=project_id,
+        job_type=EXTRACTION_JOB_TYPE,
+        target_type="manuscript",
+        target_id=manuscript_id,
+        queue="io",
+        input={"file_key": key, "file_format": body.file_format},
+        created_by=user_id,
+    )
+
+    manuscript.file_key = key
+    manuscript.status = "processing"
+    manuscript.extraction_job_id = job.id
+    await session.flush()
+    return UploadResponse(
+        manuscript_id=manuscript.id,
+        file_key=key,
+        upload_url=presigned.url,
+        expires_in=presigned.expires_in,
+        status="processing",
+        extraction_job_id=job.id,
+    )
+
+
+# --- 챕터 -----------------------------------------------------------------
+# 경로는 `/projects/{projectId}/chapters/{chapterId}` 다 — SCDS 가 그렇게 참조하고
+# `chapters.project_id NOT NULL` + `(project_id, chapter_no)` 인덱스가 이를 지원한다.
+# 챕터는 원고보다 오래 산다: 원고를 갈아끼워도 3화는 같은 3화다.
+
+
+def _chapter(row: Chapter) -> ChapterResponse:
+    return ChapterResponse.model_validate(row, from_attributes=True)
+
+
+async def create_chapter(
+    session: AsyncSession, project_id: UUID, body: ChapterCreate
+) -> ChapterResponse:
+    # 남의 프로젝트 원고에 챕터를 달 수 없다.
+    await _get(session, project_id, body.manuscript_id)
+    try:
+        row = await repo.add_chapter(
+            session,
+            Chapter(
+                project_id=project_id,
+                manuscript_id=body.manuscript_id,
+                chapter_no=body.chapter_no,
+                title=body.title,
+                content=body.content,
+            ),
+        )
+    except IntegrityError as exc:
+        if errors.constraint_name(exc) == CHAPTER_NO_UQ:
+            # ASSUMPTION: 같은 원고에 같은 화 번호. 명세에 전용 코드가 없어 공통 코드로 답한다.
+            raise errors.InvalidInput("이미 있는 챕터 번호입니다", field="chapter_no") from exc
+        raise
+    return _chapter(row)
+
+
+async def list_chapters(
+    session: AsyncSession, project_id: UUID, manuscript_id: UUID | None = None
+) -> list[ChapterResponse]:
+    return [_chapter(c) for c in await repo.list_chapters(session, project_id, manuscript_id)]
+
+
+async def _get_chapter(session: AsyncSession, project_id: UUID, chapter_id: UUID) -> Chapter:
+    chapter = await repo.get_chapter(session, project_id, chapter_id)
+    if chapter is None:
+        raise errors.ChapterNotFound()
+    return chapter
+
+
+async def get_chapter(session: AsyncSession, project_id: UUID, chapter_id: UUID) -> ChapterResponse:
+    return _chapter(await _get_chapter(session, project_id, chapter_id))
+
+
+async def update_chapter(
+    session: AsyncSession, project_id: UUID, chapter_id: UUID, body: ChapterUpdate
+) -> ChapterResponse:
+    chapter = await _get_chapter(session, project_id, chapter_id)
+    for field, value in body.model_dump(exclude_unset=True).items():
+        if value is not None:
+            setattr(chapter, field, value)
+    try:
+        await session.flush()
+    except IntegrityError as exc:
+        if errors.constraint_name(exc) == CHAPTER_NO_UQ:
+            raise errors.InvalidInput("이미 있는 챕터 번호입니다", field="chapter_no") from exc
+        raise
+    return _chapter(chapter)
+
+
+async def delete_chapter(session: AsyncSession, project_id: UUID, chapter_id: UUID) -> None:
+    await session.delete(await _get_chapter(session, project_id, chapter_id))
+    await session.flush()

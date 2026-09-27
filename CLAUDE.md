@@ -17,7 +17,7 @@
 | 레포 경로 | `~/Desktop/전공동` |
 | 스택 | FastAPI · PostgreSQL · SQLAlchemy(asyncpg) · Alembic(psycopg) · uv |
 | 현재 단계 | Phase 0 — TEAM·PRJ 정렬 중 |
-| git | `a6ea4e9` 첫 커밋(84파일) → `d00610a` CLAUDE.md 복원 → `f586427` AUTH v0.2 → `66b4f67` 감사 P0 → `3f0eca7` 감사 P1 → `87c9006` 조합 레이어 → `a382a5c` 감사 P2 → `8d20b20` 감사 P3 → `a381109` OpenAPI → `583e00a` PG16 → `ec649f0` Phase 1 인프라 → `205d0dd` manuscript_count → `73427d3` NOTI |
+| git | `a6ea4e9` 첫 커밋(84파일) → `d00610a` CLAUDE.md 복원 → `f586427` AUTH v0.2 → `66b4f67` 감사 P0 → `3f0eca7` 감사 P1 → `87c9006` 조합 레이어 → `a382a5c` 감사 P2 → `8d20b20` 감사 P3 → `a381109` OpenAPI → `583e00a` PG16 → `ec649f0` Phase 1 인프라 → `205d0dd` manuscript_count → `73427d3` NOTI → `c10290d` OpenAPI → MSU |
 
 ### 실행
 
@@ -363,11 +363,16 @@ Phase 1 착수 전 필요: localstack 또는 elasticmq. Redis도 아직 아무�
 
 **다음:**
 
-1. **명세 수정 제안 6건을 Notion 에 반영** — PRJ status 에 `revoked` 없음, PRJ 초대 `expires_at`
-   없음, `DUPLICATE_INVITATION`·`INVITATION_NOT_PENDING` 미정의, `EMAIL_CONFLICT`(409),
-   ERD 의 `token_hash` 표기, TEAM §4.11 권한 미지정. 코드가 아니라 문서 작업이다
-2. **MSU 명세 충돌 6건 판단** — 아래 Phase 1 절 참조. 판단 전에는 원고 CRUD 를 만들지 않는다
-3. NOTI 명세 §3 의 6~10번(알림 설정·이메일 연동) — 설정 테이블 구조가 명세와 다르다
+1. **명세 수정 제안을 Notion 에 반영** (코드가 아니라 문서 작업이다)
+   - TEAM·PRJ: PRJ status 에 `revoked` 없음, PRJ 초대 `expires_at` 없음,
+     `DUPLICATE_INVITATION`·`INVITATION_NOT_PENDING` 미정의, `EMAIL_CONFLICT`(409),
+     ERD 의 `token_hash` 표기, TEAM §4.11 권한 미지정
+   - AUTH: 초대 생성 응답의 `token` 필드, 수락 요청 본문
+   - **MSU: `source_type`(`file`→`upload`) · `file_url`→`file_key` · `status` enum ·
+     업로드 방식(multipart→presigned URL) · `Manuscript.error` 삭제 ·
+     챕터 경로(`/manuscripts/{m}/chapters`→`/projects/{p}/chapters`)**
+2. NOTI 명세 §3 의 6~10번(알림 설정·이메일 연동) — 설정 테이블 구조가 명세와 다르다
+3. `manuscript_versions` 디바운스 — ROADMAP §12-3 미결. 정하지 말고 물어라
 
 **완료 (PG16 전환):** compose 를 5433 으로 고정하고 `pgdata` 볼륨을 붙였다. 빈 볼륨에
 마이그레이션을 새로 적용해 **부분 인덱스 11 · lower() 식 인덱스 7 · CHECK 36 ·

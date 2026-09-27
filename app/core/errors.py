@@ -68,6 +68,12 @@ InvitationNotPending = _err("INVITATION_NOT_PENDING", 409, "이미 처리된 초
 InvitationExpired = _err("INVITATION_EXPIRED", 410, "초대가 만료되었습니다")
 LastOwnerCannotLeave = _err("LAST_OWNER_CANNOT_LEAVE", 409, "마지막 소유자는 나갈 수 없습니다")
 
+# --- MSU ----------------------------------------------------------------
+ManuscriptNotFound = _err("MANUSCRIPT_NOT_FOUND", 404, "원고를 찾을 수 없습니다")
+ChapterNotFound = _err("CHAPTER_NOT_FOUND", 404, "챕터를 찾을 수 없습니다")
+UnsupportedFileFormat = _err("UNSUPPORTED_FILE_FORMAT", 400, "지원하지 않는 파일 형식입니다")
+SourceTypeImmutable = _err("SOURCE_TYPE_IMMUTABLE", 409, "source_type 은 생성 후 바꿀 수 없습니다")
+
 # --- NOTI ---------------------------------------------------------------
 NotificationNotFound = _err("NOTIFICATION_NOT_FOUND", 404, "알림을 찾을 수 없습니다")
 

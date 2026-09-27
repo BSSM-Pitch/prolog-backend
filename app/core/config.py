@@ -32,5 +32,11 @@ class Settings(BaseSettings):
     # 잡 폴링 간격 힌트. meta.retry_after_ms 로 내보낸다 (ROADMAP Phase 1).
     job_retry_after_ms: int = 1000
 
+    # 원고 업로드는 presigned URL 이다(multipart 아님). 서버는 파일을 통과시키지 않는다.
+    s3_bucket: str = "prolog-local"
+    s3_endpoint_url: str = ""
+    s3_region: str = "ap-northeast-2"
+    presigned_ttl_seconds: int = 600
+
 
 settings = Settings()
