@@ -13,6 +13,7 @@ dependencies = [
     "pyjwt>=2.9",
     "email-validator>=2.2",
     "psycopg[binary]>=3.2",
+    "boto3>=1.43.103",
 ]
 
 [dependency-groups]

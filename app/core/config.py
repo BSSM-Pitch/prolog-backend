@@ -21,5 +21,16 @@ class Settings(BaseSettings):
     # ASSUMPTION: 명세에 초대 만료가 없다. 7일로 둔다.
     invitation_ttl_seconds: int = 60 * 60 * 24 * 7
 
+    # SQS 호환 큐. compose 는 elasticmq 다. AWS 로 옮길 때 endpoint 만 비우면 된다.
+    sqs_endpoint_url: str = "http://localhost:9324"
+    sqs_region: str = "elasticmq"
+    # elasticmq 는 서명을 검증하지 않지만 boto3 가 자격증명을 요구한다.
+    aws_access_key_id: str = "local"
+    aws_secret_access_key: str = "local"
+    outbox_relay_batch: int = 100
+    outbox_relay_idle_seconds: float = 1.0
+    # 잡 폴링 간격 힌트. meta.retry_after_ms 로 내보낸다 (ROADMAP Phase 1).
+    job_retry_after_ms: int = 1000
+
 
 settings = Settings()

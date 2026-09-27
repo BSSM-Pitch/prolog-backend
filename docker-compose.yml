@@ -16,6 +16,10 @@ services:
   redis:
     image: redis:7
     ports: ["6380:6379"]
+  # SQS 호환 큐. localstack 대신 elasticmq — 가볍고 API 가 같아 AWS 로 옮겨도 코드가 안 바뀐다.
+  elasticmq:
+    image: softwaremill/elasticmq-native:1.6.11
+    ports: ["9324:9324"]
 
 volumes:
   pgdata:
