@@ -17,7 +17,7 @@
 | 레포 경로 | `~/Desktop/전공동` |
 | 스택 | FastAPI · PostgreSQL · SQLAlchemy(asyncpg) · Alembic(psycopg) · uv |
 | 현재 단계 | Phase 0 — TEAM·PRJ 정렬 중 |
-| git | `a6ea4e9` 첫 커밋(84파일) → `d00610a` CLAUDE.md 복원 → `f586427` AUTH v0.2 → `66b4f67` 감사 P0 → `3f0eca7` 감사 P1 → `87c9006` 조합 레이어 → `a382a5c` 감사 P2 → `8d20b20` 감사 P3 → `a381109` OpenAPI |
+| git | `a6ea4e9` 첫 커밋(84파일) → `d00610a` CLAUDE.md 복원 → `f586427` AUTH v0.2 → `66b4f67` 감사 P0 → `3f0eca7` 감사 P1 → `87c9006` 조합 레이어 → `a382a5c` 감사 P2 → `8d20b20` 감사 P3 → `a381109` OpenAPI → `583e00a` PG16 → `ec649f0` Phase 1 인프라 → `205d0dd` manuscript_count → `73427d3` NOTI |
 
 ### 실행
 
@@ -366,7 +366,8 @@ Phase 1 착수 전 필요: localstack 또는 elasticmq. Redis도 아직 아무�
 1. **명세 수정 제안 6건을 Notion 에 반영** — PRJ status 에 `revoked` 없음, PRJ 초대 `expires_at`
    없음, `DUPLICATE_INVITATION`·`INVITATION_NOT_PENDING` 미정의, `EMAIL_CONFLICT`(409),
    ERD 의 `token_hash` 표기, TEAM §4.11 권한 미지정. 코드가 아니라 문서 작업이다
-2. `manuscript_count` 실제 집계 — **Phase 1 착수 조건**(§12)
+2. **MSU 명세 충돌 6건 판단** — 아래 Phase 1 절 참조. 판단 전에는 원고 CRUD 를 만들지 않는다
+3. NOTI 명세 §3 의 6~10번(알림 설정·이메일 연동) — 설정 테이블 구조가 명세와 다르다
 
 **완료 (PG16 전환):** compose 를 5433 으로 고정하고 `pgdata` 볼륨을 붙였다. 빈 볼륨에
 마이그레이션을 새로 적용해 **부분 인덱스 11 · lower() 식 인덱스 7 · CHECK 36 ·
@@ -414,10 +415,7 @@ Phase 1 착수 전 필요: localstack 또는 elasticmq. Redis도 아직 아무�
   `EMAIL_TAKEN`이 §5.5에서 삭제됐기 때문이다. 서로 다른 Google `sub`가 같은 이메일을 갖는
   경우라 실무상 드물지만 구멍은 맞다. Notion에 `EMAIL_CONFLICT`(409) 추가를 검토하되,
   **명세 수정이므로 TEAM·PRJ 감사 때 다른 변경 건과 묶는다** (정본을 여러 번 건드리지 않는다)
-- **`manuscript_count` 가 상수 0이다 — Phase 1 착수 조건.**
-  `content.manuscripts` 는 Ring 2 라 `platform_` 에서 셀 수 없다(규칙 1). Phase 0 에는 원고 생성
-  경로가 없어 실제로 0 이지만, **MSU(Phase 1)가 들어오는 순간 거짓이 된다.** 조합 레이어에서
-  실제 집계로 바꾸는 작업을 Phase 1 착수 전에 끝낸다. 지금 프로젝트 응답을 반환하는 엔드포인트는
-  모두 모듈 라우터에 있으므로, 옮기든 content 조회를 조합 레이어에 두든 설계 결정이 하나 남아 있다
+- **해소됨 — `manuscript_count`** (`205d0dd`). Project 응답을 반환하는 엔드포인트를 전부
+  조합 레이어로 올리고 `content.manuscripts` 를 `GROUP BY` 로 세어 붙인다
 - 프론트엔드 계약 미대조. `# ASSUMPTION:` 주석으로 표시되어 있으나,
   어긋나면 Phase 0 전체를 손봐야 한다 (ROADMAP 113행)
