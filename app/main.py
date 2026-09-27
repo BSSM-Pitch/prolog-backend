@@ -10,6 +10,7 @@ from app.core.errors import AppError
 from app.core.response import ok
 from app.platform_.auth.router import router as auth_router
 from app.platform_.auth.router import users_router
+from app.platform_.notifications.router import router as notifications_router
 from app.platform_.projects.router import router as projects_router
 from app.platform_.teams.router import router as teams_router
 
@@ -57,5 +58,12 @@ async def health() -> dict[str, Any]:
     return ok({"status": "ok"})
 
 
-for _router in (auth_router, users_router, teams_router, projects_router, api_router):
+for _router in (
+    auth_router,
+    users_router,
+    teams_router,
+    projects_router,
+    notifications_router,
+    api_router,
+):
     app.include_router(_router, prefix="/v1")

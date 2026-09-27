@@ -68,6 +68,9 @@ InvitationNotPending = _err("INVITATION_NOT_PENDING", 409, "이미 처리된 초
 InvitationExpired = _err("INVITATION_EXPIRED", 410, "초대가 만료되었습니다")
 LastOwnerCannotLeave = _err("LAST_OWNER_CANNOT_LEAVE", 409, "마지막 소유자는 나갈 수 없습니다")
 
+# --- NOTI ---------------------------------------------------------------
+NotificationNotFound = _err("NOTIFICATION_NOT_FOUND", 404, "알림을 찾을 수 없습니다")
+
 # --- 잡 파이프라인 (Phase 2 에서 사용) ----------------------------------
 InvalidStatusTransition = _err("INVALID_STATUS_TRANSITION", 409, "허용되지 않는 상태 전이입니다")
 

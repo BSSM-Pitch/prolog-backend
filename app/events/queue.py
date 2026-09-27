@@ -7,7 +7,7 @@ boto3 는 동기 클라이언트다. 호출하는 쪽(릴레이)이 스레드에
 """
 
 import json
-from typing import Any, Protocol
+from typing import Any, NamedTuple, Protocol
 
 import boto3
 
@@ -17,10 +17,21 @@ IO_QUEUE = "io"
 AI_QUEUE = "ai"
 
 
+class Message(NamedTuple):
+    receipt: str
+    body: dict[str, Any]
+
+
 class Queue(Protocol):
     def send(self, queue_name: str, body: dict[str, Any]) -> None:
         """큐가 없으면 만든다(멱등). 본문은 JSON 문자열로 직렬화한다."""
         ...
+
+    def receive(self, queue_name: str, max_messages: int, wait_seconds: int) -> list[Message]:
+        """롱 폴링으로 받는다. 처리한 메시지는 `delete` 로 지운다."""
+        ...
+
+    def delete(self, queue_name: str, receipt: str) -> None: ...
 
 
 class SqsQueue:
@@ -46,3 +57,19 @@ class SqsQueue:
         self._client.send_message(
             QueueUrl=self._url(queue_name), MessageBody=json.dumps(body, ensure_ascii=False)
         )
+
+    def receive(
+        self, queue_name: str, max_messages: int = 10, wait_seconds: int = 5
+    ) -> list[Message]:
+        response = self._client.receive_message(
+            QueueUrl=self._url(queue_name),
+            MaxNumberOfMessages=max_messages,
+            WaitTimeSeconds=wait_seconds,
+        )
+        return [
+            Message(receipt=m["ReceiptHandle"], body=json.loads(m["Body"]))
+            for m in response.get("Messages", [])
+        ]
+
+    def delete(self, queue_name: str, receipt: str) -> None:
+        self._client.delete_message(QueueUrl=self._url(queue_name), ReceiptHandle=receipt)

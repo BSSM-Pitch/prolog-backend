@@ -74,6 +74,16 @@ async def db() -> AsyncIterator[AsyncSession]:
         yield session
 
 
+class FakeQueue:
+    """큐 포트의 테스트 구현. 테스트가 elasticmq 를 띄우지 않아도 되게 한다."""
+
+    def __init__(self) -> None:
+        self.sent: list[tuple[str, dict]] = []
+
+    def send(self, queue_name: str, body: dict) -> None:
+        self.sent.append((queue_name, body))
+
+
 class FakeGoogle:
     """Google 포트의 테스트 구현.
 

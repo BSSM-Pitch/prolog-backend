@@ -1,6 +1,5 @@
 """Phase 1 인프라 — Outbox 릴레이 · 잡 최소 코어."""
 
-from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
@@ -11,17 +10,7 @@ from app.core import errors
 from app.events.models import OutboxEvent
 from app.events.relay import relay_once
 from app.jobs import service as jobs
-from tests.conftest import signup
-
-
-class FakeQueue:
-    """큐 포트의 테스트 구현. 테스트가 elasticmq 를 띄우지 않아도 되게 한다."""
-
-    def __init__(self) -> None:
-        self.sent: list[tuple[str, dict[str, Any]]] = []
-
-    def send(self, queue_name: str, body: dict[str, Any]) -> None:
-        self.sent.append((queue_name, body))
+from tests.conftest import FakeQueue, signup
 
 
 async def test_relay_publishes_each_event_once(db: AsyncSession) -> None:
