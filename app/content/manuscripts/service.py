@@ -10,6 +10,7 @@
 
 from collections.abc import Sequence
 from datetime import datetime
+from typing import cast
 from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError
@@ -23,6 +24,7 @@ from app.content.manuscripts.schemas import (
     ChapterUpdate,
     ManuscriptCreate,
     ManuscriptResponse,
+    ManuscriptStatus,
     ManuscriptUpdate,
     UploadRequest,
     UploadResponse,
@@ -139,6 +141,45 @@ async def request_upload(
 
     key = object_key(project_id, manuscript_id, body.file_format)
     presigned = storage.presigned_put(key, content_type_of(body.file_format))
+
+    # 잡은 여기서 만들지 않는다. 파일이 아직 없으므로 큐에 넣으면 빈 대상을 가리킨다.
+    manuscript.file_key = key
+    await session.flush()
+    return UploadResponse(
+        manuscript_id=manuscript.id,
+        file_key=key,
+        upload_url=presigned.url,
+        expires_in=presigned.expires_in,
+        status=cast(ManuscriptStatus, manuscript.status),  # 아직 draft 다
+    )
+
+
+async def complete_upload(
+    session: AsyncSession,
+    project_id: UUID,
+    manuscript_id: UUID,
+    storage: Storage,
+    user_id: UUID,
+) -> ManuscriptResponse:
+    """클라이언트가 S3 PUT 을 마친 뒤 부른다. 객체를 확인하고 추출 잡을 건다.
+
+    S3 이벤트 알림이 아니라 콜백인 이유는 로컬에 S3 가 없어 재현이 어렵기 때문이다.
+    **콜백 유실은 Phase 2 의 좀비 회수가 받는다** — 여기서 보상하지 않는다.
+    """
+    manuscript = await _get(session, project_id, manuscript_id)
+    if manuscript.source_type != "upload":
+        raise errors.InvalidInput("업로드 원고가 아닙니다")
+    if manuscript.file_key is None:
+        raise errors.InvalidInput("업로드 URL 을 먼저 발급받아야 합니다")
+
+    # ASSUMPTION: 두 번 불러도 잡이 두 개 생기지 않게 현재 상태를 그대로 돌려준다.
+    if manuscript.extraction_job_id is not None:
+        return await _one(session, manuscript)
+
+    if not storage.exists(manuscript.file_key):
+        # ASSUMPTION: 명세에 "업로드된 파일 없음" 코드가 없어 공통 코드로 답한다. 제안 목록에 있다.
+        raise errors.InvalidInput("업로드된 파일을 찾을 수 없습니다", field="file_key")
+
     job = await jobs.create(
         session,
         project_id=project_id,
@@ -146,22 +187,16 @@ async def request_upload(
         target_type="manuscript",
         target_id=manuscript_id,
         queue="io",
-        input={"file_key": key, "file_format": body.file_format},
+        input={
+            "file_key": manuscript.file_key,
+            "file_format": manuscript.file_key.rsplit(".", 1)[-1],
+        },
         created_by=user_id,
     )
-
-    manuscript.file_key = key
     manuscript.status = "processing"
     manuscript.extraction_job_id = job.id
     await session.flush()
-    return UploadResponse(
-        manuscript_id=manuscript.id,
-        file_key=key,
-        upload_url=presigned.url,
-        expires_in=presigned.expires_in,
-        status="processing",
-        extraction_job_id=job.id,
-    )
+    return await _one(session, manuscript)
 
 
 # --- 챕터 -----------------------------------------------------------------

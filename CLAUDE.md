@@ -369,8 +369,9 @@ Phase 1 착수 전 필요: localstack 또는 elasticmq. Redis도 아직 아무�
      ERD 의 `token_hash` 표기, TEAM §4.11 권한 미지정
    - AUTH: 초대 생성 응답의 `token` 필드, 수락 요청 본문
    - **MSU: `source_type`(`file`→`upload`) · `file_url`→`file_key` · `status` enum ·
-     업로드 방식(multipart→presigned URL) · `Manuscript.error` 삭제 ·
-     챕터 경로(`/manuscripts/{m}/chapters`→`/projects/{p}/chapters`)**
+     업로드 방식(multipart→presigned URL + `.../file/complete` 콜백) · `Manuscript.error` 삭제 ·
+     챕터 경로(`/manuscripts/{m}/chapters`→`/projects/{p}/chapters`) ·
+     `FILE_TOO_LARGE`(413) 도달 불가 · "업로드된 파일 없음" 코드 부재(지금은 `INVALID_INPUT`)**
 2. NOTI 명세 §3 의 6~10번(알림 설정·이메일 연동) — 설정 테이블 구조가 명세와 다르다
 3. `manuscript_versions` 디바운스 — ROADMAP §12-3 미결. 정하지 말고 물어라
 

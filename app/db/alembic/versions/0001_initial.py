@@ -197,19 +197,25 @@ CREATE TABLE content.manuscripts (
     CONSTRAINT manuscripts_editor_no_file_chk
         CHECK (source_type <> 'editor' OR file_key IS NULL),
     CONSTRAINT manuscripts_ready_content_chk
-        CHECK (status <> 'ready' OR content IS NOT NULL)
+        CHECK (status <> 'ready' OR content IS NOT NULL),
+    -- chapters 가 (manuscript_id, project_id) 복합 FK 로 걸기 위한 대상. 원고와 챕터의
+    -- project_id 가 어긋나는 행을 DB 가 막는다.
+    CONSTRAINT manuscripts_id_project_uq UNIQUE (id, project_id)
 );
 CREATE INDEX manuscripts_project_idx ON content.manuscripts (project_id);
 
 CREATE TABLE content.chapters (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     project_id uuid NOT NULL,
-    manuscript_id uuid NOT NULL REFERENCES content.manuscripts(id) ON DELETE CASCADE,
+    manuscript_id uuid NOT NULL,
     chapter_no integer NOT NULL,
     title varchar(200),
     content text NOT NULL DEFAULT '',
     {TS},
-    CONSTRAINT chapters_manuscript_no_uq UNIQUE (manuscript_id, chapter_no)
+    CONSTRAINT chapters_manuscript_no_uq UNIQUE (manuscript_id, chapter_no),
+    -- 단일 FK 가 아니라 복합 FK 다. project_id 비정규화가 원고와 어긋나지 않게 DB 가 지킨다.
+    CONSTRAINT chapters_manuscript_fk FOREIGN KEY (manuscript_id, project_id)
+        REFERENCES content.manuscripts(id, project_id) ON DELETE CASCADE
 );
 CREATE INDEX chapters_project_no_idx ON content.chapters (project_id, chapter_no);
 

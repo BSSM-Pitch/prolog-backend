@@ -1,5 +1,6 @@
 import os
 from collections.abc import AsyncIterator, Iterator
+from typing import ClassVar
 
 import psycopg
 import pytest
@@ -63,6 +64,12 @@ async def clean_tables() -> AsyncIterator[None]:
     yield
 
 
+@pytest.fixture(autouse=True)
+def clean_uploads() -> Iterator[None]:
+    FakeStorage.uploaded.clear()
+    yield
+
+
 @pytest.fixture
 async def client() -> AsyncIterator[AsyncClient]:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test/v1") as c:
@@ -76,10 +83,19 @@ async def db() -> AsyncIterator[AsyncSession]:
 
 
 class FakeStorage:
-    """스토리지 포트의 테스트 구현. presigned URL 발급에 S3 를 부르지 않는다."""
+    """스토리지 포트의 테스트 구현. presigned URL 발급에 S3 를 부르지 않는다.
+
+    `uploaded` 는 "클라이언트가 PUT 을 끝낸 key" 집합이다. 의존성 주입이 요청마다
+    새 인스턴스를 만들므로 클래스 변수로 둔다.
+    """
+
+    uploaded: ClassVar[set[str]] = set()
 
     def presigned_put(self, key: str, content_type: str) -> PresignedUpload:
         return PresignedUpload(url=f"https://s3.test/{key}?signature=fake", expires_in=600)
+
+    def exists(self, key: str) -> bool:
+        return key in FakeStorage.uploaded
 
 
 class FakeQueue:

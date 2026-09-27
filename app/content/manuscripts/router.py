@@ -94,6 +94,18 @@ async def request_upload(
     )
 
 
+@router.post("/{projectId}/manuscripts/{manuscriptId}/file/complete")
+async def complete_upload(
+    project_id: ProjectId,
+    manuscript_id: ManuscriptId,
+    session: Session,
+    ctx: EditorCtx,
+    store: StorageDep,
+) -> dict[str, Any]:
+    """클라이언트가 S3 PUT 을 마쳤다고 알린다. 객체를 확인하고 추출 잡을 건다."""
+    return ok(await service.complete_upload(session, project_id, manuscript_id, store, ctx.user.id))
+
+
 # --- 챕터: 프로젝트 직속이다 (SCDS 가 그렇게 참조한다) ----------------------
 
 

@@ -20,6 +20,14 @@ services:
   elasticmq:
     image: softwaremill/elasticmq-native:1.6.11
     ports: ["9324:9324"]
+  # S3 호환 오브젝트 스토리지. presigned URL 을 로컬에서 실제로 돌려보기 위한 것이다.
+  # minio 가 아닌 이유: minio/minio 와 quay.io/minio/minio 모두 pull 이 거부된다
+  # (2025 배포 정책 변경). s3mock 은 S3 API 호환이라 대역으로 충분하다.
+  s3mock:
+    image: adobe/s3mock:latest
+    environment:
+      initialBuckets: prolog-local
+    ports: ["9000:9090"]
 
 volumes:
   pgdata:

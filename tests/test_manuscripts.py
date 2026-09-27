@@ -6,6 +6,7 @@ status 는 draft|processing|ready|failed. 챕터 경로는 프로젝트 직속�
 
 from uuid import UUID
 
+import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -94,23 +95,17 @@ async def test_upload_issues_presigned_url_and_extraction_job(
     data = res.json()["data"]
     assert data["upload_url"].startswith("https://s3.test/")
     assert data["file_key"] == f"manuscripts/{pid}/{ms['manuscript_id']}.docx"
-    assert data["status"] == "processing"
     assert data["expires_in"] == 600
-
-    # 실패 사유는 원고가 아니라 이 잡에 남는다 — 상태를 두 곳에 두지 않는다.
-    job = await jobs.get(db, UUID(data["extraction_job_id"]))
-    assert job is not None
-    assert job.job_type == "manuscript_extraction"
-    assert job.queue == "io"
-    assert job.status == "queued"
-    assert job.input == {"file_key": data["file_key"], "file_format": "docx"}
+    # 파일이 아직 없다. 잡을 걸지 않고 draft 에 머문다.
+    assert data["status"] == "draft"
+    assert "extraction_job_id" not in data
 
     detail = await client.get(
         f"/projects/{pid}/manuscripts/{ms['manuscript_id']}", headers=user["headers"]
     )
     # 응답은 key 만 준다. URL 은 만료되므로 저장하지 않는다.
     assert detail.json()["data"]["file_key"] == data["file_key"]
-    assert detail.json()["data"]["status"] == "processing"
+    assert detail.json()["data"]["extraction_job_id"] is None
 
 
 async def test_upload_rejects_bad_format_and_editor_manuscript(client: AsyncClient) -> None:
@@ -223,3 +218,84 @@ async def test_deleting_a_manuscript_removes_its_chapters(client: AsyncClient) -
     assert (await client.get(f"/projects/{pid}/chapters", headers=user["headers"])).json()[
         "data"
     ] == []
+
+
+async def test_upload_complete_creates_the_extraction_job(
+    client: AsyncClient, db: AsyncSession
+) -> None:
+    """S3 PUT 을 마친 클라이언트가 콜백을 부른다. 잡은 이때 큐에 들어간다."""
+    from tests.conftest import FakeStorage
+
+    user, pid = await _project(client, "ms7@example.com")
+    ms = await _manuscript(client, user, pid, source_type="upload")
+    mid = ms["manuscript_id"]
+    issued = (
+        await client.post(
+            f"/projects/{pid}/manuscripts/{mid}/file",
+            json={"file_format": "docx"},
+            headers=user["headers"],
+        )
+    ).json()["data"]
+
+    # 아직 안 올렸다 — head_object 가 못 찾는다.
+    early = await client.post(
+        f"/projects/{pid}/manuscripts/{mid}/file/complete", headers=user["headers"]
+    )
+    assert early.status_code == 400
+    assert code(early) == "INVALID_INPUT"
+
+    FakeStorage.uploaded.add(issued["file_key"])
+    done = await client.post(
+        f"/projects/{pid}/manuscripts/{mid}/file/complete", headers=user["headers"]
+    )
+    assert done.status_code == 200
+    data = done.json()["data"]
+    assert data["status"] == "processing"
+
+    job = await jobs.get(db, UUID(data["extraction_job_id"]))
+    assert job is not None
+    assert job.job_type == "manuscript_extraction"
+    assert job.queue == "io"
+    assert job.status == "queued"
+    assert job.input == {"file_key": issued["file_key"], "file_format": "docx"}
+
+    # 두 번 불러도 잡이 두 개 생기지 않는다.
+    again = await client.post(
+        f"/projects/{pid}/manuscripts/{mid}/file/complete", headers=user["headers"]
+    )
+    assert again.json()["data"]["extraction_job_id"] == data["extraction_job_id"]
+
+
+async def test_upload_complete_requires_an_issued_url(client: AsyncClient) -> None:
+    user, pid = await _project(client, "ms8@example.com")
+    ms = await _manuscript(client, user, pid, source_type="upload")
+    res = await client.post(
+        f"/projects/{pid}/manuscripts/{ms['manuscript_id']}/file/complete",
+        headers=user["headers"],
+    )
+    assert res.status_code == 400
+    assert code(res) == "INVALID_INPUT"
+
+
+async def test_chapter_project_id_must_match_its_manuscript(
+    client: AsyncClient, db: AsyncSession
+) -> None:
+    """서비스가 아니라 **DB** 가 막는다 — 복합 FK (manuscript_id, project_id)."""
+    from sqlalchemy.exc import IntegrityError
+
+    from app.content.manuscripts.models import Chapter
+
+    user, pid = await _project(client, "ch3@example.com")
+    ms = await _manuscript(client, user, pid)
+
+    db.add(
+        Chapter(
+            project_id=UUID("00000000-0000-0000-0000-000000000000"),
+            manuscript_id=UUID(ms["manuscript_id"]),
+            chapter_no=1,
+            content="",
+        )
+    )
+    with pytest.raises(IntegrityError):
+        await db.flush()
+    await db.rollback()

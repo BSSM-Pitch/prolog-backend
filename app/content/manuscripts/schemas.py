@@ -47,14 +47,17 @@ class UploadRequest(BaseModel):
 
 
 class UploadResponse(BaseModel):
-    """presigned URL 발급 결과. 실제 업로드는 클라이언트가 S3 로 직접 한다."""
+    """presigned URL 발급 결과. 실제 업로드는 클라이언트가 S3 로 직접 한다.
+
+    **추출 잡은 여기서 만들지 않는다.** 파일이 아직 없기 때문이다 — 업로드를 마친 클라이언트가
+    `.../file/complete` 를 부르면 그때 객체 존재를 확인하고 큐에 넣는다.
+    """
 
     manuscript_id: UUID
     file_key: str
     upload_url: str
     expires_in: int
     status: ManuscriptStatus
-    extraction_job_id: UUID
 
 
 class ChapterCreate(BaseModel):

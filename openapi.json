@@ -2176,6 +2176,67 @@
         ]
       }
     },
+    "/v1/projects/{projectId}/manuscripts/{manuscriptId}/file/complete": {
+      "post": {
+        "description": "클라이언트가 S3 PUT 을 마쳤다고 알린다. 객체를 확인하고 추출 잡을 건다.",
+        "operationId": "complete_upload_v1_projects__projectId__manuscripts__manuscriptId__file_complete_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "manuscriptId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Manuscriptid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Complete Upload V1 Projects  Projectid  Manuscripts  Manuscriptid  File Complete Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Complete Upload",
+        "tags": [
+          "MSU"
+        ]
+      }
+    },
     "/v1/projects/{projectId}/members": {
       "get": {
         "operationId": "list_project_members_v1_projects__projectId__members_get",
