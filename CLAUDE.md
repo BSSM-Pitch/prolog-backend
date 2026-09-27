@@ -17,18 +17,23 @@
 | 레포 경로 | `~/Desktop/전공동` |
 | 스택 | FastAPI · PostgreSQL · SQLAlchemy(asyncpg) · Alembic(psycopg) · uv |
 | 현재 단계 | Phase 0 — TEAM·PRJ 정렬 중 |
-| git | `a6ea4e9` 첫 커밋(84파일) → `d00610a` CLAUDE.md 복원 → `f586427` AUTH v0.2 → `66b4f67` 감사 P0 → `3f0eca7` 감사 P1 → `87c9006` 조합 레이어 → `a382a5c` 감사 P2 |
+| git | `a6ea4e9` 첫 커밋(84파일) → `d00610a` CLAUDE.md 복원 → `f586427` AUTH v0.2 → `66b4f67` 감사 P0 → `3f0eca7` 감사 P1 → `87c9006` 조합 레이어 → `a382a5c` 감사 P2 → `8d20b20` 감사 P3 → `a381109` OpenAPI |
 
 ### 실행
 
+dev DB 는 **compose 의 PostgreSQL 16** 이다. 호스트 포트는 **5433** — 로컬 PostgreSQL 15 가
+5432 를 쓰고 있어서다. `pgdata` 볼륨이 붙어 있으므로 `down` 해도 데이터는 남는다
+(`down -v` 는 지운다).
+
 ```bash
+cd ~/Desktop/전공동 && docker compose -p prolog up -d   # 프로젝트명 필수: 디렉터리명이 비ASCII다
 cd ~/Desktop/전공동 && uv run uvicorn app.main:app --reload
 ```
 
 ### 테스트
 
 ```bash
-cd ~/Desktop/전공동 && DATABASE_URL="postgresql+asyncpg://kmsmss@localhost:5432/prolog_test" uv run pytest -q
+cd ~/Desktop/전공동 && DATABASE_URL="postgresql+asyncpg://prolog:prolog@localhost:5433/prolog_test" uv run pytest -q
 ```
 
 ### 품질 게이트 (커밋 전 필수)
@@ -36,7 +41,7 @@ cd ~/Desktop/전공동 && DATABASE_URL="postgresql+asyncpg://kmsmss@localhost:54
 ```bash
 cd ~/Desktop/전공동 && uv run ruff check . && uv run ruff format --check . \
   && uv run mypy app && uv run lint-imports \
-  && DATABASE_URL="postgresql+asyncpg://kmsmss@localhost:5432/prolog_test" uv run pytest -q
+  && DATABASE_URL="postgresql+asyncpg://prolog:prolog@localhost:5433/prolog_test" uv run pytest -q
 ```
 
 ---
@@ -362,7 +367,11 @@ Phase 1 착수 전 필요: localstack 또는 elasticmq. Redis도 아직 아무�
    없음, `DUPLICATE_INVITATION`·`INVITATION_NOT_PENDING` 미정의, `EMAIL_CONFLICT`(409),
    ERD 의 `token_hash` 표기, TEAM §4.11 권한 미지정. 코드가 아니라 문서 작업이다
 2. `manuscript_count` 실제 집계 — **Phase 1 착수 조건**(§12)
-3. PG16에서 전체 재실행 (compose 버전. 현재 dev·test 모두 PG15)
+
+**완료 (PG16 전환):** compose 를 5433 으로 고정하고 `pgdata` 볼륨을 붙였다. 빈 볼륨에
+마이그레이션을 새로 적용해 **부분 인덱스 11 · lower() 식 인덱스 7 · CHECK 36 ·
+`updated_at` 트리거 37** 이 전부 올라오는 것을 카탈로그로 확인했고, 게이트 5종을 PG16 에서
+통과시켰다. 로컬 PG15 는 5432 에 그대로 있다(끄지 않았다).
 
 ---
 

@@ -5,7 +5,9 @@ services:
       POSTGRES_USER: prolog
       POSTGRES_PASSWORD: prolog
       POSTGRES_DB: prolog
-    ports: ["5432:5432"]
+    # 호스트 5433 — 로컬 PostgreSQL 15 가 5432 를 쓰고 있다. 컨테이너 안은 그대로 5432.
+    ports: ["5433:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U prolog"]
       interval: 2s
@@ -13,4 +15,7 @@ services:
       retries: 30
   redis:
     image: redis:7
-    ports: ["6379:6379"]
+    ports: ["6380:6379"]
+
+volumes:
+  pgdata:
