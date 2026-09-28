@@ -59,17 +59,32 @@ Phase 0에서 **쓰는** 테이블은 12개(platform)뿐이지만, 나머지 26�
 
 ## 2. 남은 것
 
-### Phase 1 — MSU · 챕터 · io 워커 · Outbox 릴레이 · NOTI
+### Phase 1 — MSU · 챕터 · io 워커 · Outbox 릴레이 · NOTI  ✅ **완료**
 
-진입 조건: 없음. 지금 바로 시작 가능. 모델은 `app/content/manuscripts/models.py`에 이미 있다.
-
-만들 것:
+만든 것 (아래 목록대로, 4번 제외):
 1. `content/manuscripts/` 의 router·schemas·service·repository
    - `POST /v1/projects/{projectId}/manuscripts` (`source_type` = `editor` | `upload`)
    - upload는 S3 presigned URL 발급 → 클라이언트 직접 업로드 → 추출 잡 생성
    - 챕터 CRUD (`chapters.manuscript_id`가 NOT NULL이다. project 직결이 아니다)
    - 자동저장 PATCH — 본문은 PostgreSQL `text`다. S3 왕복하지 마라 (§9)
-2. **Outbox 릴레이 워커** — `published_at IS NULL` 폴링 → SQS `io` → `published_at` 기록
+2. **Outbox 릴레이 워커** — `published_at IS NULL` 폴링 → SQS → `published_at` 기록.
+   `FOR UPDATE SKIP LOCKED` 라 릴레이를 여러 개 띄워도 같은 행이 두 번 가지 않는다.
+   **at-least-once** 다 — 발송 후 표시 사이에 죽으면 재전송되고, 수신 측이 멱등해야 한다
+
+   **큐는 3종이다. 하나가 아니다.**
+
+   | 큐 | 소비자 | 싣는 것 |
+   | --- | --- | --- |
+   | `io` | `worker/extractor.py` | `queue='io'` 잡 (원고 텍스트 추출) |
+   | `ai` | (Phase 3) | `queue='ai'` 잡 |
+   | `notify` | `worker/notifier.py` | 도메인 이벤트 (초대 등) |
+
+   **라우팅 규칙** (`app/events/relay.py` 의 `route()`):
+   `aggregate_type == 'job'` 이면 이벤트 payload 의 `queue` 값(`io`·`ai`)으로,
+   그 외 도메인 이벤트는 전부 `notify` 로 보낸다.
+
+   한 큐를 쓰면 안 된다 — SQS 는 메시지를 **한 소비자에게만** 주므로 notifier 와 extractor 를
+   같은 큐에 붙이면 notifier 가 잡 메시지를 받아 무시하고 삭제해 버린다. extractor 는 굶는다.
 3. **NOTI** — 릴레이가 보낸 이벤트를 받아 `notifications` INSERT.
    `channels_sent`는 설정값이 아니라 **실제 발송 결과**다 (메일 실패 시 `{in_app}`만)
 4. `manuscript_versions` 디바운스 — **§12-3 미결.** 정하지 말고 물어라
@@ -79,8 +94,11 @@ Phase 0에서 **쓰는** 테이블은 12개(platform)뿐이지만, 나머지 26�
 **권고**: Phase 1에서 jobs 최소 코어만 만들고, 재시도 · 좀비 회수 · DLQ · 멱등키는 Phase 2에서 얹는다.
 `ops.jobs` 테이블과 모델은 이미 완성돼 있으니 코드만 쓰면 된다.
 
-⚠️ **docker-compose에 SQS가 없다.** 현재 postgres · redis만 있다.
-CLAUDE.md §1이 말한 localstack 또는 elasticmq를 추가해야 Phase 1이 굴러간다. Redis도 아직 아무도 안 쓴다.
+**docker-compose 현황:** postgres(16) · redis · **elasticmq**(SQS 호환, 9324) ·
+**s3mock**(S3 호환, 9000). localstack 이 아니라 elasticmq 인 이유는 가볍고 SQS API 가 같아
+AWS 로 옮길 때 코드가 바뀌지 않기 때문이다. minio 가 아니라 s3mock 인 이유는
+`minio/minio` 와 `quay.io/minio/minio` 모두 pull 이 거부되기 때문이다(2025 배포 정책 변경).
+**Redis 는 아직 아무도 안 쓴다.**
 
 ### Phase 2 — 잡 인프라 완성 (분수령)
 

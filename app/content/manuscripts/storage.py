@@ -15,12 +15,10 @@ from botocore.exceptions import ClientError
 
 from app.core.config import settings
 
-# 명세 §2.1 의 `file_format`.
-SUPPORTED_FORMATS = ("docx", "txt", "pdf")
+# 지원 형식 목록은 extraction.SUPPORTED_FORMATS 하나다. 여기는 그 형식의 content-type 만 안다.
 _CONTENT_TYPES = {
-    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     "txt": "text/plain",
-    "pdf": "application/pdf",
+    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 }
 
 

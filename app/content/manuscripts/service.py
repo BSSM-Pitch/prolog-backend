@@ -17,6 +17,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.content.manuscripts import repository as repo
+from app.content.manuscripts.extraction import SUPPORTED_FORMATS
 from app.content.manuscripts.models import Chapter, Manuscript
 from app.content.manuscripts.schemas import (
     ChapterCreate,
@@ -29,12 +30,7 @@ from app.content.manuscripts.schemas import (
     UploadRequest,
     UploadResponse,
 )
-from app.content.manuscripts.storage import (
-    SUPPORTED_FORMATS,
-    Storage,
-    content_type_of,
-    object_key,
-)
+from app.content.manuscripts.storage import Storage, content_type_of, object_key
 from app.core import errors
 from app.events.outbox import emit
 from app.jobs import service as jobs
@@ -138,7 +134,7 @@ async def request_upload(
     if manuscript.source_type != "upload":
         raise errors.InvalidInput("업로드 원고가 아닙니다")
     if body.file_format not in SUPPORTED_FORMATS:
-        raise errors.UnsupportedFileFormat(details={"supported": list(SUPPORTED_FORMATS)})
+        raise errors.UnsupportedFileFormat(supported=list(SUPPORTED_FORMATS))
 
     key = object_key(project_id, manuscript_id, body.file_format)
     presigned = storage.presigned_put(key, content_type_of(body.file_format))

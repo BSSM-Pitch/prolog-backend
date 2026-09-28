@@ -113,13 +113,17 @@ async def test_upload_rejects_bad_format_and_editor_manuscript(client: AsyncClie
     upload = await _manuscript(client, user, pid, source_type="upload")
     editor = await _manuscript(client, user, pid, title="에디터")
 
-    bad = await client.post(
-        f"/projects/{pid}/manuscripts/{upload['manuscript_id']}/file",
-        json={"file_format": "hwp"},
-        headers=user["headers"],
-    )
-    assert bad.status_code == 400
-    assert code(bad) == "UNSUPPORTED_FILE_FORMAT"
+    for fmt in ("hwp", "pdf"):
+        # pdf 는 추출기가 읽지 못한다. 발급 허용 목록과 추출 가능 목록은 같은 상수다 —
+        # 올린 뒤에 반드시 실패하느니 업로드 시점에 거절한다.
+        bad = await client.post(
+            f"/projects/{pid}/manuscripts/{upload['manuscript_id']}/file",
+            json={"file_format": fmt},
+            headers=user["headers"],
+        )
+        assert bad.status_code == 400, fmt
+        assert code(bad) == "UNSUPPORTED_FILE_FORMAT"
+        assert bad.json()["error"]["details"]["supported"] == ["txt", "docx"]
 
     wrong = await client.post(
         f"/projects/{pid}/manuscripts/{editor['manuscript_id']}/file",

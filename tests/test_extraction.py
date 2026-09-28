@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.content.manuscripts.extraction import FileExtractor, UnsupportedFormat
 from app.content.manuscripts.job_handler import handle
+from app.content.manuscripts.service import EXTRACTION_JOB_TYPE
 from app.events.models import OutboxEvent
 from app.events.relay import route
 from app.jobs import service as jobs
@@ -146,11 +147,27 @@ async def test_extraction_failure_lands_on_the_job_not_the_manuscript(
 async def test_unsupported_format_is_recorded_on_the_job(
     client: AsyncClient, db: AsyncSession
 ) -> None:
-    ctx = await _queued_extraction(client, "ex3@example.com", b"%PDF-1.7", "pdf")
+    """발급 단계가 pdf 를 막으므로 HTTP 로는 도달하지 않는다.
 
-    assert await handle(db, UUID(ctx["job_id"]), FakeStorage(), FileExtractor()) is True
+    그래도 분기는 남겨 둔다 — 지원 목록이 줄어들면 이미 큐에 있던 잡이 여기로 온다.
+    그래서 잡을 직접 만들어 확인한다.
+    """
+    ctx = await _queued_extraction(client, "ex3@example.com", b"ignored", "txt")
+    stale = await jobs.create(
+        db,
+        project_id=UUID(ctx["pid"]),
+        job_type=EXTRACTION_JOB_TYPE,
+        target_type="manuscript",
+        target_id=UUID(ctx["mid"]),
+        queue="io",
+        input={"file_key": "manuscripts/x.pdf", "file_format": "pdf"},
+    )
+    await db.commit()
+    FakeStorage.uploaded["manuscripts/x.pdf"] = b"%PDF-1.7"
+
+    assert await handle(db, stale.id, FakeStorage(), FileExtractor()) is True
     await db.commit()
 
-    job = await jobs.get(db, UUID(ctx["job_id"]))
+    job = await jobs.get(db, stale.id)
     assert job is not None
     assert job.error == {"code": "UNSUPPORTED_FILE_FORMAT", "format": "pdf"}

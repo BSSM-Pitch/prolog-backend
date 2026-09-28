@@ -16,8 +16,8 @@
 | 서비스 | StoryForge — AI 기반 스토리 구조 관리 IDE |
 | 레포 경로 | `~/Desktop/전공동` |
 | 스택 | FastAPI · PostgreSQL · SQLAlchemy(asyncpg) · Alembic(psycopg) · uv |
-| 현재 단계 | Phase 0 — TEAM·PRJ 정렬 중 |
-| git | `a6ea4e9` 첫 커밋(84파일) → `d00610a` CLAUDE.md 복원 → `f586427` AUTH v0.2 → `66b4f67` 감사 P0 → `3f0eca7` 감사 P1 → `87c9006` 조합 레이어 → `a382a5c` 감사 P2 → `8d20b20` 감사 P3 → `a381109` OpenAPI → `583e00a` PG16 → `ec649f0` Phase 1 인프라 → `205d0dd` manuscript_count → `73427d3` NOTI → `c10290d` OpenAPI → MSU |
+| 현재 단계 | **Phase 1 완료.** Phase 2(잡 인프라 — 분수령) 착수 전 |
+| git | `a6ea4e9` 첫 커밋(84파일) → `d00610a` CLAUDE.md 복원 → `f586427` AUTH v0.2 → `66b4f67` 감사 P0 → `3f0eca7` 감사 P1 → `87c9006` 조합 레이어 → `a382a5c` 감사 P2 → `8d20b20` 감사 P3 → `a381109` OpenAPI → `583e00a` PG16 → `ec649f0` Phase 1 인프라 → `205d0dd` manuscript_count → `73427d3` NOTI → `c10290d` OpenAPI → `a2d4471` MSU·챕터 → `5a2d79f` 업로드 콜백·s3mock·복합 FK → `62d5837` 추출 워커 |
 
 ### 실행
 
@@ -68,7 +68,7 @@ cd ~/Desktop/전공동 && uv run ruff check . && uv run ruff format --check . \
 | --- | --- | --- |
 | — | `app.api` | 조합 레이어. 모든 Ring 위에 있다 (아래 규칙 참조) |
 | 1 | `app.platform_` | `auth` · `teams` · `projects` · `notifications` |
-| 2 | `app.content` | (Phase 1에서 MSU·챕터) |
+| 2 | `app.content` | `manuscripts` — 원고·챕터·추출 (Phase 1 완료) |
 | 3 | `app.authoring` | `nlcd` · `ass` · `rex` |
 | 4 | `app.insight` | `scds` · `ssm` · `aiq` · `rcv` · `fts` |
 
@@ -114,6 +114,37 @@ import가 아니라 SQL이므로 `core-is-a-leaf` 계약에 걸리지 않는다.
 
 원시 SQL 문자열은 `test_schema.py`의 모델↔DB 대칭 검사 **바깥**이다.
 컬럼을 리네임하면 mypy도 테스트도 잡지 못한다. 직접 확인한다.
+
+### 워커 · 큐 (Phase 1에서 생김)
+
+앱은 FastAPI 하나지만 **워커는 별도 프로세스 3종**이다. 전부 `app/` 을 그대로 import 한다.
+
+| 워커 | 하는 일 | 소비 큐 |
+| --- | --- | --- |
+| `worker/outbox_relay.py` | `published_at IS NULL` 폴링 → 큐 발송 → 표시 | (생산자) |
+| `worker/notifier.py` | 도메인 이벤트 → `notifications` INSERT | `notify` |
+| `worker/extractor.py` | `manuscript_extraction` 잡 → S3 읽기 → 본문 채우고 `ready` | `io` |
+
+**큐는 3종이다**: `io`(잡) · `ai`(Phase 3 잡) · `notify`(도메인 이벤트).
+릴레이가 `aggregate_type == 'job'` 이면 payload 의 `queue` 로, 아니면 `notify` 로 보낸다.
+**한 큐에 소비자를 둘 붙이지 않는다** — SQS 는 메시지를 하나에게만 주므로 서로의 메시지를
+받아 지운다. 상세는 ROADMAP Phase 1.
+
+릴레이는 **at-least-once** 다. 중복 수신을 막는 것은 수신자의 책임이고, 멱등키는 Phase 2다.
+
+### 외부 의존은 전부 포트다
+
+테스트가 외부를 부르지 않게 인터페이스로 끊고 fake 를 주입한다. 새 외부 의존이 생기면 같은 방식으로.
+
+| 포트 | 실제 구현 | 테스트 |
+| --- | --- | --- |
+| `GoogleOAuth` | Google 토큰 교환·ID 토큰 검증 | `FakeGoogle` |
+| `Queue` | boto3 → elasticmq/SQS | `FakeQueue` |
+| `Storage` | boto3 → s3mock/S3 (presigned·head·get) | `FakeStorage` |
+| `Extractor` | stdlib (`txt`·`docx`) | `FileExtractor` 직접 |
+
+**지원 파일 형식의 단일 출처는 `extraction.SUPPORTED_FORMATS` 다.** 발급 허용 목록과 추출 가능
+목록을 따로 두면 어긋난다 — 실제로 pdf 가 발급은 되는데 추출에서 반드시 실패한 적이 있다.
 
 ---
 
@@ -361,6 +392,11 @@ Phase 1 착수 전 필요: localstack 또는 elasticmq. Redis도 아직 아무�
 - **P3** — `INVALID_OWNER_TYPE → INVALID_INPUT`, 초대 `token_hash` 전환(§6.4),
   만료 초대 410 · 초대 취소 테스트
 
+**완료 (Phase 1):** `ec649f0` elasticmq·Outbox 릴레이·잡 최소 코어 →
+`205d0dd` `manuscript_count` →`73427d3` NOTI(인앱) → `a2d4471` MSU·챕터 →
+`5a2d79f` 업로드 완료 콜백·s3mock·챕터 복합 FK → `62d5837` 추출 워커.
+워커 3종을 실제 프로세스로 띄워 초대→알림, 업로드→추출 전 구간을 확인했다.
+
 **다음:**
 
 1. **명세 수정 제안을 Notion 에 반영** (코드가 아니라 문서 작업이다)
@@ -386,7 +422,7 @@ Phase 1 착수 전 필요: localstack 또는 elasticmq. Redis도 아직 아무�
 
 ## 10. 반드시 추가할 테스트
 
-현재 21 경로 · 31 오퍼레이션에 테스트 49개다 (`/v1/health` 제외).
+현재 30 경로 · 48 오퍼레이션에 테스트 75개다 (`/v1/health` 제외).
 **TEAM·PRJ 24개 오퍼레이션에 빠짐없이 테스트가 닿는다.**
 
 이 절의 목록은 비었다 — 5종 모두 들어갔다. 리프레시 토큰 재사용 거부 · 테넌트 격리 ·

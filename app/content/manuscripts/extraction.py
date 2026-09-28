@@ -13,9 +13,11 @@ import zipfile
 from io import BytesIO
 from typing import Protocol
 
+# **지원 형식의 단일 출처다.** 발급 허용 목록과 추출 가능 목록을 두 곳에 두면 또 어긋난다 —
+# 실제로 pdf 가 발급은 되는데 추출에서 반드시 실패하는 상태였다.
 # ASSUMPTION: 명세 §1.4 는 UNSUPPORTED_FILE_FORMAT 만 두고 지원 목록을 적지 않는다.
-# 발급 단계가 받는 docx·txt·pdf 중 pdf 는 stdlib 로 못 읽어 두 종으로 시작한다. 제안 목록에 있다.
-EXTRACTABLE_FORMATS = ("txt", "docx")
+# pdf 를 넣으려면 파서를 먼저 붙이고 이 튜플에 추가한다.
+SUPPORTED_FORMATS = ("txt", "docx")
 
 _W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 
@@ -32,11 +34,11 @@ class Extractor(Protocol):
 
 class FileExtractor:
     def extract(self, file_format: str, data: bytes) -> str:
+        if file_format not in SUPPORTED_FORMATS:
+            raise UnsupportedFormat(file_format)
         if file_format == "txt":
             return data.decode("utf-8", errors="replace")
-        if file_format == "docx":
-            return _docx_text(data)
-        raise UnsupportedFormat(file_format)
+        return _docx_text(data)
 
 
 def _docx_text(data: bytes) -> str:
