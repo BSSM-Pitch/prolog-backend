@@ -1,18 +1,54 @@
 # Prolog (StoryForge) — 백엔드
 
-계약과 설계 결정은 [CLAUDE.md](CLAUDE.md) 에 있다. 이 파일은 실행 방법만 적는다.
+AI 기반 스토리 구조 관리 IDE 의 백엔드. FastAPI · PostgreSQL 16 · SQLAlchemy(asyncpg) · uv.
 
-## 로컬 실행
+계약과 설계 결정은 [CLAUDE.md](CLAUDE.md) 에, 단계별 계획은 [ROADMAP.md](ROADMAP.md) 에 있다.
+이 파일은 **실행 방법**만 적는다.
+
+## 필요한 것
+
+- Docker (compose v2)
+- [uv](https://docs.astral.sh/uv/) · Python 3.12
+
+## 시작하기
 
 ```bash
-docker compose up -d          # postgres 16 · redis
-uv sync                       # python 3.12
+git clone https://github.com/BSSM-Pitch/prolog-backend.git
+cd prolog-backend
+
+docker compose up -d          # postgres · redis · elasticmq(SQS) · s3mock(S3)
+uv sync
 cp .env.example .env
 uv run alembic upgrade head
 uv run uvicorn app.main:app --reload
 ```
 
-`http://localhost:8000/docs` · 헬스체크 `GET /v1/health`
+`http://localhost:8000/docs` · 헬스체크 `GET /v1/health` · 스펙 스냅샷 [openapi.json](openapi.json)
+
+> **포트가 이미 쓰이고 있다면** `.env` 에 `POSTGRES_PORT=5433` 처럼 지정하고
+> `DATABASE_URL` 의 포트도 같이 바꾼다. `REDIS_PORT` · `SQS_PORT` · `S3_PORT` 도 같은 방식이다.
+> 컨테이너 안쪽 포트는 그대로이므로 앱 설정만 맞추면 된다.
+
+## 워커
+
+앱과 별개 프로세스다. 필요한 것만 띄우면 된다.
+
+```bash
+uv run python -m worker.outbox_relay   # outbox → 큐 (io · ai · notify 로 라우팅)
+uv run python -m worker.notifier       # 도메인 이벤트 → 알림
+uv run python -m worker.extractor      # 업로드된 원고에서 텍스트 추출
+```
+
+## 테스트
+
+```bash
+DATABASE_URL="postgresql+asyncpg://prolog:prolog@localhost:5432/prolog_test" uv run pytest -q
+```
+
+테스트는 **실제 Postgres** 를 쓴다(SQLite 대체 금지 — 부분 인덱스 · jsonb · `text[]` ·
+`DISTINCT ON` 이 죽는다). `_test` 로 끝나는 DB 에서만 돌도록 `conftest.py` 가 막고 있으며,
+그 DB 를 만들고 마이그레이션을 적용한 뒤 테스트마다 5개 스키마를 TRUNCATE 한다.
+외부 의존(Google · SQS · S3)은 전부 포트로 끊고 fake 를 주입하므로 **네트워크를 타지 않는다.**
 
 ## 품질 게이트 (커밋 전 전부 통과)
 
@@ -20,14 +56,29 @@ uv run uvicorn app.main:app --reload
 uv run ruff check . && uv run ruff format --check .
 uv run mypy app
 uv run lint-imports
-uv run pytest
+DATABASE_URL="postgresql+asyncpg://prolog:prolog@localhost:5432/prolog_test" uv run pytest -q
 ```
 
-테스트는 실제 Postgres 를 쓴다(SQLite 대체 금지 — 부분 인덱스·jsonb·text[]·DISTINCT ON 이 죽는다).
-`DATABASE_URL` 이 가리키는 서버에 `prolog_test` DB 를 만들고 `alembic upgrade head` 를 돌린 뒤,
-테스트마다 5개 스키마를 TRUNCATE 한다.
+`lint-imports` 는 Ring 의존 방향과 모듈 간 직접 호출 금지를 기계로 강제한다 (`.importlinter`).
+**계약을 느슨하게 고쳐서 통과시키지 않는다.**
+
+## 구조
+
+```
+app/
+  api/          조합 레이어 — 두 모듈 이상의 데이터가 한 응답에 필요할 때만
+  platform_/    Ring 1 — auth · teams · projects · notifications
+  content/      Ring 2 — manuscripts (원고 · 챕터 · 추출)
+  authoring/    Ring 3 — nlcd · ass · rex
+  insight/      Ring 4 — scds · ssm · aiq · rcv · fts
+  core/         설정 · 에러 · 인증 의존성 (어떤 모듈도 import 하지 않는다)
+  db/           Base · 세션 · alembic (raw SQL DDL 이 스키마의 정본)
+worker/         outbox_relay · notifier · extractor
+tests/
+```
 
 ## 현재 상태
 
-Phase 0 완료 — `core/`, AUTH, TEAM, PRJ, 권한 의존성, 38테이블 스키마.
-다음은 Phase 1 (MSU · 챕터 CRUD · io 워커 · Outbox 릴레이 + NOTI).
+**Phase 1 완료.** AUTH(Google 단일) · TEAM · PRJ · MSU(원고 · 챕터) · NOTI(인앱) ·
+Outbox 릴레이 · 잡 최소 코어까지 동작한다. 다음은 Phase 2 (잡 인프라 — 재시도 · 좀비 회수 ·
+DLQ · 멱등키).

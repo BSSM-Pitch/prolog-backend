@@ -1,3 +1,9 @@
+# 로컬 개발 인프라. 앱과 워커는 컨테이너 밖에서 uv 로 돌린다(README 참조).
+#
+# 프로젝트 이름을 여기서 고정한다 — 디렉터리 이름이 비ASCII 면 compose 가 이름을 못 만들어
+# `docker compose up` 이 "project name must not be empty" 로 실패한다.
+name: prolog
+
 services:
   postgres:
     image: postgres:16
@@ -5,31 +11,35 @@ services:
       POSTGRES_USER: prolog
       POSTGRES_PASSWORD: prolog
       POSTGRES_DB: prolog
-    # 호스트 5433 — 로컬 PostgreSQL 15 가 5432 를 쓰고 있다. 컨테이너 안은 그대로 5432.
-    ports: ["5433:5432"]
+    # 호스트 포트는 .env 로 바꿀 수 있다. 이미 로컬 PostgreSQL 이 5432 를 쓰고 있으면
+    # POSTGRES_PORT=5433 처럼 지정하고 DATABASE_URL 의 포트도 같이 맞춘다.
+    ports: ["${POSTGRES_PORT:-5432}:5432"]
     volumes: ["pgdata:/var/lib/postgresql/data"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U prolog"]
       interval: 2s
       timeout: 3s
       retries: 30
+
   redis:
     image: redis:7
-    ports: ["6380:6379"]
+    ports: ["${REDIS_PORT:-6379}:6379"]
+
   # SQS 호환 큐. localstack 대신 elasticmq — 가볍고 API 가 같아 AWS 로 옮겨도 코드가 안 바뀐다.
+  # 큐(io · ai · notify)는 앱이 CreateQueue 로 만든다(멱등).
   elasticmq:
     image: softwaremill/elasticmq-native:1.6.11
-    ports: ["9324:9324"]
+    ports: ["${SQS_PORT:-9324}:9324"]
+
   # S3 호환 오브젝트 스토리지. presigned URL 을 로컬에서 실제로 돌려보기 위한 것이다.
   # minio 가 아닌 이유: minio/minio 와 quay.io/minio/minio 모두 pull 이 거부된다
   # (2025 배포 정책 변경). s3mock 은 S3 API 호환이라 대역으로 충분하다.
+  # 버킷은 앱이 만든다 — S3_ENDPOINT_URL 이 설정돼 있을 때만(로컬 전용).
   s3mock:
     # 다이제스트로 고정한다 — 이 이미지에는 버전 태그·라벨이 없다.
     # 갱신: docker pull adobe/s3mock:latest && docker image inspect --format '{{json .RepoDigests}}'
     image: adobe/s3mock@sha256:ab01a6946750f451ca215a47e91030695b260e4003b8a5a6201d25029b8fca92
-    environment:
-      initialBuckets: prolog-local
-    ports: ["9000:9090"]
+    ports: ["${S3_PORT:-9000}:9090"]
 
 volumes:
   pgdata:
