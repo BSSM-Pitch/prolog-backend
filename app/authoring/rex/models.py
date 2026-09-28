@@ -15,11 +15,13 @@ class WorldRule(Base, Timestamps):
 
     id: Mapped[UUID] = pk()
     project_id: Mapped[UUID] = fk_uuid()
+    # title · category 는 ERD 에 없지만 유용해 유지한다 (명세 수정 제안).
     title: Mapped[str] = mapped_column(String(200))
-    description: Mapped[str | None] = mapped_column(Text)
+    description: Mapped[str] = mapped_column(Text)
     category: Mapped[str | None] = mapped_column(String(50))
     violation_keywords: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)
-    origin: Mapped[str] = mapped_column(String(20), default="manual")  # manual | ai
+    origin: Mapped[str] = mapped_column(String(20), default="user_added")
+    """ai_extracted | user_added — ERD 어휘. 구 manual/ai 가 아니다."""
     evidence: Mapped[str | None] = mapped_column(Text)
     extraction_job_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True))
     source_chapter_no: Mapped[int | None] = mapped_column(Integer)

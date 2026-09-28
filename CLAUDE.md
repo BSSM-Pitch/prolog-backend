@@ -316,6 +316,8 @@ DB를 봐야 하고, 서명 키가 유출되면 초대를 위조할 수 있다. 
 
 - **raw SQL DDL이 정본이다.** `alembic/versions/0001_initial.py` 하나에 부분 인덱스·`lower()` UNIQUE·
   CHECK·트리거가 모두 들어 있다. autogenerate로는 만들 수 없다.
+- **`0001` 직접 수정은 끝났다.** dev DB에 데이터가 있고 커밋이 쌓였다 — 고치면 이미 적용한
+  사람의 DB와 파일이 조용히 어긋난다. 이제부터 **새 마이그레이션**이다 (`0002` 부터).
 - **Alembic만 psycopg(동기)를 쓴다.** asyncpg는 한 execute에 여러 문장을 담지 못해 raw DDL이 깨진다.
   런타임은 asyncpg.
 - `test_schema.py`가 매 실행마다 모델↔DB 컬럼 대칭과 트리거를 검사한다. 느슨하게 만들지 않는다.
@@ -404,6 +406,9 @@ Phase 1 착수 전 필요: localstack 또는 elasticmq. Redis도 아직 아무�
      `DUPLICATE_INVITATION`·`INVITATION_NOT_PENDING` 미정의, `EMAIL_CONFLICT`(409),
      ERD 의 `token_hash` 표기, TEAM §4.11 권한 미지정
    - AUTH: 초대 생성 응답의 `token` 필드, 수락 요청 본문
+   - **authoring ERD: `character_drafts.status` 의 `pending`(ERD 는 `editing`) ·
+     `character_drafts.source_text` · `world_rules.title`·`category` — ERD 에 없거나 다르지만
+     현재 DDL 이 낫다고 판단해 유지했다 (`0002`)**
    - **MSU: `source_type`(`file`→`upload`) · `file_url`→`file_key` · `status` enum ·
      업로드 방식(multipart→presigned URL + `.../file/complete` 콜백) · `Manuscript.error` 삭제 ·
      챕터 경로(`/manuscripts/{m}/chapters`→`/projects/{p}/chapters`) ·
