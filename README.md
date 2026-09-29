@@ -50,6 +50,21 @@ DATABASE_URL="postgresql+asyncpg://prolog:prolog@localhost:5432/prolog_test" uv 
 그 DB 를 만들고 마이그레이션을 적용한 뒤 테스트마다 5개 스키마를 TRUNCATE 한다.
 외부 의존(Google · SQS · S3)은 전부 포트로 끊고 fake 를 주입하므로 **네트워크를 타지 않는다.**
 
+## 실물 검증 (`scripts/verify/`)
+
+테스트는 외부를 fake 로 끊는다. 실제 PG · elasticmq · s3mock 과 워커 프로세스로 전 구간을
+돌려 보려면 이쪽을 쓴다. Google 만 fake 다. dev DB 에 새 사용자를 만든다.
+
+```bash
+uv run python -m scripts.verify.serve          # 8001 — Google 만 fake 인 로컬 전용 서버
+uv run python -m worker.outbox_relay & uv run python -m worker.notifier & uv run python -m worker.extractor &
+uv run python -m scripts.verify.e2e out.json   # 가입 → 팀·프로젝트 → 초대·수락 → 업로드·추출 → 알림
+uv run python -m scripts.verify.contract out.json   # 스펙 검사 + 실제 응답 ↔ 스펙 대조 (어기면 exit 1)
+```
+
+`scripts.verify.durability` 는 워커의 알려진 문제(poison 메시지 크래시 · 중복 알림)를 재현한다.
+사용법은 파일 머리말에 있다.
+
 ## 품질 게이트 (커밋 전 전부 통과)
 
 ```bash

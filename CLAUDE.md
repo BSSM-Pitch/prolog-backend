@@ -17,7 +17,7 @@
 | 레포 경로 | `~/Desktop/전공동` |
 | 스택 | FastAPI · PostgreSQL · SQLAlchemy(asyncpg) · Alembic(psycopg) · uv |
 | 현재 단계 | **Phase 1 완료.** Phase 2(잡 인프라 — 분수령) 착수 전 |
-| git | `a6ea4e9` 첫 커밋(84파일) → `d00610a` CLAUDE.md 복원 → `f586427` AUTH v0.2 → `66b4f67` 감사 P0 → `3f0eca7` 감사 P1 → `87c9006` 조합 레이어 → `a382a5c` 감사 P2 → `8d20b20` 감사 P3 → `a381109` OpenAPI → `583e00a` PG16 → `ec649f0` Phase 1 인프라 → `205d0dd` manuscript_count → `73427d3` NOTI → `c10290d` OpenAPI → `a2d4471` MSU·챕터 → `5a2d79f` 업로드 콜백·s3mock·복합 FK → `62d5837` 추출 워커 |
+| git | `a6ea4e9` 첫 커밋(84파일) → `d00610a` CLAUDE.md 복원 → `f586427` AUTH v0.2 → `66b4f67` 감사 P0 → `3f0eca7` 감사 P1 → `87c9006` 조합 레이어 → `a382a5c` 감사 P2 → `8d20b20` 감사 P3 → `a381109` OpenAPI → `583e00a` PG16 → `ec649f0` Phase 1 인프라 → `205d0dd` manuscript_count → `73427d3` NOTI → `c10290d` OpenAPI → `a2d4471` MSU·챕터 → `5a2d79f` 업로드 콜백·s3mock·복합 FK → `62d5837` 추출 워커 → `a19dd01` OpenAPI 계약·목록 커서·팀 유래 멤버 |
 
 ### 실행
 
@@ -131,6 +131,21 @@ import가 아니라 SQL이므로 `core-is-a-leaf` 계약에 걸리지 않는다.
 받아 지운다. 상세는 ROADMAP Phase 1.
 
 릴레이는 **at-least-once** 다. 중복 수신을 막는 것은 수신자의 책임이고, 멱등키는 Phase 2다.
+
+### OpenAPI — 스펙이 곧 계약이다
+
+프론트가 `openapi.json` 을 본다. 스펙이 실제와 다르면 그게 버그다.
+
+- 성공 응답은 `response_model=Envelope[X]` / `Page[X]` (`app/core/response.py`).
+- 도메인 에러는 **라우트가 `responses=raises(...)` 로 서비스가 던지는 것만** 적는다.
+  인증·권한·입력 검증(401·403·없는 팀/프로젝트 404·400)은 `app/core/openapi.py` 가
+  의존성 그래프에서 도출한다 — 새 의존성이 에러를 던지면 `deps.DEPENDENCY_RAISES` 에 등록한다.
+- 422 는 스펙에서 지운다. 실제 검증 실패는 400 `INVALID_INPUT` 이다.
+- `tests/conftest.py` 의 `errors_are_documented` 가 **테스트가 실제로 받은 에러 코드**를
+  그 엔드포인트 스펙과 대조한다. 선언을 빠뜨리면 세션이 실패한다.
+- 스냅샷 갱신: `uv run python -c "import json; from app.main import app; json.dump(app.openapi(),
+  open('openapi.json','w'), ensure_ascii=False, indent=2, sort_keys=True)"`
+- 검사: `uv run python -m scripts.verify.contract [e2e 응답 JSON]` — 어기면 exit 1.
 
 ### 외부 의존은 전부 포트다
 
@@ -399,6 +414,12 @@ Phase 1 착수 전 필요: localstack 또는 elasticmq. Redis도 아직 아무�
 `5a2d79f` 업로드 완료 콜백·s3mock·챕터 복합 FK → `62d5837` 추출 워커.
 워커 3종을 실제 프로세스로 띄워 초대→알림, 업로드→추출 전 구간을 확인했다.
 
+**완료 (검증 후속, `a19dd01`):** E2E 검증(`scripts/verify/`)에서 나온 4건 — OpenAPI 를
+실제 계약으로(성공 스키마 39/39 · 에러 코드 28/29 · 422 0), 팀 멤버·프로젝트 멤버·챕터
+목록 커서, 초대 수락 토큰 우선 검사, 팀 프로젝트 멤버 목록에 팀원 포함(`source`).
+**남겨 둔 것 (Phase 2 몫):** 받은 사람이 초대 토큰을 얻을 경로 없음(알림에 토큰 없음·메일 없음),
+워커 poison 메시지 크래시 루프, 중복 알림. 재현은 `scripts/verify/durability.py`.
+
 **다음:**
 
 1. **명세 수정 제안을 Notion 에 반영** (코드가 아니라 문서 작업이다)
@@ -406,6 +427,13 @@ Phase 1 착수 전 필요: localstack 또는 elasticmq. Redis도 아직 아무�
      `DUPLICATE_INVITATION`·`INVITATION_NOT_PENDING` 미정의, `EMAIL_CONFLICT`(409),
      ERD 의 `token_hash` 표기, TEAM §4.11 권한 미지정
    - AUTH: 초대 생성 응답의 `token` 필드, 수락 요청 본문
+   - **PRJ §4.6 멤버 목록: 팀 프로젝트면 팀원을 포함하고 `source`(`project`|`team`) 로
+     출처를 표시한다(`a19dd01`). 팀 유래 멤버의 `role` 은 항상 `editor`, `joined_at` 은 팀
+     가입 시각이다. 명세에 없는 필드다.** PRJ §4.9·§4.11(역할 변경·내보내기)은 팀 유래 멤버에
+     `MEMBER_NOT_FOUND` 다 — 팀에서 처리한다는 서술이 필요하다
+   - TEAM·PRJ 멤버 목록 · 챕터 목록 · TEAM 초대 목록: 명세에 커서 여부가 적혀 있지 않다.
+     §6.6 에 따라 앞의 셋은 커서로 바꿨고, **TEAM 초대 목록(`GET /teams/{teamId}/invitations`)은
+     아직 전체 반환이다**
    - **authoring ERD: `character_drafts.status` 의 `pending`(ERD 는 `editing`) ·
      `character_drafts.source_text` · `world_rules.title`·`category` — ERD 에 없거나 다르지만
      현재 DDL 이 낫다고 판단해 유지했다 (`0002`)**
@@ -427,14 +455,17 @@ Phase 1 착수 전 필요: localstack 또는 elasticmq. Redis도 아직 아무�
 
 ## 10. 반드시 추가할 테스트
 
-현재 30 경로 · 48 오퍼레이션에 테스트 75개다 (`/v1/health` 제외).
+현재 30 경로 · 48 오퍼레이션에 테스트 82개다 (`/v1/health` 제외).
 **TEAM·PRJ 24개 오퍼레이션에 빠짐없이 테스트가 닿는다.**
 
 이 절의 목록은 비었다 — 5종 모두 들어갔다. 리프레시 토큰 재사용 거부 · 테넌트 격리 ·
 `signup_ticket` 오용 거부는 `f586427`, 유일 owner 409 는 그 이전, 만료 초대 410 은 P3 에서.
 
-**다음에 얇은 곳:** 호출은 모두 닿지만 응답 **필드 집합**을 단언하는 테스트는 TEAM·PRJ 각 1개뿐이다
-(`test_*_response_schemas_match_spec`). 새 필드가 조용히 새는 것을 막으려면 이 방식을 넓힌다.
+**응답 필드 집합**은 이제 `response_model` 이 강제한다 — 선언에 없는 필드는 직렬화에서 빠진다.
+실제 응답과 스펙의 대조는 `scripts.verify.contract` 가 E2E 응답으로 한다(테스트 밖, 실물 인프라).
+
+**다음에 얇은 곳:** 워커(`worker/*.py`) 루프 자체를 도는 테스트가 없다 — 핸들러 함수만 테스트한다.
+poison 메시지 크래시가 테스트로 잡히지 않은 이유다(Phase 2 에서 재시도·DLQ 와 함께).
 
 ---
 
