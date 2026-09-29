@@ -71,11 +71,23 @@ async def get_chapter(session: AsyncSession, project_id: UUID, chapter_id: UUID)
 
 
 async def list_chapters(
-    session: AsyncSession, project_id: UUID, manuscript_id: UUID | None = None
+    session: AsyncSession,
+    project_id: UUID,
+    limit: int,
+    cursor: tuple[int, UUID] | None,
+    manuscript_id: UUID | None = None,
 ) -> list[Chapter]:
+    """화 번호 순, limit+1 건. 원고가 여럿이면 같은 번호가 겹치므로 id 로 타이를 끊는다."""
     stmt = (
-        select(Chapter).where(Chapter.project_id == project_id).order_by(Chapter.chapter_no.asc())
+        select(Chapter)
+        .where(Chapter.project_id == project_id)
+        .order_by(Chapter.chapter_no.asc(), Chapter.id.asc())
+        .limit(limit + 1)
     )
+    if cursor is not None:
+        stmt = stmt.where(
+            tuple_(Chapter.chapter_no, Chapter.id) > tuple_(literal(cursor[0]), literal(cursor[1]))
+        )
     if manuscript_id is not None:
         stmt = stmt.where(Chapter.manuscript_id == manuscript_id)
     return list((await session.execute(stmt)).scalars())

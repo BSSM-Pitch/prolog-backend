@@ -4,6 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.core.response import Page, PageMeta
+
 # 명세 §2.1 의 예시 enum. 서버가 만드는 값이라 요청으로 들어오지 않는다.
 NotificationType = Literal["team_invite", "project_invite", "team_joined", "mention", "system"]
 
@@ -32,3 +34,15 @@ class NotificationResponse(BaseModel):
 
 class NotificationRead(BaseModel):
     read: bool = Field(description="true 면 읽음, false 면 다시 안읽음으로 되돌린다")
+
+
+class NotificationPageMeta(PageMeta):
+    unread_count: int = Field(description="필터와 무관한 내 안읽은 알림 전체 개수")
+
+
+class NotificationPage(Page[NotificationResponse]):
+    meta: NotificationPageMeta
+
+
+class ReadAllResponse(BaseModel):
+    updated_count: int

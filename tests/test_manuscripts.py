@@ -303,3 +303,41 @@ async def test_chapter_project_id_must_match_its_manuscript(
     with pytest.raises(IntegrityError):
         await db.flush()
     await db.rollback()
+
+
+async def test_chapters_are_cursor_paginated_by_chapter_no(client: AsyncClient) -> None:
+    """§6.6: 챕터 목록도 커서다. 정렬키가 created_at 이 아니라 화 번호다."""
+    user, pid = await _project(client, "chpage@example.com")
+    first = (await _manuscript(client, user, pid, title="1부"))["manuscript_id"]
+    second = (await _manuscript(client, user, pid, title="2부"))["manuscript_id"]
+    # 원고가 둘이면 화 번호가 겹친다 — 타이는 id 로 끊는다.
+    for mid, no in [(first, 2), (first, 1), (second, 1)]:
+        res = await client.post(
+            f"/projects/{pid}/chapters",
+            json={"manuscript_id": mid, "chapter_no": no},
+            headers=user["headers"],
+        )
+        assert res.status_code == 201, res.text
+
+    seen, cursor = [], None
+    while True:
+        params = {"limit": 2} | ({"cursor": cursor} if cursor else {})
+        page = (
+            await client.get(f"/projects/{pid}/chapters", params=params, headers=user["headers"])
+        ).json()
+        assert len(page["data"]) <= 2
+        seen += [(c["chapter_no"], c["manuscript_id"]) for c in page["data"]]
+        cursor = page["meta"]["next_cursor"]
+        if cursor is None:
+            break
+    assert [no for no, _ in seen] == [1, 1, 2]
+    assert len(set(seen)) == 3
+
+    # 원고 필터와 함께 써도 커서가 이어진다.
+    only = await client.get(
+        f"/projects/{pid}/chapters",
+        params={"manuscript_id": first, "limit": 1},
+        headers=user["headers"],
+    )
+    assert [c["chapter_no"] for c in only.json()["data"]] == [1]
+    assert only.json()["meta"]["next_cursor"] is not None

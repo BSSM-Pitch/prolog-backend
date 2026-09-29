@@ -4,6 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from app.core.response import Envelope
+
 UserRole = Literal["writer", "aspiring_writer", "reader"]
 USERNAME_MAX = 30
 
@@ -61,3 +63,15 @@ class SignupTicketResponse(BaseModel):
 class UsernameCheckResponse(BaseModel):
     username: str
     available: bool
+
+
+class OAuthMeta(BaseModel):
+    is_new_user: bool = Field(
+        description="true 면 data 는 가입 티켓이다 — `/auth/signup` 으로 가입을 마친다"
+    )
+
+
+class OAuthGoogleResponse(Envelope[SessionResponse | SignupTicketResponse]):
+    """기존 사용자는 세션, 신규 사용자는 가입 티켓. `meta.is_new_user` 로 가른다."""
+
+    meta: OAuthMeta  # type: ignore[assignment]

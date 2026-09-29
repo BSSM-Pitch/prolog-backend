@@ -29,10 +29,25 @@ async def list_teams_of_user(
     return list((await session.execute(stmt)).scalars())
 
 
-async def list_members(session: AsyncSession, team_id: UUID) -> list[TeamMember]:
+async def list_members(
+    session: AsyncSession,
+    team_id: UUID,
+    limit: int | None = None,
+    cursor: tuple[datetime, UUID] | None = None,
+) -> list[TeamMember]:
+    """가입 순. `limit` 을 주면 limit+1 건까지 키셋으로 읽는다 (joined_at, user_id)."""
     stmt = (
-        select(TeamMember).where(TeamMember.team_id == team_id).order_by(TeamMember.joined_at.asc())
+        select(TeamMember)
+        .where(TeamMember.team_id == team_id)
+        .order_by(TeamMember.joined_at.asc(), TeamMember.user_id.asc())
     )
+    if cursor is not None:
+        stmt = stmt.where(
+            tuple_(TeamMember.joined_at, TeamMember.user_id)
+            > tuple_(literal(cursor[0]), literal(cursor[1]))
+        )
+    if limit is not None:
+        stmt = stmt.limit(limit + 1)
     return list((await session.execute(stmt)).scalars())
 
 

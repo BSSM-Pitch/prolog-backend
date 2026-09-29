@@ -3,19 +3,33 @@ from typing import Any
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from starlette.exceptions import HTTPException
 
 from app.api.router import router as api_router
 from app.content.manuscripts.router import router as manuscripts_router
+from app.core import openapi
 from app.core.errors import AppError
-from app.core.response import ok
+from app.core.response import Envelope, ok
 from app.platform_.auth.router import router as auth_router
 from app.platform_.auth.router import users_router
 from app.platform_.notifications.router import router as notifications_router
 from app.platform_.projects.router import router as projects_router
 from app.platform_.teams.router import router as teams_router
 
-app = FastAPI(title="Prolog (StoryForge) API", version="0.1.0", root_path="")
+app = FastAPI(
+    title="Prolog (StoryForge) API",
+    version="0.1.0",
+    root_path="",
+    description=(
+        "성공 응답은 `{data, meta}`, 실패는 `{error: {code, message, details}}` 다. "
+        "분기는 HTTP 상태가 아니라 `error.code` 로 한다 — 같은 상태 코드에 코드가 여럿이다.\n\n"
+        "입력 검증 실패는 전부 **400 `INVALID_INPUT`** 이며 `details.fields` 에 위치가 온다. "
+        "인증은 `Authorization: Bearer <access_token>`. "
+        "목록은 커서 페이지네이션이다: `meta.next_cursor` 를 다음 요청의 `cursor` 로 넘기고, "
+        "null 이면 끝이다."
+    ),
+)
 
 _HTTP_CODES = {
     401: "UNAUTHORIZED",
@@ -54,8 +68,13 @@ async def http_handler(request: Request, exc: HTTPException) -> JSONResponse:
     return _error(exc.status_code, code, str(exc.detail))
 
 
-@app.get("/v1/health", tags=["ops"])
+class Health(BaseModel):
+    status: str
+
+
+@app.get("/v1/health", tags=["ops"], summary="헬스체크", response_model=Envelope[Health])
 async def health() -> dict[str, Any]:
+    """앱 프로세스가 떠 있으면 `ok`. DB·큐 상태는 보지 않는다."""
     return ok({"status": "ok"})
 
 
@@ -69,3 +88,5 @@ for _router in (
     api_router,
 ):
     app.include_router(_router, prefix="/v1")
+
+openapi.install(app)

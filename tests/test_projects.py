@@ -31,6 +31,7 @@ async def test_create_personal_project(client: AsyncClient) -> None:
         "username": user["username"],
         "role": "owner",
         "joined_at": members.json()["data"][0]["joined_at"],
+        "source": "project",
     }
 
 
@@ -383,7 +384,8 @@ async def test_project_response_schemas_match_spec(client: AsyncClient) -> None:
         await client.get(f"/projects/{project['project_id']}/members", headers=owner["headers"])
     ).json()["data"]
     assert {m["username"] for m in members} == {owner["username"], mate["username"]}
-    assert set(members[0]) == {"project_id", "user_id", "username", "role", "joined_at"}
+    # source 는 명세에 없다 — 팀 유래 멤버 구분용 (ASSUMPTION, 제안 목록)
+    assert set(members[0]) == {"project_id", "user_id", "username", "role", "joined_at", "source"}
 
 
 async def test_inviting_an_existing_member_is_409(client: AsyncClient) -> None:
@@ -508,3 +510,28 @@ async def test_manuscript_count_is_aggregated(client: AsyncClient, db: AsyncSess
         headers=user["headers"],
     )
     assert patched.json()["data"]["manuscript_count"] == 1
+
+
+async def test_wrong_token_is_404_whatever_the_invitation_state(client: AsyncClient) -> None:
+    """토큰을 상태보다 먼저 본다 — 취소된 초대도 틀린 토큰에는 404 다."""
+    owner = await signup(client, "pws@example.com")
+    guest = await signup(client, "pwsguest@example.com")
+    project = await create_project(client, owner["headers"])
+    pid = project["project_id"]
+    invitation = (
+        await client.post(
+            f"/projects/{pid}/invitations",
+            json={"invited_email": guest["email"]},
+            headers=owner["headers"],
+        )
+    ).json()["data"]
+    revoked = await client.delete(
+        f"/projects/{pid}/invitations/{invitation['invitation_id']}", headers=owner["headers"]
+    )
+    assert revoked.status_code == 204
+
+    url = f"/projects/{pid}/invitations/{invitation['invitation_id']}/accept"
+    wrong = await client.post(url, json={"token": "wrong"}, headers=guest["headers"])
+    assert (wrong.status_code, code(wrong)) == (404, "INVITATION_NOT_FOUND")
+    right = await client.post(url, json={"token": invitation["token"]}, headers=guest["headers"])
+    assert code(right) == "INVITATION_NOT_PENDING"

@@ -1,17 +1,22 @@
+import json
 import os
-from collections.abc import AsyncIterator, Iterator
-from typing import ClassVar
+import re
+from collections.abc import AsyncIterator, Callable, Iterator
+from typing import Any, ClassVar
 
 import psycopg
 import pytest
 from alembic import command
 from alembic.config import Config
+from fastapi import Request
+from fastapi.exceptions import RequestValidationError
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.content.manuscripts.storage import PresignedUpload, storage
 from app.core.config import settings
+from app.core.errors import AppError
 from app.db.session import SessionFactory, engine
 from app.main import app
 from app.platform_.auth.google import GoogleIdentity, google_oauth
@@ -46,6 +51,51 @@ def migrate() -> Iterator[None]:
     command.downgrade(cfg, "base")
     command.upgrade(cfg, "head")
     yield
+
+
+OBSERVED_ERRORS: set[tuple[str, str, str]] = set()
+
+
+def _recording(original: Callable[..., Any]) -> Callable[..., Any]:
+    async def handler(request: Request, exc: Exception) -> Any:
+        response = await original(request, exc)
+        error_code = json.loads(response.body)["error"]["code"]
+        OBSERVED_ERRORS.add((request.method.lower(), request.url.path, error_code))
+        return response
+
+    return handler
+
+
+@pytest.fixture(scope="session", autouse=True)
+def errors_are_documented() -> Iterator[None]:
+    """테스트가 실제로 받은 에러 코드는 **그 엔드포인트의** 스펙에 선언돼 있어야 한다.
+
+    스펙(`app.core.openapi`)은 손으로 적은 `raises(...)` 와 의존성에서 도출한 것의 합이다.
+    서비스에 새 에러를 던지고 선언을 빠뜨리면 여기서 걸린다. 세션 끝에 한 번 검사한다.
+    """
+    originals = {exc: app.exception_handlers[exc] for exc in (AppError, RequestValidationError)}
+    for exc, original in originals.items():
+        app.exception_handlers[exc] = _recording(original)
+    yield
+    app.exception_handlers.update(originals)
+    paths = app.openapi()["paths"]
+
+    def declared(method: str, path: str) -> set[str]:
+        for template, ops in paths.items():
+            if method in ops and re.fullmatch(re.sub(r"\{[^}]+\}", "[^/]+", template), path):
+                return {
+                    c
+                    for r in ops[method]["responses"].values()
+                    for c in r.get("content", {}).get("application/json", {}).get("examples", {})
+                }
+        return set()  # 없는 라우트(405·404)는 AppError 를 내지 않는다
+
+    undeclared = sorted(
+        (method, template, error_code)
+        for method, template, error_code in OBSERVED_ERRORS
+        if error_code not in declared(method, template)
+    )
+    assert not undeclared, f"스펙에 없는 에러가 실제로 나갔다: {undeclared}"
 
 
 @pytest.fixture(autouse=True)

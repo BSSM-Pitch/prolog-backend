@@ -509,3 +509,28 @@ async def test_list_invitations(client: AsyncClient) -> None:
     assert (
         await client.get(f"/teams/{team_id}/invitations", headers=guest["headers"])
     ).status_code == 403
+
+
+async def test_wrong_token_is_404_whatever_the_invitation_state(client: AsyncClient) -> None:
+    """토큰을 상태보다 먼저 본다. 순서가 반대면 토큰 없이도 초대가 처리됐는지 알 수 있다."""
+    owner = await signup(client, "ws@example.com")
+    guest = await signup(client, "wsguest@example.com")
+    team_id = await create_team(client, owner["headers"])
+    invitation = (
+        await client.post(
+            f"/teams/{team_id}/invitations",
+            json={"invited_email": guest["email"]},
+            headers=owner["headers"],
+        )
+    ).json()["data"]
+    url = f"/teams/{team_id}/invitations/{invitation['invitation_id']}/accept"
+
+    pending = await client.post(url, json={"token": "wrong"}, headers=guest["headers"])
+    assert pending.status_code == 404
+    accepted = await client.post(url, json={"token": invitation["token"]}, headers=guest["headers"])
+    assert accepted.status_code == 200
+    after = await client.post(url, json={"token": "wrong"}, headers=guest["headers"])
+    assert (after.status_code, code(after)) == (404, "TEAM_INVITATION_NOT_FOUND")
+    # 맞는 토큰이면 상태를 알려 준다 — 소지자에게는 숨길 이유가 없다.
+    replay = await client.post(url, json={"token": invitation["token"]}, headers=guest["headers"])
+    assert code(replay) == "INVITATION_NOT_PENDING"

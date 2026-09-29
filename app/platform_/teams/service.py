@@ -21,10 +21,10 @@ from app.platform_.teams.models import (
     TeamMember,
 )
 from app.platform_.teams.schemas import (
-    InvitationCreate,
-    InvitationCreatedResponse,
-    InvitationResponse,
     TeamCreate,
+    TeamInvitationCreate,
+    TeamInvitationCreatedResponse,
+    TeamInvitationResponse,
     TeamMemberResponse,
     TeamResponse,
     TeamUpdate,
@@ -54,8 +54,8 @@ async def to_responses(session: AsyncSession, teams: Sequence[Team]) -> list[Tea
     return [_to_response(t, counts.get(t.id, 0)) for t in teams]
 
 
-def _invitation(row: TeamInvitation) -> InvitationResponse:
-    return InvitationResponse.model_validate(row, from_attributes=True)
+def _invitation(row: TeamInvitation) -> TeamInvitationResponse:
+    return TeamInvitationResponse.model_validate(row, from_attributes=True)
 
 
 def _member(row: TeamMember) -> TeamMemberResponse:
@@ -108,8 +108,14 @@ async def delete_team(session: AsyncSession, team_id: UUID) -> None:
         raise
 
 
-async def list_members(session: AsyncSession, team_id: UUID) -> list[TeamMemberResponse]:
-    return [_member(m) for m in await repo.list_members(session, team_id)]
+async def list_members(
+    session: AsyncSession,
+    team_id: UUID,
+    limit: int | None = None,
+    cursor: tuple[datetime, UUID] | None = None,
+) -> list[TeamMemberResponse]:
+    """`limit` 이 없으면 전원이다 — 팀 프로젝트 멤버 목록이 팀원 전체를 합칠 때 쓴다."""
+    return [_member(m) for m in await repo.list_members(session, team_id, limit, cursor)]
 
 
 async def update_member_role(
@@ -145,8 +151,8 @@ async def remove_member(
 
 
 async def invite(
-    session: AsyncSession, team_id: UUID, user: CurrentUser, body: InvitationCreate
-) -> InvitationCreatedResponse:
+    session: AsyncSession, team_id: UUID, user: CurrentUser, body: TeamInvitationCreate
+) -> TeamInvitationCreatedResponse:
     token, token_hash = new_opaque_token()
     invitation = TeamInvitation(
         team_id=team_id,
@@ -179,10 +185,10 @@ async def invite(
             "expires_at": invitation.expires_at.isoformat(),
         },
     )
-    return InvitationCreatedResponse(**_invitation(invitation).model_dump(), token=token)
+    return TeamInvitationCreatedResponse(**_invitation(invitation).model_dump(), token=token)
 
 
-async def list_invitations(session: AsyncSession, team_id: UUID) -> list[InvitationResponse]:
+async def list_invitations(session: AsyncSession, team_id: UUID) -> list[TeamInvitationResponse]:
     return [_invitation(i) for i in await repo.list_invitations(session, team_id)]
 
 
@@ -204,11 +210,16 @@ async def revoke_invitation(session: AsyncSession, team_id: UUID, invitation_id:
 async def _claim(
     session: AsyncSession, team_id: UUID, invitation_id: UUID, token: str
 ) -> TeamInvitation:
-    invitation = await _pending(session, team_id, invitation_id)
+    invitation = await repo.get_invitation(session, invitation_id)
+    if invitation is None or invitation.team_id != team_id:
+        raise errors.TeamInvitationNotFound()
     # 토큰 소지가 곧 권한이다. 초대받은 주소와 로그인 주소가 달라도 된다 (CLAUDE.md §6.4).
-    # 틀린 토큰은 "그런 초대는 없다"로 답한다 — 명세에 없는 코드를 만들지 않는다.
+    # **토큰을 상태보다 먼저 본다.** 순서가 반대면 토큰 없이도 "이미 처리됨"(409) 과
+    # "없음"(404) 을 구분해 초대의 상태를 알아낼 수 있다. 틀린 토큰은 상태와 무관하게 404 다.
     if not compare_digest(sha256(token), invitation.token_hash):
         raise errors.TeamInvitationNotFound()
+    if invitation.status != "pending":
+        raise errors.InvitationNotPending()
     if invitation.expires_at <= datetime.now(UTC):
         raise errors.InvitationExpired()
     return invitation

@@ -245,9 +245,17 @@ async def create_chapter(
 
 
 async def list_chapters(
-    session: AsyncSession, project_id: UUID, manuscript_id: UUID | None = None
-) -> list[ChapterResponse]:
-    return [_chapter(c) for c in await repo.list_chapters(session, project_id, manuscript_id)]
+    session: AsyncSession,
+    project_id: UUID,
+    limit: int,
+    cursor: tuple[int, UUID] | None,
+    manuscript_id: UUID | None = None,
+) -> list[Chapter]:
+    return await repo.list_chapters(session, project_id, limit, cursor, manuscript_id)
+
+
+def to_chapter_responses(rows: Sequence[Chapter]) -> list[ChapterResponse]:
+    return [_chapter(c) for c in rows]
 
 
 async def _get_chapter(session: AsyncSession, project_id: UUID, chapter_id: UUID) -> Chapter:

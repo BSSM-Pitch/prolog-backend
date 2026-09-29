@@ -5,8 +5,9 @@ core 가 ``platform_.projects.repository`` 를 import 하면 의존 방향이 �
 이 두 함수가 멤버십 테이블을 읽는 유일한 예외 지점이다.
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import Depends, Path
@@ -31,6 +32,10 @@ TEAM_ROLE_RANK: dict[str, int] = {"member": 0, "admin": 1, "owner": 2}
 # 삭제(원고 cascade)·멤버 관리까지 팀원 전원에게 열린다. 조회+수정까지인 editor 로 둔다.
 TEAM_MEMBER_PROJECT_ROLE = "editor"
 
+# 의존성이 던지는 에러. OpenAPI 가 라우트의 의존성 그래프를 따라가며 읽는다(app.core.openapi).
+# 엔드포인트마다 UNAUTHORIZED·FORBIDDEN 을 손으로 적으면 반드시 빠지므로 한 곳에 둔다.
+DEPENDENCY_RAISES: dict[Callable[..., Any], tuple[type[errors.AppError], ...]] = {}
+
 
 @dataclass(frozen=True)
 class CurrentUser:
@@ -48,6 +53,8 @@ async def current_user(
     # refresh_tokens 폐기 + TTL 단축으로 먼저 해결하고, 그래도 부족하면 여기에 캐시된 조회를 넣는다.
     return CurrentUser(id=UUID(payload["sub"]), email=payload.get("email"))
 
+
+DEPENDENCY_RAISES[current_user] = (errors.Unauthorized,)
 
 User = Annotated[CurrentUser, Depends(current_user)]
 
@@ -85,12 +92,21 @@ async def project_role_of(session: AsyncSession, project_id: UUID, user_id: UUID
     ).first()
     if row is None:
         raise errors.ProjectNotFound()
-    role: str | None = row.role
-    if row.is_team_member and (
-        role is None or PROJECT_ROLE_RANK[role] < PROJECT_ROLE_RANK[TEAM_MEMBER_PROJECT_ROLE]
+    return effective_project_role(row.role, row.is_team_member)
+
+
+def effective_project_role(explicit: str | None, is_team_member: bool) -> str | None:
+    """두 출처(명시적 ``project_members`` · 팀 소속)를 합친 실제 프로젝트 role.
+
+    명시적 행이 팀이 주는 role 보다 높으면 그쪽이 이긴다. 권한 판정과 멤버 목록
+    (app/api/router.py)이 **같은 규칙**을 써야 화면에 보이는 role 이 실제 권한과 같다.
+    """
+    if is_team_member and (
+        explicit is None
+        or PROJECT_ROLE_RANK[explicit] < PROJECT_ROLE_RANK[TEAM_MEMBER_PROJECT_ROLE]
     ):
         return TEAM_MEMBER_PROJECT_ROLE
-    return role
+    return explicit
 
 
 def require_project_role(min_role: ProjectRole):  # type: ignore[no-untyped-def]
@@ -108,6 +124,7 @@ def require_project_role(min_role: ProjectRole):  # type: ignore[no-untyped-def]
             raise errors.Forbidden()
         return ProjectContext(project_id=project_id, role=role, user=user)
 
+    DEPENDENCY_RAISES[dependency] = (errors.ProjectNotFound, errors.Forbidden)
     return dependency
 
 
@@ -162,4 +179,5 @@ def require_team_role(min_role: TeamRole):  # type: ignore[no-untyped-def]
     ) -> str:
         return await assert_team_role(session, team_id, user.id, min_role)
 
+    DEPENDENCY_RAISES[dependency] = (errors.TeamNotFound, errors.Forbidden)
     return dependency

@@ -34,8 +34,7 @@ class TeamResponse(BaseModel):
 
 
 class TeamMemberResponse(BaseModel):
-    # ASSUMPTION: 표시용 username 은 아직 넣지 않는다. platform.users 는 AUTH 소유이고
-    # 같은 Ring 안의 동기 호출이 금지되어 있다(규칙 3). §6.3 결정 대기.
+    # 표시용 username 은 조합 레이어가 붙인다 — platform.users 는 AUTH 소유다(규칙 3, §6.3).
     team_id: UUID
     user_id: UUID
     role: TeamRole
@@ -46,12 +45,12 @@ class TeamMemberUpdate(BaseModel):
     role: TeamRole
 
 
-class InvitationCreate(BaseModel):
+class TeamInvitationCreate(BaseModel):
     invited_email: EmailStr
     role: TeamInviteRole = "member"
 
 
-class InvitationResponse(BaseModel):
+class TeamInvitationResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     invitation_id: UUID = Field(validation_alias="id")
@@ -63,13 +62,13 @@ class InvitationResponse(BaseModel):
     created_at: datetime
 
 
-class InvitationCreatedResponse(InvitationResponse):
+class TeamInvitationCreatedResponse(TeamInvitationResponse):
     """생성 응답에만 원문 토큰을 담는다. DB 에는 sha256 만 있다 (CLAUDE.md §6.4)."""
 
     token: str
 
 
-class InvitationAccept(BaseModel):
+class TeamInvitationAccept(BaseModel):
     """수락 권한은 이메일 일치가 아니라 **토큰 소지**로 판정한다 (CLAUDE.md §6.4)."""
 
     token: str = Field(min_length=1)

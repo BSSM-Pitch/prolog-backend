@@ -19,10 +19,10 @@ from app.platform_.projects.models import (
     ProjectMember,
 )
 from app.platform_.projects.schemas import (
-    InvitationCreate,
-    InvitationCreatedResponse,
-    InvitationResponse,
     ProjectCreate,
+    ProjectInvitationCreate,
+    ProjectInvitationCreatedResponse,
+    ProjectInvitationResponse,
     ProjectMemberResponse,
     ProjectResponse,
     ProjectUpdate,
@@ -33,8 +33,8 @@ def _project(project: Project) -> ProjectResponse:
     return ProjectResponse.model_validate(project, from_attributes=True)
 
 
-def _invitation(row: ProjectInvitation) -> InvitationResponse:
-    return InvitationResponse.model_validate(row, from_attributes=True)
+def _invitation(row: ProjectInvitation) -> ProjectInvitationResponse:
+    return ProjectInvitationResponse.model_validate(row, from_attributes=True)
 
 
 def _member(row: ProjectMember) -> ProjectMemberResponse:
@@ -152,8 +152,8 @@ async def remove_member(
 
 
 async def invite(
-    session: AsyncSession, project_id: UUID, user: CurrentUser, body: InvitationCreate
-) -> InvitationCreatedResponse:
+    session: AsyncSession, project_id: UUID, user: CurrentUser, body: ProjectInvitationCreate
+) -> ProjectInvitationCreatedResponse:
     token, token_hash = new_opaque_token()
     invitation = ProjectInvitation(
         project_id=project_id,
@@ -185,7 +185,7 @@ async def invite(
             "expires_at": invitation.expires_at.isoformat(),
         },
     )
-    return InvitationCreatedResponse(**_invitation(invitation).model_dump(), token=token)
+    return ProjectInvitationCreatedResponse(**_invitation(invitation).model_dump(), token=token)
 
 
 async def _pending(
@@ -208,11 +208,16 @@ async def revoke_invitation(session: AsyncSession, project_id: UUID, invitation_
 async def _claim(
     session: AsyncSession, project_id: UUID, invitation_id: UUID, token: str
 ) -> ProjectInvitation:
-    invitation = await _pending(session, project_id, invitation_id)
+    invitation = await repo.get_invitation(session, invitation_id)
+    if invitation is None or invitation.project_id != project_id:
+        raise errors.InvitationNotFound()
     # 토큰 소지가 곧 권한이다. 초대받은 주소와 로그인 주소가 달라도 된다 (CLAUDE.md §6.4).
-    # 틀린 토큰은 "그런 초대는 없다"로 답한다 — 명세에 없는 코드를 만들지 않는다.
+    # **토큰을 상태보다 먼저 본다.** 순서가 반대면 토큰 없이도 "이미 처리됨"(409) 과
+    # "없음"(404) 을 구분해 초대의 상태를 알아낼 수 있다. 틀린 토큰은 상태와 무관하게 404 다.
     if not compare_digest(sha256(token), invitation.token_hash):
         raise errors.InvitationNotFound()
+    if invitation.status != "pending":
+        raise errors.InvitationNotPending()
     if invitation.expires_at <= datetime.now(UTC):
         raise errors.InvitationExpired()
     return invitation
