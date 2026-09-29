@@ -141,6 +141,10 @@ import가 아니라 SQL이므로 `core-is-a-leaf` 계약에 걸리지 않는다.
   인증·권한·입력 검증(401·403·없는 팀/프로젝트 404·400)은 `app/core/openapi.py` 가
   의존성 그래프에서 도출한다 — 새 의존성이 에러를 던지면 `deps.DEPENDENCY_RAISES` 에 등록한다.
 - 422 는 스펙에서 지운다. 실제 검증 실패는 400 `INVALID_INPUT` 이다.
+- **스키마 이름은 프론트 생성 코드의 타입 이름이다 — 한 번 정하면 바꾸지 않는다.** PascalCase 만
+  쓴다. 봉투는 `XEnvelope` · `XPage` · `XListEnvelope` (`Envelope.model_parametrized_name`).
+  pydantic 은 제네릭 키를 `Envelope_X_` 로 만들므로 빌더가 모델 title 로 키를 바꾸고
+  `$ref` 를 다시 쓴다. 같은 이름이 둘이면 스펙 생성이 멈춘다.
 - `tests/conftest.py` 의 `errors_are_documented` 가 **테스트가 실제로 받은 에러 코드**를
   그 엔드포인트 스펙과 대조한다. 선언을 빠뜨리면 세션이 실패한다.
 - 스냅샷 갱신: `uv run python -c "import json; from app.main import app; json.dump(app.openapi(),
@@ -417,6 +421,9 @@ Phase 1 착수 전 필요: localstack 또는 elasticmq. Redis도 아직 아무�
 **완료 (검증 후속, `a19dd01`):** E2E 검증(`scripts/verify/`)에서 나온 4건 — OpenAPI 를
 실제 계약으로(성공 스키마 39/39 · 에러 코드 28/29 · 422 0), 팀 멤버·프로젝트 멤버·챕터
 목록 커서, 초대 수락 토큰 우선 검사, 팀 프로젝트 멤버 목록에 팀원 포함(`source`).
+**완료 (프론트 착수 전):** 봉투 스키마 이름 정리(`Envelope_TeamResponse_` → `TeamResponseEnvelope`,
+`contract.py` [5] 이름 규칙), dev DB 초기화 + `scripts/verify/seed.py`(사용자 1 · 팀 1 ·
+프로젝트 2 · 원고 1 · 챕터 3).
 **남겨 둔 것 (Phase 2 몫):** 받은 사람이 초대 토큰을 얻을 경로 없음(알림에 토큰 없음·메일 없음),
 워커 poison 메시지 크래시 루프, 중복 알림. 재현은 `scripts/verify/durability.py`.
 

@@ -6,7 +6,9 @@
 2. `app.core.errors` 의 도메인 에러 코드가 스펙에 전부 나온다(`UNREACHABLE` 제외).
 3. 422 · `HTTPValidationError` 가 없다 — 실제 검증 실패는 400 `INVALID_INPUT` 이다.
 4. 모든 오퍼레이션에 사람이 쓴 summary 와 description 이 있다(함수명 자동 생성 금지).
-5. 모듈 경로가 붙은 스키마 이름(`app__platform___...`)이 없다 — 이름 충돌의 흔적이다.
+5. 스키마 이름 규칙 — 프론트 생성 코드의 타입 이름이 되므로 한 번 정하면 못 바꾼다.
+   PascalCase(`^[A-Z][A-Za-z0-9]*$`)만 허용한다. 모듈 경로(`app__platform___X`)·제네릭
+   (`Envelope_X_`)·입출력 분리(`X-Output`) 흔적이 여기서 걸린다. 끊어진 `$ref` 도 없어야 한다.
 6. (인자를 주면) e2e 가 실제로 받은 응답의 필드 집합이 스펙의 필드 집합과 같다.
 """
 
@@ -22,6 +24,8 @@ from app.main import app
 
 # 스펙에 없어도 되는 코드와 그 이유. 도달 불가능한 코드를 선언하면 그게 오히려 거짓말이다.
 UNREACHABLE = {"INVALID_STATUS_TRANSITION": "잡 상태 전이 — HTTP 로 노출되는 경로가 없다(Phase 2)"}
+
+SCHEMA_NAME = re.compile(r"[A-Z][A-Za-z0-9]*")
 
 failures: list[str] = []
 
@@ -106,10 +110,13 @@ def check_spec(spec: dict[str, Any]) -> None:
     print(f"[4] 자동 생성 summary {auto}개")
 
     # 5
-    clashes = [n for n in schemas if n.startswith("app__")]
-    for n in clashes:
-        check(False, f"이름 충돌 스키마: {n}")
-    print(f"[5] 모듈 경로 스키마 이름 {len(clashes)}개")
+    bad = [n for n in schemas if not SCHEMA_NAME.fullmatch(n)]
+    for n in bad:
+        check(False, f"스키마 이름 규칙 위반: {n}")
+    dangling = set(re.findall(r'"#/components/schemas/([^"]+)"', text)) - set(schemas)
+    for n in sorted(dangling):
+        check(False, f"끊어진 $ref: {n}")
+    print(f"[5] 스키마 {len(schemas)}개 중 이름 규칙 위반 {len(bad)} · 끊어진 $ref {len(dangling)}")
 
 
 def check_e2e(spec: dict[str, Any], log_path: str) -> None:

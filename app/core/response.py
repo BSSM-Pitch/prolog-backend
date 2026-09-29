@@ -7,7 +7,8 @@
 자동으로 붙인다 — 엔드포인트마다 손으로 적으면 반드시 빠진다.
 """
 
-from typing import Any
+import types
+from typing import Any, Union, get_args, get_origin
 
 from pydantic import BaseModel, Field
 
@@ -19,9 +20,25 @@ def ok(data: Any, meta: dict[str, Any] | None = None) -> dict[str, Any]:
     return {"data": data, "meta": meta or {}}
 
 
+def _type_name(tp: Any) -> str:
+    """`list[X]` → `XList`, `X | Y` → `XOrY`. 스키마 이름에 들어갈 PascalCase 조각."""
+    origin = get_origin(tp)
+    if origin is list:
+        return f"{_type_name(get_args(tp)[0])}List"
+    if origin in (Union, types.UnionType):
+        return "Or".join(_type_name(a) for a in get_args(tp) if a is not type(None))
+    return str(getattr(tp, "__name__", tp))
+
+
 class Envelope[T](BaseModel):
     data: T
     meta: dict[str, Any] = Field(default_factory=dict)
+
+    # 스키마 이름은 프론트 생성 코드의 타입 이름이 된다. pydantic 기본값(`Envelope[X]` →
+    # 컴포넌트 `Envelope_X_`)을 `XEnvelope` 로 고정한다 — 바꾸면 프론트 전체가 바뀐다.
+    @classmethod
+    def model_parametrized_name(cls, params: tuple[type[Any], ...]) -> str:
+        return f"{_type_name(params[0])}Envelope"
 
 
 class PageMeta(BaseModel):
@@ -35,6 +52,10 @@ class Page[T](BaseModel):
 
     data: list[T]
     meta: PageMeta
+
+    @classmethod
+    def model_parametrized_name(cls, params: tuple[type[Any], ...]) -> str:
+        return f"{_type_name(params[0])}Page"
 
 
 class ErrorBody(BaseModel):

@@ -80,6 +80,43 @@
         "title": "ChapterResponse",
         "type": "object"
       },
+      "ChapterResponseEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ChapterResponse"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "ChapterResponseEnvelope",
+        "type": "object"
+      },
+      "ChapterResponsePage": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/ChapterResponse"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PageMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ChapterResponsePage",
+        "type": "object"
+      },
       "ChapterUpdate": {
         "properties": {
           "chapter_no": {
@@ -119,299 +156,6 @@
           }
         },
         "title": "ChapterUpdate",
-        "type": "object"
-      },
-      "Envelope_ChapterResponse_": {
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/ChapterResponse"
-          },
-          "meta": {
-            "additionalProperties": true,
-            "title": "Meta",
-            "type": "object"
-          }
-        },
-        "required": [
-          "data"
-        ],
-        "title": "Envelope[ChapterResponse]",
-        "type": "object"
-      },
-      "Envelope_Health_": {
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/Health"
-          },
-          "meta": {
-            "additionalProperties": true,
-            "title": "Meta",
-            "type": "object"
-          }
-        },
-        "required": [
-          "data"
-        ],
-        "title": "Envelope[Health]",
-        "type": "object"
-      },
-      "Envelope_ManuscriptResponse_": {
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/ManuscriptResponse"
-          },
-          "meta": {
-            "additionalProperties": true,
-            "title": "Meta",
-            "type": "object"
-          }
-        },
-        "required": [
-          "data"
-        ],
-        "title": "Envelope[ManuscriptResponse]",
-        "type": "object"
-      },
-      "Envelope_NotificationResponse_": {
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/NotificationResponse"
-          },
-          "meta": {
-            "additionalProperties": true,
-            "title": "Meta",
-            "type": "object"
-          }
-        },
-        "required": [
-          "data"
-        ],
-        "title": "Envelope[NotificationResponse]",
-        "type": "object"
-      },
-      "Envelope_ProjectInvitationCreatedResponse_": {
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/ProjectInvitationCreatedResponse"
-          },
-          "meta": {
-            "additionalProperties": true,
-            "title": "Meta",
-            "type": "object"
-          }
-        },
-        "required": [
-          "data"
-        ],
-        "title": "Envelope[ProjectInvitationCreatedResponse]",
-        "type": "object"
-      },
-      "Envelope_ProjectMemberResponse_": {
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/ProjectMemberResponse"
-          },
-          "meta": {
-            "additionalProperties": true,
-            "title": "Meta",
-            "type": "object"
-          }
-        },
-        "required": [
-          "data"
-        ],
-        "title": "Envelope[ProjectMemberResponse]",
-        "type": "object"
-      },
-      "Envelope_ProjectResponse_": {
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/ProjectResponse"
-          },
-          "meta": {
-            "additionalProperties": true,
-            "title": "Meta",
-            "type": "object"
-          }
-        },
-        "required": [
-          "data"
-        ],
-        "title": "Envelope[ProjectResponse]",
-        "type": "object"
-      },
-      "Envelope_ReadAllResponse_": {
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/ReadAllResponse"
-          },
-          "meta": {
-            "additionalProperties": true,
-            "title": "Meta",
-            "type": "object"
-          }
-        },
-        "required": [
-          "data"
-        ],
-        "title": "Envelope[ReadAllResponse]",
-        "type": "object"
-      },
-      "Envelope_SessionResponse_": {
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/SessionResponse"
-          },
-          "meta": {
-            "additionalProperties": true,
-            "title": "Meta",
-            "type": "object"
-          }
-        },
-        "required": [
-          "data"
-        ],
-        "title": "Envelope[SessionResponse]",
-        "type": "object"
-      },
-      "Envelope_TeamInvitationCreatedResponse_": {
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/TeamInvitationCreatedResponse"
-          },
-          "meta": {
-            "additionalProperties": true,
-            "title": "Meta",
-            "type": "object"
-          }
-        },
-        "required": [
-          "data"
-        ],
-        "title": "Envelope[TeamInvitationCreatedResponse]",
-        "type": "object"
-      },
-      "Envelope_TeamMemberResponse_": {
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/TeamMemberResponse"
-          },
-          "meta": {
-            "additionalProperties": true,
-            "title": "Meta",
-            "type": "object"
-          }
-        },
-        "required": [
-          "data"
-        ],
-        "title": "Envelope[TeamMemberResponse]",
-        "type": "object"
-      },
-      "Envelope_TeamResponse_": {
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/TeamResponse"
-          },
-          "meta": {
-            "additionalProperties": true,
-            "title": "Meta",
-            "type": "object"
-          }
-        },
-        "required": [
-          "data"
-        ],
-        "title": "Envelope[TeamResponse]",
-        "type": "object"
-      },
-      "Envelope_TokenResponse_": {
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/TokenResponse"
-          },
-          "meta": {
-            "additionalProperties": true,
-            "title": "Meta",
-            "type": "object"
-          }
-        },
-        "required": [
-          "data"
-        ],
-        "title": "Envelope[TokenResponse]",
-        "type": "object"
-      },
-      "Envelope_UploadResponse_": {
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/UploadResponse"
-          },
-          "meta": {
-            "additionalProperties": true,
-            "title": "Meta",
-            "type": "object"
-          }
-        },
-        "required": [
-          "data"
-        ],
-        "title": "Envelope[UploadResponse]",
-        "type": "object"
-      },
-      "Envelope_UserResponse_": {
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/UserResponse"
-          },
-          "meta": {
-            "additionalProperties": true,
-            "title": "Meta",
-            "type": "object"
-          }
-        },
-        "required": [
-          "data"
-        ],
-        "title": "Envelope[UserResponse]",
-        "type": "object"
-      },
-      "Envelope_UsernameCheckResponse_": {
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/UsernameCheckResponse"
-          },
-          "meta": {
-            "additionalProperties": true,
-            "title": "Meta",
-            "type": "object"
-          }
-        },
-        "required": [
-          "data"
-        ],
-        "title": "Envelope[UsernameCheckResponse]",
-        "type": "object"
-      },
-      "Envelope_list_TeamInvitationResponse__": {
-        "properties": {
-          "data": {
-            "items": {
-              "$ref": "#/components/schemas/TeamInvitationResponse"
-            },
-            "title": "Data",
-            "type": "array"
-          },
-          "meta": {
-            "additionalProperties": true,
-            "title": "Meta",
-            "type": "object"
-          }
-        },
-        "required": [
-          "data"
-        ],
-        "title": "Envelope[list[TeamInvitationResponse]]",
         "type": "object"
       },
       "ErrorBody": {
@@ -462,6 +206,23 @@
           "status"
         ],
         "title": "Health",
+        "type": "object"
+      },
+      "HealthEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Health"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "HealthEnvelope",
         "type": "object"
       },
       "ManuscriptCreate": {
@@ -585,6 +346,43 @@
           "updated_at"
         ],
         "title": "ManuscriptResponse",
+        "type": "object"
+      },
+      "ManuscriptResponseEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ManuscriptResponse"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "ManuscriptResponseEnvelope",
+        "type": "object"
+      },
+      "ManuscriptResponsePage": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/ManuscriptResponse"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PageMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ManuscriptResponsePage",
         "type": "object"
       },
       "ManuscriptUpdate": {
@@ -773,6 +571,23 @@
         "title": "NotificationResponse",
         "type": "object"
       },
+      "NotificationResponseEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/NotificationResponse"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "NotificationResponseEnvelope",
+        "type": "object"
+      },
       "OAuthGoogleRequest": {
         "properties": {
           "oauth_code": {
@@ -845,126 +660,6 @@
           "next_cursor"
         ],
         "title": "PageMeta",
-        "type": "object"
-      },
-      "Page_ChapterResponse_": {
-        "properties": {
-          "data": {
-            "items": {
-              "$ref": "#/components/schemas/ChapterResponse"
-            },
-            "title": "Data",
-            "type": "array"
-          },
-          "meta": {
-            "$ref": "#/components/schemas/PageMeta"
-          }
-        },
-        "required": [
-          "data",
-          "meta"
-        ],
-        "title": "Page[ChapterResponse]",
-        "type": "object"
-      },
-      "Page_ManuscriptResponse_": {
-        "properties": {
-          "data": {
-            "items": {
-              "$ref": "#/components/schemas/ManuscriptResponse"
-            },
-            "title": "Data",
-            "type": "array"
-          },
-          "meta": {
-            "$ref": "#/components/schemas/PageMeta"
-          }
-        },
-        "required": [
-          "data",
-          "meta"
-        ],
-        "title": "Page[ManuscriptResponse]",
-        "type": "object"
-      },
-      "Page_ProjectMemberWithUsername_": {
-        "properties": {
-          "data": {
-            "items": {
-              "$ref": "#/components/schemas/ProjectMemberWithUsername"
-            },
-            "title": "Data",
-            "type": "array"
-          },
-          "meta": {
-            "$ref": "#/components/schemas/PageMeta"
-          }
-        },
-        "required": [
-          "data",
-          "meta"
-        ],
-        "title": "Page[ProjectMemberWithUsername]",
-        "type": "object"
-      },
-      "Page_ProjectResponse_": {
-        "properties": {
-          "data": {
-            "items": {
-              "$ref": "#/components/schemas/ProjectResponse"
-            },
-            "title": "Data",
-            "type": "array"
-          },
-          "meta": {
-            "$ref": "#/components/schemas/PageMeta"
-          }
-        },
-        "required": [
-          "data",
-          "meta"
-        ],
-        "title": "Page[ProjectResponse]",
-        "type": "object"
-      },
-      "Page_TeamMemberWithUsername_": {
-        "properties": {
-          "data": {
-            "items": {
-              "$ref": "#/components/schemas/TeamMemberWithUsername"
-            },
-            "title": "Data",
-            "type": "array"
-          },
-          "meta": {
-            "$ref": "#/components/schemas/PageMeta"
-          }
-        },
-        "required": [
-          "data",
-          "meta"
-        ],
-        "title": "Page[TeamMemberWithUsername]",
-        "type": "object"
-      },
-      "Page_TeamResponse_": {
-        "properties": {
-          "data": {
-            "items": {
-              "$ref": "#/components/schemas/TeamResponse"
-            },
-            "title": "Data",
-            "type": "array"
-          },
-          "meta": {
-            "$ref": "#/components/schemas/PageMeta"
-          }
-        },
-        "required": [
-          "data",
-          "meta"
-        ],
-        "title": "Page[TeamResponse]",
         "type": "object"
       },
       "ProjectCreate": {
@@ -1109,6 +804,23 @@
         "title": "ProjectInvitationCreatedResponse",
         "type": "object"
       },
+      "ProjectInvitationCreatedResponseEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ProjectInvitationCreatedResponse"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "ProjectInvitationCreatedResponseEnvelope",
+        "type": "object"
+      },
       "ProjectMemberResponse": {
         "properties": {
           "joined_at": {
@@ -1143,6 +855,23 @@
           "joined_at"
         ],
         "title": "ProjectMemberResponse",
+        "type": "object"
+      },
+      "ProjectMemberResponseEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ProjectMemberResponse"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "ProjectMemberResponseEnvelope",
         "type": "object"
       },
       "ProjectMemberUpdate": {
@@ -1213,6 +942,26 @@
           "source"
         ],
         "title": "ProjectMemberWithUsername",
+        "type": "object"
+      },
+      "ProjectMemberWithUsernamePage": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/ProjectMemberWithUsername"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PageMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ProjectMemberWithUsernamePage",
         "type": "object"
       },
       "ProjectResponse": {
@@ -1291,6 +1040,43 @@
         "title": "ProjectResponse",
         "type": "object"
       },
+      "ProjectResponseEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ProjectResponse"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "ProjectResponseEnvelope",
+        "type": "object"
+      },
+      "ProjectResponsePage": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/ProjectResponse"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PageMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ProjectResponsePage",
+        "type": "object"
+      },
       "ProjectUpdate": {
         "properties": {
           "description": {
@@ -1332,6 +1118,23 @@
           "updated_count"
         ],
         "title": "ReadAllResponse",
+        "type": "object"
+      },
+      "ReadAllResponseEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ReadAllResponse"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "ReadAllResponseEnvelope",
         "type": "object"
       },
       "RefreshRequest": {
@@ -1382,6 +1185,23 @@
           "tokens"
         ],
         "title": "SessionResponse",
+        "type": "object"
+      },
+      "SessionResponseEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/SessionResponse"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "SessionResponseEnvelope",
         "type": "object"
       },
       "SignupRequest": {
@@ -1567,6 +1387,23 @@
         "title": "TeamInvitationCreatedResponse",
         "type": "object"
       },
+      "TeamInvitationCreatedResponseEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/TeamInvitationCreatedResponse"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "TeamInvitationCreatedResponseEnvelope",
+        "type": "object"
+      },
       "TeamInvitationResponse": {
         "properties": {
           "created_at": {
@@ -1618,6 +1455,27 @@
         "title": "TeamInvitationResponse",
         "type": "object"
       },
+      "TeamInvitationResponseListEnvelope": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/TeamInvitationResponse"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "TeamInvitationResponseListEnvelope",
+        "type": "object"
+      },
       "TeamMemberResponse": {
         "properties": {
           "joined_at": {
@@ -1652,6 +1510,23 @@
           "joined_at"
         ],
         "title": "TeamMemberResponse",
+        "type": "object"
+      },
+      "TeamMemberResponseEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/TeamMemberResponse"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "TeamMemberResponseEnvelope",
         "type": "object"
       },
       "TeamMemberUpdate": {
@@ -1714,6 +1589,26 @@
         "title": "TeamMemberWithUsername",
         "type": "object"
       },
+      "TeamMemberWithUsernamePage": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/TeamMemberWithUsername"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PageMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "TeamMemberWithUsernamePage",
+        "type": "object"
+      },
       "TeamResponse": {
         "properties": {
           "created_at": {
@@ -1766,6 +1661,43 @@
           "member_count"
         ],
         "title": "TeamResponse",
+        "type": "object"
+      },
+      "TeamResponseEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/TeamResponse"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "TeamResponseEnvelope",
+        "type": "object"
+      },
+      "TeamResponsePage": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/TeamResponse"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PageMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "TeamResponsePage",
         "type": "object"
       },
       "TeamUpdate": {
@@ -1826,6 +1758,23 @@
         "title": "TokenResponse",
         "type": "object"
       },
+      "TokenResponseEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/TokenResponse"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "TokenResponseEnvelope",
+        "type": "object"
+      },
       "UploadRequest": {
         "properties": {
           "file_format": {
@@ -1880,6 +1829,23 @@
           "status"
         ],
         "title": "UploadResponse",
+        "type": "object"
+      },
+      "UploadResponseEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/UploadResponse"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "UploadResponseEnvelope",
         "type": "object"
       },
       "UserResponse": {
@@ -1940,6 +1906,23 @@
         "title": "UserResponse",
         "type": "object"
       },
+      "UserResponseEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/UserResponse"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "UserResponseEnvelope",
+        "type": "object"
+      },
       "UserUpdate": {
         "properties": {
           "role": {
@@ -1974,6 +1957,23 @@
           "available"
         ],
         "title": "UsernameCheckResponse",
+        "type": "object"
+      },
+      "UsernameCheckResponseEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/UsernameCheckResponse"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "UsernameCheckResponseEnvelope",
         "type": "object"
       }
     },
@@ -2133,7 +2133,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope_SessionResponse_"
+                  "$ref": "#/components/schemas/SessionResponseEnvelope"
                 }
               }
             },
@@ -2241,7 +2241,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope_TokenResponse_"
+                  "$ref": "#/components/schemas/TokenResponseEnvelope"
                 }
               }
             },
@@ -2307,7 +2307,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope_Health_"
+                  "$ref": "#/components/schemas/HealthEnvelope"
                 }
               }
             },
@@ -2464,7 +2464,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope_ReadAllResponse_"
+                  "$ref": "#/components/schemas/ReadAllResponseEnvelope"
                 }
               }
             },
@@ -2621,7 +2621,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope_NotificationResponse_"
+                  "$ref": "#/components/schemas/NotificationResponseEnvelope"
                 }
               }
             },
@@ -2734,7 +2734,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope_NotificationResponse_"
+                  "$ref": "#/components/schemas/NotificationResponseEnvelope"
                 }
               }
             },
@@ -2902,7 +2902,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Page_ProjectResponse_"
+                  "$ref": "#/components/schemas/ProjectResponsePage"
                 }
               }
             },
@@ -2981,7 +2981,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope_ProjectResponse_"
+                  "$ref": "#/components/schemas/ProjectResponseEnvelope"
                 }
               }
             },
@@ -3226,7 +3226,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope_ProjectResponse_"
+                  "$ref": "#/components/schemas/ProjectResponseEnvelope"
                 }
               }
             },
@@ -3361,7 +3361,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope_ProjectResponse_"
+                  "$ref": "#/components/schemas/ProjectResponseEnvelope"
                 }
               }
             },
@@ -3539,7 +3539,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Page_ChapterResponse_"
+                  "$ref": "#/components/schemas/ChapterResponsePage"
                 }
               }
             },
@@ -3674,7 +3674,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope_ChapterResponse_"
+                  "$ref": "#/components/schemas/ChapterResponseEnvelope"
                 }
               }
             },
@@ -3959,7 +3959,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope_ChapterResponse_"
+                  "$ref": "#/components/schemas/ChapterResponseEnvelope"
                 }
               }
             },
@@ -4114,7 +4114,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope_ChapterResponse_"
+                  "$ref": "#/components/schemas/ChapterResponseEnvelope"
                 }
               }
             },
@@ -4261,7 +4261,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope_ProjectInvitationCreatedResponse_"
+                  "$ref": "#/components/schemas/ProjectInvitationCreatedResponseEnvelope"
                 }
               }
             },
@@ -4602,7 +4602,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope_ProjectMemberResponse_"
+                  "$ref": "#/components/schemas/ProjectMemberResponseEnvelope"
                 }
               }
             },
@@ -4793,7 +4793,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Page_ManuscriptResponse_"
+                  "$ref": "#/components/schemas/ManuscriptResponsePage"
                 }
               }
             },
@@ -4928,7 +4928,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope_ManuscriptResponse_"
+                  "$ref": "#/components/schemas/ManuscriptResponseEnvelope"
                 }
               }
             },
@@ -5203,7 +5203,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope_ManuscriptResponse_"
+                  "$ref": "#/components/schemas/ManuscriptResponseEnvelope"
                 }
               }
             },
@@ -5358,7 +5358,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope_ManuscriptResponse_"
+                  "$ref": "#/components/schemas/ManuscriptResponseEnvelope"
                 }
               }
             },
@@ -5537,7 +5537,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope_UploadResponse_"
+                  "$ref": "#/components/schemas/UploadResponseEnvelope"
                 }
               }
             },
@@ -5694,7 +5694,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope_ManuscriptResponse_"
+                  "$ref": "#/components/schemas/ManuscriptResponseEnvelope"
                 }
               }
             },
@@ -5863,7 +5863,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Page_ProjectMemberWithUsername_"
+                  "$ref": "#/components/schemas/ProjectMemberWithUsernamePage"
                 }
               }
             },
@@ -6170,7 +6170,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope_ProjectMemberResponse_"
+                  "$ref": "#/components/schemas/ProjectMemberResponseEnvelope"
                 }
               }
             },
@@ -6351,7 +6351,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Page_TeamResponse_"
+                  "$ref": "#/components/schemas/TeamResponsePage"
                 }
               }
             },
@@ -6430,7 +6430,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope_TeamResponse_"
+                  "$ref": "#/components/schemas/TeamResponseEnvelope"
                 }
               }
             },
@@ -6653,7 +6653,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope_TeamResponse_"
+                  "$ref": "#/components/schemas/TeamResponseEnvelope"
                 }
               }
             },
@@ -6788,7 +6788,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope_TeamResponse_"
+                  "$ref": "#/components/schemas/TeamResponseEnvelope"
                 }
               }
             },
@@ -6915,7 +6915,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope_list_TeamInvitationResponse__"
+                  "$ref": "#/components/schemas/TeamInvitationResponseListEnvelope"
                 }
               }
             },
@@ -7050,7 +7050,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope_TeamInvitationCreatedResponse_"
+                  "$ref": "#/components/schemas/TeamInvitationCreatedResponseEnvelope"
                 }
               }
             },
@@ -7391,7 +7391,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope_TeamMemberResponse_"
+                  "$ref": "#/components/schemas/TeamMemberResponseEnvelope"
                 }
               }
             },
@@ -7582,7 +7582,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Page_TeamMemberWithUsername_"
+                  "$ref": "#/components/schemas/TeamMemberWithUsernamePage"
                 }
               }
             },
@@ -7889,7 +7889,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope_TeamMemberResponse_"
+                  "$ref": "#/components/schemas/TeamMemberResponseEnvelope"
                 }
               }
             },
@@ -8080,7 +8080,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Page_ProjectResponse_"
+                  "$ref": "#/components/schemas/ProjectResponsePage"
                 }
               }
             },
@@ -8208,7 +8208,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope_UsernameCheckResponse_"
+                  "$ref": "#/components/schemas/UsernameCheckResponseEnvelope"
                 }
               }
             },
@@ -8252,7 +8252,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope_UserResponse_"
+                  "$ref": "#/components/schemas/UserResponseEnvelope"
                 }
               }
             },
@@ -8331,7 +8331,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope_UserResponse_"
+                  "$ref": "#/components/schemas/UserResponseEnvelope"
                 }
               }
             },

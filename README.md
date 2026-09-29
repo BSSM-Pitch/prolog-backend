@@ -50,6 +50,16 @@ DATABASE_URL="postgresql+asyncpg://prolog:prolog@localhost:5432/prolog_test" uv 
 그 DB 를 만들고 마이그레이션을 적용한 뒤 테스트마다 5개 스키마를 TRUNCATE 한다.
 외부 의존(Google · SQS · S3)은 전부 포트로 끊고 fake 를 주입하므로 **네트워크를 타지 않는다.**
 
+## 화면 개발용 데이터
+
+```bash
+uv run python -m scripts.verify.seed   # 사용자 dev · 팀 1 · 프로젝트 2 · 원고 1 · 챕터 3 (여러 번 돌려도 한 번만 들어간다)
+```
+
+처음부터 다시 넣으려면 `uv run alembic downgrade base && uv run alembic upgrade head` 후 seed.
+seed 사용자는 실제 Google 로는 로그인할 수 없다. `scripts.verify.serve`(8001, Google 만 fake)에
+`POST /v1/auth/oauth/google {"oauth_code": "seed-dev|dev@example.com"}` 로 토큰을 받는다.
+
 ## 실물 검증 (`scripts/verify/`)
 
 테스트는 외부를 fake 로 끊는다. 실제 PG · elasticmq · s3mock 과 워커 프로세스로 전 구간을

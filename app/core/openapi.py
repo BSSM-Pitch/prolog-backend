@@ -11,6 +11,7 @@ FastAPI 기본 스펙은 두 군데서 거짓말을 한다.
 라우트가 `responses=raises(...)` 로 직접 적은 에러와 같은 상태 코드면 하나로 합친다.
 """
 
+import json
 from typing import Any
 
 from fastapi import FastAPI
@@ -93,7 +94,39 @@ def build(app: FastAPI) -> dict[str, Any]:
     error_schema = ErrorResponse.model_json_schema(ref_template="#/components/schemas/{model}")
     schemas.update(error_schema.pop("$defs", {}))
     schemas["ErrorResponse"] = error_schema
-    return spec
+    return _name_by_title(spec)
+
+
+_REF = '"#/components/schemas/{}"'
+
+
+def _name_by_title(spec: dict[str, Any]) -> dict[str, Any]:
+    """제네릭 컴포넌트 키를 모델 title 로: `Envelope_TeamResponse_` → `TeamResponseEnvelope`.
+
+    pydantic 은 제네릭의 컴포넌트 키를 원본 클래스 이름 + 인자로 만든다(`__name__` 을 보지 않는다).
+    title 은 `Envelope.model_parametrized_name` 이 정한 이름이므로 그쪽을 키로 삼는다.
+    같은 title 이 둘이면 조용히 덮어쓰지 않고 멈춘다.
+    """
+    schemas = spec["components"]["schemas"]
+    renames = {
+        key: schema["title"]
+        for key, schema in schemas.items()
+        if schema.get("title") and schema["title"] != key
+    }
+    if not renames:
+        return spec
+    clashes = [t for t in renames.values() if t in schemas or list(renames.values()).count(t) > 1]
+    if clashes:
+        raise RuntimeError(f"스키마 이름 충돌: {sorted(set(clashes))}")
+    text = json.dumps(spec, ensure_ascii=False)
+    for old, new in renames.items():
+        text = text.replace(_REF.format(old), _REF.format(new))
+    renamed: dict[str, Any] = json.loads(text)
+    renamed_schemas = renamed["components"]["schemas"]
+    for old, new in renames.items():
+        renamed_schemas[new] = renamed_schemas.pop(old)
+    renamed["components"]["schemas"] = dict(sorted(renamed_schemas.items()))
+    return renamed
 
 
 def install(app: FastAPI) -> None:
