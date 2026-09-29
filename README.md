@@ -37,6 +37,7 @@ uv run uvicorn app.main:app --reload
 uv run python -m worker.outbox_relay   # outbox → 큐 (io · ai · notify 로 라우팅)
 uv run python -m worker.notifier       # 도메인 이벤트 → 알림
 uv run python -m worker.extractor      # 업로드된 원고에서 텍스트 추출
+uv run python -m worker.sweeper        # 주기 작업: 좀비 잡 회수 · 업로드 콜백 유실 회수
 ```
 
 ## 테스트
@@ -72,8 +73,8 @@ uv run python -m scripts.verify.e2e out.json   # 가입 → 팀·프로젝트 �
 uv run python -m scripts.verify.contract out.json   # 스펙 검사 + 실제 응답 ↔ 스펙 대조 (어기면 exit 1)
 ```
 
-`scripts.verify.durability` 는 워커의 알려진 문제(poison 메시지 크래시 · 중복 알림)를 재현한다.
-사용법은 파일 머리말에 있다.
+`scripts.verify.durability` 는 워커 내구성을 실물로 판정한다(poison 메시지 → DLQ · 중복 이벤트 → 알림 1건).
+재현되면 exit 1 이다. 사용법은 파일 머리말에 있다.
 
 ## 품질 게이트 (커밋 전 전부 통과)
 

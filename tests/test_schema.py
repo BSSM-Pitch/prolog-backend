@@ -8,11 +8,11 @@ from sqlalchemy import text
 from app.db.all_models import Base
 from app.db.session import engine
 
-EXPECTED_TABLE_COUNT = 37
+EXPECTED_TABLE_COUNT = 38  # 0003: ops.processed_events
 SCHEMAS = ("platform", "content", "authoring", "insight", "ops")
 
 
-async def test_all_38_tables_exist() -> None:
+async def test_all_tables_exist() -> None:
     async with engine.connect() as conn:
         rows = await conn.execute(
             text(

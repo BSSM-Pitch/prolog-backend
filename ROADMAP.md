@@ -102,6 +102,14 @@ AWS 로 옮길 때 코드가 바뀌지 않기 때문이다. minio 가 아니라 
 
 ### Phase 2 — 잡 인프라 완성 (분수령)
 
+**두 라운드로 나눴다.** 2a 는 외부 의존 없이 끝나고 durability.py 로 기계 판정이 되며,
+2b(AI)는 2a 가 정한 선점·재시도·좀비 계약 위에 얹힌다.
+
+- **2a ✅ 잡·워커 내구성** — 조건부 선점(attempt 표식) · 좀비 회수 · 인프라 실패 자동 재시도 ·
+  SQS DLQ · 이벤트 소비 멱등(`ops.processed_events`) · 워커 루프 내구성 · 업로드 콜백 유실 스위퍼.
+  완료 기준: `scripts/verify/durability.py` poison·dup 이 재현되지 않는다 + `tests/test_durability.py`
+- **2b** — 아래 원문 범위(REX · `ai` 워커 · LLM 게이트웨이 · 핸들러 4함수 계약 · `/retry`)
+
 REX 하나로 생성 · 폴링 · 실패 · 재시도 · 확정 전 경로를 끝까지 검증한다.
 모듈이 실제로 쓰는 코드는 4개뿐이어야 한다: `build_input` · `prompt_template` · `parse_result` · `confirm`.
 §6의 장치 3가지(조건부 UPDATE 중복 실행 방지 · 좀비 회수 · 재시도 계약)를 빠뜨리지 마라.

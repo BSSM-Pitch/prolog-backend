@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.content.manuscripts.extraction import FileExtractor, UnsupportedFormat
 from app.content.manuscripts.job_handler import handle
 from app.content.manuscripts.service import EXTRACTION_JOB_TYPE
+from app.db.session import SessionFactory
 from app.events.models import OutboxEvent
 from app.events.relay import route
 from app.jobs import service as jobs
@@ -96,9 +97,8 @@ async def test_extraction_fills_content_and_completes_the_job(
 ) -> None:
     ctx = await _queued_extraction(client, "ex1@example.com", _docx(), "docx")
 
-    handled = await handle(db, UUID(ctx["job_id"]), FakeStorage(), FileExtractor())
-    await db.commit()
-    assert handled is True
+    handled = await handle(SessionFactory, UUID(ctx["job_id"]), FakeStorage(), FileExtractor())
+    assert handled == "completed"
 
     detail = (
         await client.get(
@@ -114,9 +114,11 @@ async def test_extraction_fills_content_and_completes_the_job(
     assert job is not None
     assert job.status == "completed"
     assert job.result == {"chars": len("1화. 거미줄 너머\n2화.")}
+    assert job.attempt == 1
 
-    # at-least-once — 같은 메시지가 또 와도 다시 처리하지 않는다.
-    assert await handle(db, UUID(ctx["job_id"]), FakeStorage(), FileExtractor()) is False
+    # at-least-once — 같은 메시지가 또 와도 선점(조건부 UPDATE)에서 진다.
+    again = await handle(SessionFactory, UUID(ctx["job_id"]), FakeStorage(), FileExtractor())
+    assert again == "skipped"
 
 
 async def test_extraction_failure_lands_on_the_job_not_the_manuscript(
@@ -124,8 +126,9 @@ async def test_extraction_failure_lands_on_the_job_not_the_manuscript(
 ) -> None:
     ctx = await _queued_extraction(client, "ex2@example.com", b"not-a-zip", "docx")
 
-    assert await handle(db, UUID(ctx["job_id"]), FakeStorage(), FileExtractor()) is True
-    await db.commit()
+    result = await handle(SessionFactory, UUID(ctx["job_id"]), FakeStorage(), FileExtractor())
+    # 파일 탓인 실패는 다시 해도 같다 — 재시도하지 않는다.
+    assert result == "failed"
 
     job = await jobs.get(db, UUID(ctx["job_id"]))
     assert job is not None
@@ -165,9 +168,9 @@ async def test_unsupported_format_is_recorded_on_the_job(
     await db.commit()
     FakeStorage.uploaded["manuscripts/x.pdf"] = b"%PDF-1.7"
 
-    assert await handle(db, stale.id, FakeStorage(), FileExtractor()) is True
-    await db.commit()
+    assert await handle(SessionFactory, stale.id, FakeStorage(), FileExtractor()) == "failed"
 
-    job = await jobs.get(db, stale.id)
+    await db.refresh(stale)
+    job = stale
     assert job is not None
     assert job.error == {"code": "UNSUPPORTED_FILE_FORMAT", "format": "pdf"}

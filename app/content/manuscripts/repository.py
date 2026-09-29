@@ -33,12 +33,33 @@ async def chapter_counts(session: AsyncSession, manuscript_ids: Sequence[UUID]) 
 
 
 async def get_manuscript(
-    session: AsyncSession, project_id: UUID, manuscript_id: UUID
+    session: AsyncSession, project_id: UUID, manuscript_id: UUID, *, lock: bool = False
 ) -> Manuscript | None:
+    """`lock` 이면 행을 잠근다 — 업로드 콜백과 스위퍼가 같은 원고에 잡을 두 개 만들지 않게."""
     stmt = select(Manuscript).where(
         Manuscript.id == manuscript_id, Manuscript.project_id == project_id
     )
+    if lock:
+        stmt = stmt.with_for_update()
     return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def lost_uploads(session: AsyncSession, before: datetime, limit: int) -> list[Manuscript]:
+    """URL 은 발급됐는데 콜백이 오지 않은 원고. 콜백이 잡고 있는 행은 건너뛴다(SKIP LOCKED)."""
+    stmt = (
+        select(Manuscript)
+        .where(
+            Manuscript.source_type == "upload",
+            Manuscript.status == "draft",
+            Manuscript.file_key.is_not(None),
+            Manuscript.extraction_job_id.is_(None),
+            Manuscript.updated_at < before,
+        )
+        .order_by(Manuscript.updated_at)
+        .limit(limit)
+        .with_for_update(skip_locked=True)
+    )
+    return list((await session.execute(stmt)).scalars())
 
 
 async def list_manuscripts(

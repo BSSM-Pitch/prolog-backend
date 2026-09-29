@@ -17,6 +17,8 @@ IO_QUEUE = "io"
 AI_QUEUE = "ai"
 # 알림용. 잡과 같은 큐를 쓰면 notifier 와 extractor 가 서로의 메시지를 받아 지운다.
 NOTIFY_QUEUE = "notify"
+# 소비자가 지우지 못한(처리에 실패한) 메시지가 maxReceiveCount 번 받아지면 가는 곳.
+DLQ_SUFFIX = "-dlq"
 
 
 class Message(NamedTuple):
@@ -50,10 +52,22 @@ class SqsQueue:
     def _url(self, queue_name: str) -> str:
         if queue_name not in self._urls:
             # CreateQueue 는 멱등이다. 이미 있으면 기존 URL 을 돌려준다.
-            self._urls[queue_name] = str(
-                self._client.create_queue(QueueName=queue_name)["QueueUrl"]
-            )
+            url = str(self._client.create_queue(QueueName=queue_name)["QueueUrl"])
+            if not queue_name.endswith(DLQ_SUFFIX):
+                self._attach_dlq(url, queue_name)
+            self._urls[queue_name] = url
         return self._urls[queue_name]
+
+    def _attach_dlq(self, url: str, queue_name: str) -> None:
+        """poison 메시지가 큐를 영원히 막지 않게 한다. 이미 있는 큐에도 매번 다시 건다(멱등)."""
+        dlq_url = self._url(queue_name + DLQ_SUFFIX)
+        arn = self._client.get_queue_attributes(QueueUrl=dlq_url, AttributeNames=["QueueArn"])[
+            "Attributes"
+        ]["QueueArn"]
+        policy = {"deadLetterTargetArn": arn, "maxReceiveCount": settings.queue_max_receive_count}
+        self._client.set_queue_attributes(
+            QueueUrl=url, Attributes={"RedrivePolicy": json.dumps(policy)}
+        )
 
     def send(self, queue_name: str, body: dict[str, Any]) -> None:
         self._client.send_message(

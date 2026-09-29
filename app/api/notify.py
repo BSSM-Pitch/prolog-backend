@@ -12,11 +12,14 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.events import inbox
 from app.platform_.auth import service as auth
 from app.platform_.notifications import service as notifications
 from app.platform_.notifications.schemas import NotificationResponse
 
 log = logging.getLogger(__name__)
+
+CONSUMER = "notifier"
 
 # 이벤트 → (알림 type, related_ref.type, 제목, 본문)
 INVITE_EVENTS: dict[str, tuple[str, str, str, str]] = {
@@ -61,3 +64,18 @@ async def notify_from_event(
         resource_id=UUID(str(payload["invitation_id"])),
         payload=payload,
     )
+
+
+async def consume(session: AsyncSession, event: dict[str, Any]) -> NotificationResponse | None:
+    """notifier 워커의 메시지 하나. **같은 이벤트는 한 번만** 알림이 된다.
+
+    릴레이가 at-least-once 라 같은 outbox 이벤트가 두 번 올 수 있다(durability.py dup).
+    알림 INSERT 와 같은 트랜잭션에서 event_id 를 선점하므로, 중간에 실패해 롤백되면
+    선점도 사라져 재수신 때 다시 처리된다. `event_id` 가 없거나 깨졌으면 예외 — 소비 루프가
+    메시지를 남기고, 반복 실패하면 DLQ 로 간다.
+    """
+    event_id = UUID(str(event["event_id"]))
+    if not await inbox.first_time(session, CONSUMER, event_id):
+        log.info("이미 처리한 이벤트 %s — 건너뛴다", event_id)
+        return None
+    return await notify_from_event(session, event)

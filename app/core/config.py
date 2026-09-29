@@ -32,6 +32,18 @@ class Settings(BaseSettings):
     # 잡 폴링 간격 힌트. meta.retry_after_ms 로 내보낸다 (ROADMAP Phase 1).
     job_retry_after_ms: int = 1000
 
+    # --- 잡 내구성 (Phase 2a). 운영 중 환경변수로 조정한다 ---------------------------
+    # 좀비 판정: running 인데 started_at 이 이만큼 지났으면 워커가 죽은 것으로 본다.
+    # 장편 원고 추출이 정상적으로 이보다 오래 걸리면 살아 있는 잡을 죽인다 — 그때 늘린다.
+    job_zombie_seconds_io: int = 5 * 60
+    job_zombie_seconds_ai: int = 15 * 60
+    # 업로드 콜백 유실 스위퍼: URL 발급(= 원고 updated_at) 후 이만큼 지난 draft 를 본다.
+    # presigned TTL(10분) + 여유 5분.
+    upload_sweep_after_seconds: int = 15 * 60
+    # 이만큼 받고도 지워지지 않은 메시지는 `{queue}-dlq` 로 간다 (SQS redrive).
+    queue_max_receive_count: int = 3
+    sweeper_interval_seconds: float = 30.0
+
     # 원고 업로드는 presigned URL 이다(multipart 아님). 서버는 파일을 통과시키지 않는다.
     s3_bucket: str = "prolog-local"
     s3_endpoint_url: str = ""

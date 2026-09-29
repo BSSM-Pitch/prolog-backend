@@ -98,8 +98,8 @@ async def test_job_rejects_illegal_transition(client: AsyncClient, db: AsyncSess
     with pytest.raises(errors.InvalidStatusTransition):
         await jobs.transition(db, job, "completed", result={})
 
-    # 재시도(failed → queued)는 Phase 2 다. 최소 코어는 열어 두지 않는다.
+    # 재시도는 failed 에서만이다. completed 는 다시 queued 로 갈 수 없다 (설계서 §4.4).
     await jobs.transition(db, job, "running")
-    await jobs.transition(db, job, "failed", error={"code": "X"})
+    await jobs.transition(db, job, "completed", result={"chars": 0})
     with pytest.raises(errors.InvalidStatusTransition):
         await jobs.transition(db, job, "queued")

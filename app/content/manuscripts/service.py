@@ -8,8 +8,9 @@
 같은 상태를 두 곳에 두지 않는다.
 """
 
+import asyncio
 from collections.abc import Sequence
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import cast
 from uuid import UUID
 
@@ -32,7 +33,6 @@ from app.content.manuscripts.schemas import (
 )
 from app.content.manuscripts.storage import Storage, content_type_of, object_key
 from app.core import errors
-from app.events.outbox import emit
 from app.jobs import service as jobs
 
 CHAPTER_NO_UQ = "chapters_manuscript_no_uq"
@@ -67,8 +67,10 @@ async def to_responses(
     return [_response(m, counts.get(m.id, 0)) for m in rows]
 
 
-async def _get(session: AsyncSession, project_id: UUID, manuscript_id: UUID) -> Manuscript:
-    manuscript = await repo.get_manuscript(session, project_id, manuscript_id)
+async def _get(
+    session: AsyncSession, project_id: UUID, manuscript_id: UUID, *, lock: bool = False
+) -> Manuscript:
+    manuscript = await repo.get_manuscript(session, project_id, manuscript_id, lock=lock)
     if manuscript is None:
         raise errors.ManuscriptNotFound()
     return manuscript
@@ -161,9 +163,9 @@ async def complete_upload(
     """클라이언트가 S3 PUT 을 마친 뒤 부른다. 객체를 확인하고 추출 잡을 건다.
 
     S3 이벤트 알림이 아니라 콜백인 이유는 로컬에 S3 가 없어 재현이 어렵기 때문이다.
-    **콜백 유실은 Phase 2 의 좀비 회수가 받는다** — 여기서 보상하지 않는다.
+    콜백이 유실되면 `sweep_lost_uploads` 가 대신 부른다 — 행을 잠그므로 둘이 겹쳐도 잡은 하나다.
     """
-    manuscript = await _get(session, project_id, manuscript_id)
+    manuscript = await _get(session, project_id, manuscript_id, lock=True)
     if manuscript.source_type != "upload":
         raise errors.InvalidInput("업로드 원고가 아닙니다")
     if manuscript.file_key is None:
@@ -177,37 +179,48 @@ async def complete_upload(
         # ASSUMPTION: 명세에 "업로드된 파일 없음" 코드가 없어 공통 코드로 답한다. 제안 목록에 있다.
         raise errors.InvalidInput("업로드된 파일을 찾을 수 없습니다", field="file_key")
 
+    await _start_extraction(session, manuscript, user_id)
+    return await _one(session, manuscript)
+
+
+async def _start_extraction(
+    session: AsyncSession, manuscript: Manuscript, user_id: UUID | None
+) -> None:
+    """잡을 만들고 원고를 processing 으로. 잡 알림은 같은 트랜잭션의 outbox 로 간다(§8)."""
+    file_key = str(manuscript.file_key)
     job = await jobs.create(
         session,
-        project_id=project_id,
+        project_id=manuscript.project_id,
         job_type=EXTRACTION_JOB_TYPE,
         target_type="manuscript",
-        target_id=manuscript_id,
+        target_id=manuscript.id,
         queue="io",
-        input={
-            "file_key": manuscript.file_key,
-            "file_format": manuscript.file_key.rsplit(".", 1)[-1],
-        },
+        input={"file_key": file_key, "file_format": file_key.rsplit(".", 1)[-1]},
         created_by=user_id,
     )
     manuscript.status = "processing"
     manuscript.extraction_job_id = job.id
-    # 잡을 워커에게 알리는 경로도 outbox 다 — 도메인 변경과 같은 트랜잭션에 실린다(§8).
-    emit(
-        session,
-        aggregate_type="job",
-        aggregate_id=job.id,
-        event_type="job.queued",
-        payload={
-            "job_id": str(job.id),
-            "job_type": EXTRACTION_JOB_TYPE,
-            "queue": job.queue,
-            "project_id": str(project_id),
-            "manuscript_id": str(manuscript_id),
-        },
-    )
+    jobs.announce(session, job, manuscript_id=str(manuscript.id))
     await session.flush()
-    return await _one(session, manuscript)
+
+
+async def sweep_lost_uploads(
+    session: AsyncSession, storage: Storage, older_than: timedelta, limit: int = 50
+) -> list[UUID]:
+    """업로드 콜백 유실 회수 (CLAUDE.md §12). 추출을 시작한 원고 id 를 돌려준다.
+
+    대상은 **잡이 아예 없는** 원고다 — 좀비 회수(`running` 잡)와 겹치지 않는다.
+    - S3 에 객체가 있다: 업로드는 끝났는데 콜백만 없다 → 콜백과 같은 경로로 추출을 건다.
+    - 객체가 없다: 아직 안 올린 것이다. 정상적인 draft 이므로 **건드리지 않는다.**
+      실패로 표시할 사유를 담을 잡도 없다.
+    """
+    started: list[UUID] = []
+    before = datetime.now(UTC) - older_than
+    for manuscript in await repo.lost_uploads(session, before, limit):
+        if await asyncio.to_thread(storage.exists, str(manuscript.file_key)):
+            await _start_extraction(session, manuscript, user_id=None)
+            started.append(manuscript.id)
+    return started
 
 
 # --- 챕터 -----------------------------------------------------------------

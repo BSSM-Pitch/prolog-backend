@@ -16,8 +16,8 @@
 | 서비스 | StoryForge — AI 기반 스토리 구조 관리 IDE |
 | 레포 경로 | `~/Desktop/전공동` |
 | 스택 | FastAPI · PostgreSQL · SQLAlchemy(asyncpg) · Alembic(psycopg) · uv |
-| 현재 단계 | **Phase 1 완료.** Phase 2(잡 인프라 — 분수령) 착수 전 |
-| git | `a6ea4e9` 첫 커밋(84파일) → `d00610a` CLAUDE.md 복원 → `f586427` AUTH v0.2 → `66b4f67` 감사 P0 → `3f0eca7` 감사 P1 → `87c9006` 조합 레이어 → `a382a5c` 감사 P2 → `8d20b20` 감사 P3 → `a381109` OpenAPI → `583e00a` PG16 → `ec649f0` Phase 1 인프라 → `205d0dd` manuscript_count → `73427d3` NOTI → `c10290d` OpenAPI → `a2d4471` MSU·챕터 → `5a2d79f` 업로드 콜백·s3mock·복합 FK → `62d5837` 추출 워커 → `a19dd01` OpenAPI 계약·목록 커서·팀 유래 멤버 |
+| 현재 단계 | **Phase 2a 완료** (잡·워커 내구성). 다음은 Phase 2b — REX · `ai` 워커 · LLM 게이트웨이 |
+| git | `a6ea4e9` 첫 커밋(84파일) → `d00610a` CLAUDE.md 복원 → `f586427` AUTH v0.2 → `66b4f67` 감사 P0 → `3f0eca7` 감사 P1 → `87c9006` 조합 레이어 → `a382a5c` 감사 P2 → `8d20b20` 감사 P3 → `a381109` OpenAPI → `583e00a` PG16 → `ec649f0` Phase 1 인프라 → `205d0dd` manuscript_count → `73427d3` NOTI → `c10290d` OpenAPI → `a2d4471` MSU·챕터 → `5a2d79f` 업로드 콜백·s3mock·복합 FK → `62d5837` 추출 워커 → `a19dd01` OpenAPI 계약·목록 커서·팀 유래 멤버 → `cf65615` 검증 스크립트 → `56c197f` 스키마 이름·seed → Phase 2a 잡 내구성(이 문서와 같은 커밋) |
 
 ### 실행
 
@@ -53,7 +53,7 @@ cd ~/Desktop/전공동 && uv run ruff check . && uv run ruff format --check . \
 2. **테스트는 `_test`로 끝나는 DB에서만 돈다.** `tests/conftest.py`의 `pytest_configure` 가드를 제거하지 않는다.
    **`os.environ.setdefault("DATABASE_URL", ...)`를 되살리지 않는다** — 암묵 기본값이 있으면 가드가 영원히 발화하지 않는다.
    가드는 DB 이름 부분만 잘라 검사한다(호스트에 `_test`가 들어가도 통과하지 않게).
-3. **`TRUNCATE ... CASCADE`를 dev DB에 쓰지 않는다.** 37테이블 5스키마에서 참조 체인 전체가 비워진다.
+3. **`TRUNCATE ... CASCADE`를 dev DB에 쓰지 않는다.** 38테이블 5스키마에서 참조 체인 전체가 비워진다.
 4. **비밀번호를 저장하지 않는다.** Google OAuth 단일이다. bcrypt/argon2를 되살리지 않는다.
 5. **디스크 여유를 확인하고 시작한다.** 2026-09 작업 중 ENOSPC로 전체가 멈춘 적이 있다.
    `df -h /System/Volumes/Data`가 5GB 미만이면 작업을 시작하지 않는다.
@@ -115,22 +115,40 @@ import가 아니라 SQL이므로 `core-is-a-leaf` 계약에 걸리지 않는다.
 원시 SQL 문자열은 `test_schema.py`의 모델↔DB 대칭 검사 **바깥**이다.
 컬럼을 리네임하면 mypy도 테스트도 잡지 못한다. 직접 확인한다.
 
-### 워커 · 큐 (Phase 1에서 생김)
+### 워커 · 큐 (Phase 1에서 생김, 2a 에서 내구성)
 
-앱은 FastAPI 하나지만 **워커는 별도 프로세스 3종**이다. 전부 `app/` 을 그대로 import 한다.
+앱은 FastAPI 하나지만 **워커는 별도 프로세스 4종**이다. 전부 `app/` 을 그대로 import 한다.
+Celery 는 쓰지 않는다 — 단순 루프 + SQS redrive 로 충분하다(2b 에서 필요해지면 다시 판단).
 
 | 워커 | 하는 일 | 소비 큐 |
 | --- | --- | --- |
 | `worker/outbox_relay.py` | `published_at IS NULL` 폴링 → 큐 발송 → 표시 | (생산자) |
-| `worker/notifier.py` | 도메인 이벤트 → `notifications` INSERT | `notify` |
+| `worker/notifier.py` | 도메인 이벤트 → `notifications` INSERT (inbox 로 1회) | `notify` |
 | `worker/extractor.py` | `manuscript_extraction` 잡 → S3 읽기 → 본문 채우고 `ready` | `io` |
+| `worker/sweeper.py` | 주기 작업: 좀비 잡 회수 · 업로드 콜백 유실 회수 | (없음) |
+
+**내구성 규칙 (2a).** 어기면 durability.py 가 다시 재현한다.
+- **메시지 하나가 워커를 죽이지 않는다.** 소비 루프는 `app/events/consumer.py` 하나다. 처리에
+  실패한 메시지는 지우지 않는다 → 재수신 → `queue_max_receive_count` 번 뒤 `{queue}-dlq`.
+- **경합하는 잡 전이는 전부 조건부 UPDATE 다** (`app/jobs/service.py`). 선점은
+  `WHERE status='queued'` 이고 `attempt` 를 1 올린다. 완료·실패는
+  `WHERE status='running' AND attempt=:선점때값` — status 만 보면 재시도 후 다른 워커가 다시
+  선점한 잡(status 가 또 running)에 늦게 돌아온 워커가 결과를 쓴다.
+- **잡 선점은 먼저 커밋한다.** `running` 이 보여야 스위퍼가 좀비를 줍는다. 결과는 두 번째
+  트랜잭션에서 잡 완료와 함께 대상에 쓴다.
+- **자동 재시도는 인프라 실패만** (좀비 `JOB_TIMEOUT` · 스토리지 읽기). 파일 탓인 실패는 즉시 끝.
+  시도를 다 쓰면 `failed` 로 남고 `ALARM` ERROR 로그. 대상 실패 처리는 `sweeper.ON_FAILED` 훅.
+- 임계치는 전부 Settings 다: `job_zombie_seconds_io|ai` · `upload_sweep_after_seconds` ·
+  `queue_max_receive_count` · `sweeper_interval_seconds`. 장편 추출이 5분을 넘기면 io 값을 올린다.
 
 **큐는 3종이다**: `io`(잡) · `ai`(Phase 3 잡) · `notify`(도메인 이벤트).
 릴레이가 `aggregate_type == 'job'` 이면 payload 의 `queue` 로, 아니면 `notify` 로 보낸다.
 **한 큐에 소비자를 둘 붙이지 않는다** — SQS 는 메시지를 하나에게만 주므로 서로의 메시지를
 받아 지운다. 상세는 ROADMAP Phase 1.
 
-릴레이는 **at-least-once** 다. 중복 수신을 막는 것은 수신자의 책임이고, 멱등키는 Phase 2다.
+릴레이는 **at-least-once** 다. 중복 수신을 막는 것은 수신자의 책임이다 — 부작용과 같은 트랜잭션에서
+`app/events/inbox.first_time(consumer, event_id)` 로 선점한다(`ops.processed_events`, `0003`).
+잡 소비자는 선점(조건부 UPDATE)이 같은 일을 한다. `jobs.idempotency_key` 는 잡 **생성** 중복용이고 2b 에서 쓴다.
 
 ### OpenAPI — 스펙이 곧 계약이다
 
@@ -345,7 +363,7 @@ DB를 봐야 하고, 서명 키가 유출되면 초대를 위조할 수 있다. 
   `TEAM_HAS_ACTIVE_PROJECTS`로 번역해 처리한다 (승인된 설계).
   **IntegrityError는 제약 이름 상수로 분기한다.** 메시지 문자열 파싱은 PG 마이너 버전에 깨진다.
 - `teams.member_count`를 저장하지 않는다. 조회 시 집계한다 (동시 가입 경합).
-- 37테이블 중 Phase 0에서 **쓰는** 것은 platform 11개뿐이다. 나머지 26개도 제약을 박아 이미 만들었다.
+- 38테이블(`0003` 의 `ops.processed_events` 포함) 중 Phase 0에서 **쓰는** 것은 platform 11개뿐이다. 나머지 26개도 제약을 박아 이미 만들었다.
   (v0.2에서 `password_resets`를 지워 38 → 37, platform 12 → 11이 되었다.)
 
 ### v0.2 스키마 변경
@@ -424,8 +442,12 @@ Phase 1 착수 전 필요: localstack 또는 elasticmq. Redis도 아직 아무�
 **완료 (프론트 착수 전):** 봉투 스키마 이름 정리(`Envelope_TeamResponse_` → `TeamResponseEnvelope`,
 `contract.py` [5] 이름 규칙), dev DB 초기화 + `scripts/verify/seed.py`(사용자 1 · 팀 1 ·
 프로젝트 2 · 원고 1 · 챕터 3).
-**남겨 둔 것 (Phase 2 몫):** 받은 사람이 초대 토큰을 얻을 경로 없음(알림에 토큰 없음·메일 없음),
-워커 poison 메시지 크래시 루프, 중복 알림. 재현은 `scripts/verify/durability.py`.
+**완료 (Phase 2a):** 워커 루프 내구성 · SQS DLQ · 이벤트 소비 멱등(`0003`) · 조건부 선점 ·
+좀비 회수(attempt 대조) · 인프라 실패 자동 재시도 · 업로드 콜백 유실 스위퍼. 실물에서
+`durability.py poison`·`dup` 둘 다 **통과**(재현되지 않음), 같은 시나리오가 `tests/test_durability.py` 에 있다.
+**남겨 둔 것:** 받은 사람이 초대 토큰을 얻을 경로 없음(알림에 토큰 없음·메일 없음).
+**다음 (Phase 2b):** REX · `ai` 워커 · LLM 게이트웨이 · 핸들러 공통 계약 · `/retry` API ·
+`jobs.idempotency_key`. LLM 공급자 · 비용 컬럼(`model`·`token_in/out`, DDL 에 없음) 결정 필요.
 
 **다음:**
 
@@ -462,7 +484,7 @@ Phase 1 착수 전 필요: localstack 또는 elasticmq. Redis도 아직 아무�
 
 ## 10. 반드시 추가할 테스트
 
-현재 30 경로 · 48 오퍼레이션에 테스트 82개다 (`/v1/health` 제외).
+현재 30 경로 · 48 오퍼레이션에 테스트 90개다 (`/v1/health` 제외).
 **TEAM·PRJ 24개 오퍼레이션에 빠짐없이 테스트가 닿는다.**
 
 이 절의 목록은 비었다 — 5종 모두 들어갔다. 리프레시 토큰 재사용 거부 · 테넌트 격리 ·
@@ -471,8 +493,12 @@ Phase 1 착수 전 필요: localstack 또는 elasticmq. Redis도 아직 아무�
 **응답 필드 집합**은 이제 `response_model` 이 강제한다 — 선언에 없는 필드는 직렬화에서 빠진다.
 실제 응답과 스펙의 대조는 `scripts.verify.contract` 가 E2E 응답으로 한다(테스트 밖, 실물 인프라).
 
-**다음에 얇은 곳:** 워커(`worker/*.py`) 루프 자체를 도는 테스트가 없다 — 핸들러 함수만 테스트한다.
-poison 메시지 크래시가 테스트로 잡히지 않은 이유다(Phase 2 에서 재시도·DLQ 와 함께).
+워커 루프는 `tests/test_durability.py` 가 FakeQueue 로 돈다(poison · 수신 실패 · dup · 좀비 경합 ·
+시도 소진 · 콜백 유실). SQS redrive 자체(3회 뒤 DLQ 이동)는 elasticmq 의 동작이라 테스트 밖이다 —
+`durability.py poison` 이 실물로 본다.
+
+**다음에 얇은 곳:** 추출 핸들러가 **선점 후 · 완료 전**에 스위퍼에게 지는 경로는 서비스 단위
+(`finish` 의 attempt 대조)로만 테스트한다. 핸들러 한가운데에 끼어드는 테스트는 없다.
 
 ---
 
@@ -504,10 +530,9 @@ poison 메시지 크래시가 테스트로 잡히지 않은 이유다(Phase 2 �
   **명세 수정이므로 TEAM·PRJ 감사 때 다른 변경 건과 묶는다** (정본을 여러 번 건드리지 않는다)
 - **해소됨 — `manuscript_count`** (`205d0dd`). Project 응답을 반환하는 엔드포인트를 전부
   조합 레이어로 올리고 `content.manuscripts` 를 `GROUP BY` 로 세어 붙인다
-- **업로드 콜백 유실 시 원고가 `draft` 에 영구히 머문다 — 별개 스위퍼가 필요하다.**
-  presigned URL 만 받고 `.../file/complete` 를 부르지 않으면 **잡이 아예 만들어지지 않는다.**
-  Phase 2 의 좀비 회수는 `running` 잡을 대상으로 하므로 이 경우는 아무도 줍지 않는다.
-  필요한 것: `source_type='upload'` · `file_key IS NOT NULL` · `extraction_job_id IS NULL` 이고
-  발급 후 N분이 지난 원고를 훑는 스위퍼. N 과 처리(재촉/만료)는 정해지지 않았다
+- **해소됨 — 업로드 콜백 유실** (Phase 2a). `worker/sweeper.py` 가 `upload_sweep_after_seconds`
+  (기본 15분)가 지난 잡 없는 upload draft 를 훑어, S3 에 객체가 있으면 콜백과 같은 경로로 추출을
+  건다. 객체가 없으면 건드리지 않는다(아직 안 올린 정상 draft). 원고 행을 잠가 콜백과 겹쳐도
+  잡은 하나다. "발급 시각" 컬럼이 없어 `updated_at` 을 쓴다 — 제목을 고치면 그만큼 늦게 줍는다
 - 프론트엔드 계약 미대조. `# ASSUMPTION:` 주석으로 표시되어 있으나,
   어긋나면 Phase 0 전체를 손봐야 한다 (ROADMAP 113행)

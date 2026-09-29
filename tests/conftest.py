@@ -151,14 +151,35 @@ class FakeStorage:
         return FakeStorage.uploaded[key]
 
 
-class FakeQueue:
-    """큐 포트의 테스트 구현. 테스트가 elasticmq 를 띄우지 않아도 되게 한다."""
+class StopConsuming(BaseException):
+    """FakeQueue 가 줄 배치를 다 쓰면 던진다. BaseException 이라 소비 루프의
+    `except Exception` 에 잡히지 않고 테스트까지 올라온다."""
 
-    def __init__(self) -> None:
+
+class FakeQueue:
+    """큐 포트의 테스트 구현. 테스트가 elasticmq 를 띄우지 않아도 되게 한다.
+
+    `batches` 는 receive 가 차례로 돌려줄 것이다. 예외 인스턴스를 넣으면 그 차례에 던진다.
+    """
+
+    def __init__(self, batches: list[Any] | None = None) -> None:
         self.sent: list[tuple[str, dict]] = []
+        self.batches = list(batches or [])
+        self.deleted: list[str] = []
 
     def send(self, queue_name: str, body: dict) -> None:
         self.sent.append((queue_name, body))
+
+    def receive(self, queue_name: str, max_messages: int, wait_seconds: int) -> list[Any]:
+        if not self.batches:
+            raise StopConsuming
+        batch = self.batches.pop(0)
+        if isinstance(batch, Exception):
+            raise batch
+        return list(batch)
+
+    def delete(self, queue_name: str, receipt: str) -> None:
+        self.deleted.append(receipt)
 
 
 class FakeGoogle:

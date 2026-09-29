@@ -25,3 +25,13 @@ class OutboxEvent(Base, Timestamps):
     event_type: Mapped[str] = mapped_column(String(50))
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class ProcessedEvent(Base, Timestamps):
+    """소비자별로 처리를 마친 이벤트. 부작용과 같은 트랜잭션에 INSERT 한다 (0003)."""
+
+    __tablename__ = "processed_events"
+    __table_args__ = {"schema": "ops"}
+
+    consumer: Mapped[str] = mapped_column(String(50), primary_key=True)
+    event_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True)
