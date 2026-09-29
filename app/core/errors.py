@@ -77,6 +77,16 @@ SourceTypeImmutable = _err("SOURCE_TYPE_IMMUTABLE", 409, "source_type 은 생성
 # --- NOTI ---------------------------------------------------------------
 NotificationNotFound = _err("NOTIFICATION_NOT_FOUND", 404, "알림을 찾을 수 없습니다")
 
+# --- ASS (§1.4) ---------------------------------------------------------
+DraftNotFound = _err("DRAFT_NOT_FOUND", 404, "해당 초안을 찾을 수 없습니다")
+ItemNotFound = _err("ITEM_NOT_FOUND", 404, "초안 항목을 찾을 수 없습니다")
+CharacterNotFound = _err("CHARACTER_NOT_FOUND", 404, "캐릭터를 찾을 수 없습니다")
+DraftAlreadyResolved = _err("DRAFT_ALREADY_RESOLVED", 409, "이미 확정되었거나 폐기된 초안입니다")
+MissingRequiredField = _err("MISSING_REQUIRED_FIELD", 400, "확정에 필요한 항목이 비어 있습니다")
+DuplicateCharacterCandidate = _err(
+    "DUPLICATE_CHARACTER_CANDIDATE", 409, "같은 이름의 확정된 캐릭터가 이미 있습니다"
+)
+
 # --- 잡 파이프라인 (Phase 2 에서 사용) ----------------------------------
 InvalidStatusTransition = _err("INVALID_STATUS_TRANSITION", 409, "허용되지 않는 상태 전이입니다")
 

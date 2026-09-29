@@ -1,6 +1,57 @@
 {
   "components": {
     "schemas": {
+      "AttributeResponse": {
+        "properties": {
+          "attribute_id": {
+            "format": "uuid",
+            "title": "Attribute Id",
+            "type": "string"
+          },
+          "evidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence"
+          },
+          "field": {
+            "enum": [
+              "personality_tags",
+              "core_values",
+              "influence_relations",
+              "emotion_keywords"
+            ],
+            "title": "Field",
+            "type": "string"
+          },
+          "origin": {
+            "enum": [
+              "ai_extracted",
+              "user_added"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "attribute_id",
+          "field",
+          "value",
+          "evidence",
+          "origin"
+        ],
+        "title": "AttributeResponse",
+        "type": "object"
+      },
       "ChapterCreate": {
         "properties": {
           "chapter_no": {
@@ -158,6 +209,493 @@
         "title": "ChapterUpdate",
         "type": "object"
       },
+      "CharacterResponse": {
+        "properties": {
+          "character_id": {
+            "format": "uuid",
+            "title": "Character Id",
+            "type": "string"
+          },
+          "confirmed_at": {
+            "format": "date-time",
+            "title": "Confirmed At",
+            "type": "string"
+          },
+          "core_values": {
+            "items": {
+              "$ref": "#/components/schemas/AttributeResponse"
+            },
+            "title": "Core Values",
+            "type": "array"
+          },
+          "created_from_draft_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created From Draft Id"
+          },
+          "emotion_keywords": {
+            "items": {
+              "$ref": "#/components/schemas/AttributeResponse"
+            },
+            "title": "Emotion Keywords",
+            "type": "array"
+          },
+          "influence_relations": {
+            "items": {
+              "$ref": "#/components/schemas/AttributeResponse"
+            },
+            "title": "Influence Relations",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "personality_tags": {
+            "items": {
+              "$ref": "#/components/schemas/AttributeResponse"
+            },
+            "title": "Personality Tags",
+            "type": "array"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "status": {
+            "const": "confirmed",
+            "default": "confirmed",
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "character_id",
+          "project_id",
+          "name",
+          "personality_tags",
+          "core_values",
+          "influence_relations",
+          "emotion_keywords",
+          "created_from_draft_id",
+          "confirmed_at",
+          "updated_at"
+        ],
+        "title": "CharacterResponse",
+        "type": "object"
+      },
+      "CharacterResponseEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CharacterResponse"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "CharacterResponseEnvelope",
+        "type": "object"
+      },
+      "CharacterResponsePage": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/CharacterResponse"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PageMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "CharacterResponsePage",
+        "type": "object"
+      },
+      "CharacterUpdate": {
+        "properties": {
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "CharacterUpdate",
+        "type": "object"
+      },
+      "ConfirmRequest": {
+        "properties": {
+          "merge_target_character_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Merge Target Character Id"
+          },
+          "resolution": {
+            "anyOf": [
+              {
+                "enum": [
+                  "merge",
+                  "create_new"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolution"
+          }
+        },
+        "title": "ConfirmRequest",
+        "type": "object"
+      },
+      "DraftCreate": {
+        "properties": {
+          "character_name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Character Name"
+          }
+        },
+        "title": "DraftCreate",
+        "type": "object"
+      },
+      "DraftResponse": {
+        "properties": {
+          "character_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Character Name"
+          },
+          "confirmed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmed At"
+          },
+          "confirmed_character_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmed Character Id"
+          },
+          "core_values": {
+            "items": {
+              "$ref": "#/components/schemas/ItemResponse"
+            },
+            "title": "Core Values",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "draft_id": {
+            "format": "uuid",
+            "title": "Draft Id",
+            "type": "string"
+          },
+          "emotion_keywords": {
+            "items": {
+              "$ref": "#/components/schemas/ItemResponse"
+            },
+            "title": "Emotion Keywords",
+            "type": "array"
+          },
+          "influence_relations": {
+            "items": {
+              "$ref": "#/components/schemas/ItemResponse"
+            },
+            "title": "Influence Relations",
+            "type": "array"
+          },
+          "personality_tags": {
+            "items": {
+              "$ref": "#/components/schemas/ItemResponse"
+            },
+            "title": "Personality Tags",
+            "type": "array"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "source_job_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Job Id"
+          },
+          "status": {
+            "enum": [
+              "pending_review",
+              "confirmed",
+              "discarded"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "draft_id",
+          "project_id",
+          "character_name",
+          "personality_tags",
+          "core_values",
+          "influence_relations",
+          "emotion_keywords",
+          "status",
+          "source_job_id",
+          "confirmed_character_id",
+          "confirmed_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "DraftResponse",
+        "type": "object"
+      },
+      "DraftResponseEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/DraftResponse"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "DraftResponseEnvelope",
+        "type": "object"
+      },
+      "DraftResponsePage": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/DraftResponse"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PageMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "DraftResponsePage",
+        "type": "object"
+      },
+      "DraftUpdate": {
+        "properties": {
+          "character_name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Character Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "character_name"
+        ],
+        "title": "DraftUpdate",
+        "type": "object"
+      },
+      "EditHistoryEntry": {
+        "properties": {
+          "action": {
+            "enum": [
+              "added",
+              "modified",
+              "removed"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "after_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After Value"
+          },
+          "at": {
+            "description": "변경 시각",
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "before_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before Value"
+          },
+          "edited_by": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edited By"
+          },
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "history_id": {
+            "format": "uuid",
+            "title": "History Id",
+            "type": "string"
+          },
+          "item_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item Id"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "history_id",
+          "action",
+          "field",
+          "value",
+          "before_value",
+          "after_value",
+          "item_id",
+          "edited_by",
+          "at"
+        ],
+        "title": "EditHistoryEntry",
+        "type": "object"
+      },
+      "EditHistoryEntryPage": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/EditHistoryEntry"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PageMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "EditHistoryEntryPage",
+        "type": "object"
+      },
       "ErrorBody": {
         "properties": {
           "code": {
@@ -223,6 +761,136 @@
           "data"
         ],
         "title": "HealthEnvelope",
+        "type": "object"
+      },
+      "ItemCreate": {
+        "properties": {
+          "field": {
+            "enum": [
+              "personality_tags",
+              "core_values",
+              "influence_relations",
+              "emotion_keywords"
+            ],
+            "title": "Field",
+            "type": "string"
+          },
+          "value": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "value"
+        ],
+        "title": "ItemCreate",
+        "type": "object"
+      },
+      "ItemResponse": {
+        "properties": {
+          "evidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence"
+          },
+          "field": {
+            "enum": [
+              "personality_tags",
+              "core_values",
+              "influence_relations",
+              "emotion_keywords"
+            ],
+            "title": "Field",
+            "type": "string"
+          },
+          "item_id": {
+            "format": "uuid",
+            "title": "Item Id",
+            "type": "string"
+          },
+          "origin": {
+            "enum": [
+              "ai_extracted",
+              "user_added"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "item_id",
+          "field",
+          "value",
+          "evidence",
+          "origin"
+        ],
+        "title": "ItemResponse",
+        "type": "object"
+      },
+      "ItemResponseEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ItemResponse"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "ItemResponseEnvelope",
+        "type": "object"
+      },
+      "ItemUpdate": {
+        "properties": {
+          "field": {
+            "anyOf": [
+              {
+                "enum": [
+                  "personality_tags",
+                  "core_values",
+                  "influence_relations",
+                  "emotion_keywords"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "title": "ItemUpdate",
         "type": "object"
       },
       "ManuscriptCreate": {
@@ -4227,6 +4895,2589 @@
         "summary": "챕터를 수정한다",
         "tags": [
           "MSU"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/character-drafts": {
+      "get": {
+        "description": "최근에 만든 초안부터. 커서 페이지네이션이다. 항목을 전부 포함한다.",
+        "operationId": "list_drafts_v1_projects__projectId__character_drafts_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "페이지 크기. 기본 20 · 최대 100",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "페이지 크기. 기본 20 · 최대 100",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "이전 응답의 `meta.next_cursor`. 첫 페이지는 비운다",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "이전 응답의 `meta.next_cursor`. 첫 페이지는 비운다",
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "pending_review",
+                    "confirmed",
+                    "discarded"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftResponsePage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "초안 목록",
+        "tags": [
+          "ASS"
+        ]
+      },
+      "post": {
+        "description": "프로젝트의 editor 이상. 사용자가 직접 설계하는 경로다 — `source_job_id` 는 null.\n\n항목은 `POST .../items` 로 채운다. `character_name` 은 비워도 되지만 확정 때는 필수다.",
+        "operationId": "create_draft_v1_projects__projectId__character_drafts_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftResponseEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "빈 초안을 만든다",
+        "tags": [
+          "ASS"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/character-drafts/{draftId}": {
+      "get": {
+        "description": "항목은 필드별로 묶여 있고, 각 필드 안에서는 추가한 순서다.",
+        "operationId": "get_draft_v1_projects__projectId__character_drafts__draftId__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "draftId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Draftid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftResponseEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "DRAFT_NOT_FOUND": {
+                    "summary": "해당 초안을 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "DRAFT_NOT_FOUND",
+                        "details": {},
+                        "message": "해당 초안을 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `DRAFT_NOT_FOUND` — 해당 초안을 찾을 수 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "초안을 조회한다",
+        "tags": [
+          "ASS"
+        ]
+      },
+      "patch": {
+        "description": "편집 이력에 `field = character_name` 으로 남는다. 끝난 초안이면 `DRAFT_ALREADY_RESOLVED`.",
+        "operationId": "update_draft_v1_projects__projectId__character_drafts__draftId__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "draftId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Draftid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftResponseEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "DRAFT_NOT_FOUND": {
+                    "summary": "해당 초안을 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "DRAFT_NOT_FOUND",
+                        "details": {},
+                        "message": "해당 초안을 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `DRAFT_NOT_FOUND` — 해당 초안을 찾을 수 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "DRAFT_ALREADY_RESOLVED": {
+                    "summary": "이미 확정되었거나 폐기된 초안입니다",
+                    "value": {
+                      "error": {
+                        "code": "DRAFT_ALREADY_RESOLVED",
+                        "details": {},
+                        "message": "이미 확정되었거나 폐기된 초안입니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `DRAFT_ALREADY_RESOLVED` — 이미 확정되었거나 폐기된 초안입니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "초안의 캐릭터 이름을 고친다",
+        "tags": [
+          "ASS"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/character-drafts/{draftId}/confirm": {
+      "post": {
+        "description": "동기 처리다. 실패하면 편집 내용은 그대로 남고, 같은 요청을 다시 보내면 된다.\n\n- 본문 없음(`{}`) 또는 `create_new`: 새 캐릭터 → **201**. 같은 이름의 캐릭터가 있으면\n  `DUPLICATE_CHARACTER_CANDIDATE`(409) 이고 `details.candidate_character_id` 가 온다.\n  `create_new` 도 이름이 겹치면 409 다 — 초안 이름을 바꾼 뒤 다시 확정한다.\n- `merge` + `merge_target_character_id`: 기존 캐릭터에 항목을 합친다 → **200**.\n  이미 있는 값은 건너뛴다. 대상이 없으면 `CHARACTER_NOT_FOUND`.\n- 이름이 비어 있으면 `MISSING_REQUIRED_FIELD`(`details.field = character_name`).\n\n항목의 `evidence`·`origin` 은 캐릭터 속성에 그대로 승계된다.",
+        "operationId": "confirm_v1_projects__projectId__character_drafts__draftId__confirm_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "draftId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Draftid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CharacterResponseEnvelope"
+                }
+              }
+            },
+            "description": "`merge` — 기존 캐릭터에 합쳤다"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CharacterResponseEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  },
+                  "MISSING_REQUIRED_FIELD": {
+                    "summary": "확정에 필요한 항목이 비어 있습니다",
+                    "value": {
+                      "error": {
+                        "code": "MISSING_REQUIRED_FIELD",
+                        "details": {},
+                        "message": "확정에 필요한 항목이 비어 있습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다\n- `MISSING_REQUIRED_FIELD` — 확정에 필요한 항목이 비어 있습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "CHARACTER_NOT_FOUND": {
+                    "summary": "캐릭터를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "CHARACTER_NOT_FOUND",
+                        "details": {},
+                        "message": "캐릭터를 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "DRAFT_NOT_FOUND": {
+                    "summary": "해당 초안을 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "DRAFT_NOT_FOUND",
+                        "details": {},
+                        "message": "해당 초안을 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `CHARACTER_NOT_FOUND` — 캐릭터를 찾을 수 없습니다\n- `DRAFT_NOT_FOUND` — 해당 초안을 찾을 수 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "DRAFT_ALREADY_RESOLVED": {
+                    "summary": "이미 확정되었거나 폐기된 초안입니다",
+                    "value": {
+                      "error": {
+                        "code": "DRAFT_ALREADY_RESOLVED",
+                        "details": {},
+                        "message": "이미 확정되었거나 폐기된 초안입니다"
+                      }
+                    }
+                  },
+                  "DUPLICATE_CHARACTER_CANDIDATE": {
+                    "summary": "같은 이름의 확정된 캐릭터가 이미 있습니다",
+                    "value": {
+                      "error": {
+                        "code": "DUPLICATE_CHARACTER_CANDIDATE",
+                        "details": {},
+                        "message": "같은 이름의 확정된 캐릭터가 이미 있습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `DRAFT_ALREADY_RESOLVED` — 이미 확정되었거나 폐기된 초안입니다\n- `DUPLICATE_CHARACTER_CANDIDATE` — 같은 이름의 확정된 캐릭터가 이미 있습니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "초안을 확정한다",
+        "tags": [
+          "ASS"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/character-drafts/{draftId}/discard": {
+      "post": {
+        "description": "화면을 그냥 떠나면 부르지 않는다 — 초안은 `pending_review` 로 남는다.",
+        "operationId": "discard_v1_projects__projectId__character_drafts__draftId__discard_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "draftId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Draftid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftResponseEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "DRAFT_NOT_FOUND": {
+                    "summary": "해당 초안을 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "DRAFT_NOT_FOUND",
+                        "details": {},
+                        "message": "해당 초안을 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `DRAFT_NOT_FOUND` — 해당 초안을 찾을 수 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "DRAFT_ALREADY_RESOLVED": {
+                    "summary": "이미 확정되었거나 폐기된 초안입니다",
+                    "value": {
+                      "error": {
+                        "code": "DRAFT_ALREADY_RESOLVED",
+                        "details": {},
+                        "message": "이미 확정되었거나 폐기된 초안입니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `DRAFT_ALREADY_RESOLVED` — 이미 확정되었거나 폐기된 초안입니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "초안을 폐기한다",
+        "tags": [
+          "ASS"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/character-drafts/{draftId}/edit-history": {
+      "get": {
+        "description": "오래된 것부터. 화면의 \"편집 이력 N건 펼치기\" 는 `item_id` 를 붙여 부른다.",
+        "operationId": "draft_history_v1_projects__projectId__character_drafts__draftId__edit_history_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "draftId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Draftid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "페이지 크기. 기본 20 · 최대 100",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "페이지 크기. 기본 20 · 최대 100",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "이전 응답의 `meta.next_cursor`. 첫 페이지는 비운다",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "이전 응답의 `meta.next_cursor`. 첫 페이지는 비운다",
+              "title": "Cursor"
+            }
+          },
+          {
+            "description": "이 항목의 이력만 본다",
+            "in": "query",
+            "name": "item_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "이 항목의 이력만 본다",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditHistoryEntryPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "DRAFT_NOT_FOUND": {
+                    "summary": "해당 초안을 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "DRAFT_NOT_FOUND",
+                        "details": {},
+                        "message": "해당 초안을 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `DRAFT_NOT_FOUND` — 해당 초안을 찾을 수 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "초안 편집 이력 (확정 전)",
+        "tags": [
+          "ASS"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/character-drafts/{draftId}/items": {
+      "post": {
+        "description": "`origin` 은 항상 `user_added`, `evidence` 는 null 이다.",
+        "operationId": "add_item_v1_projects__projectId__character_drafts__draftId__items_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "draftId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Draftid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ItemCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemResponseEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "DRAFT_NOT_FOUND": {
+                    "summary": "해당 초안을 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "DRAFT_NOT_FOUND",
+                        "details": {},
+                        "message": "해당 초안을 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `DRAFT_NOT_FOUND` — 해당 초안을 찾을 수 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "DRAFT_ALREADY_RESOLVED": {
+                    "summary": "이미 확정되었거나 폐기된 초안입니다",
+                    "value": {
+                      "error": {
+                        "code": "DRAFT_ALREADY_RESOLVED",
+                        "details": {},
+                        "message": "이미 확정되었거나 폐기된 초안입니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `DRAFT_ALREADY_RESOLVED` — 이미 확정되었거나 폐기된 초안입니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "초안에 항목을 추가한다",
+        "tags": [
+          "ASS"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/character-drafts/{draftId}/items/{itemId}": {
+      "delete": {
+        "description": "이력에는 지운 값이 남는다.",
+        "operationId": "delete_item_v1_projects__projectId__character_drafts__draftId__items__itemId__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "draftId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Draftid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "itemId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Itemid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "DRAFT_NOT_FOUND": {
+                    "summary": "해당 초안을 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "DRAFT_NOT_FOUND",
+                        "details": {},
+                        "message": "해당 초안을 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "ITEM_NOT_FOUND": {
+                    "summary": "초안 항목을 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "ITEM_NOT_FOUND",
+                        "details": {},
+                        "message": "초안 항목을 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `DRAFT_NOT_FOUND` — 해당 초안을 찾을 수 없습니다\n- `ITEM_NOT_FOUND` — 초안 항목을 찾을 수 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "DRAFT_ALREADY_RESOLVED": {
+                    "summary": "이미 확정되었거나 폐기된 초안입니다",
+                    "value": {
+                      "error": {
+                        "code": "DRAFT_ALREADY_RESOLVED",
+                        "details": {},
+                        "message": "이미 확정되었거나 폐기된 초안입니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `DRAFT_ALREADY_RESOLVED` — 이미 확정되었거나 폐기된 초안입니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "초안 항목을 삭제한다",
+        "tags": [
+          "ASS"
+        ]
+      },
+      "patch": {
+        "description": "보낸 것만 바뀐다. `field`(카테고리)와 `value` 변경은 이력에 따로 남는다.\n\n`origin`·`evidence` 는 바뀌지 않는다 — AI 가 뽑은 항목을 고쳐도 근거 문장은 원문 그대로다.",
+        "operationId": "update_item_v1_projects__projectId__character_drafts__draftId__items__itemId__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "draftId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Draftid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "itemId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Itemid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ItemUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemResponseEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "DRAFT_NOT_FOUND": {
+                    "summary": "해당 초안을 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "DRAFT_NOT_FOUND",
+                        "details": {},
+                        "message": "해당 초안을 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "ITEM_NOT_FOUND": {
+                    "summary": "초안 항목을 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "ITEM_NOT_FOUND",
+                        "details": {},
+                        "message": "초안 항목을 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `DRAFT_NOT_FOUND` — 해당 초안을 찾을 수 없습니다\n- `ITEM_NOT_FOUND` — 초안 항목을 찾을 수 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "DRAFT_ALREADY_RESOLVED": {
+                    "summary": "이미 확정되었거나 폐기된 초안입니다",
+                    "value": {
+                      "error": {
+                        "code": "DRAFT_ALREADY_RESOLVED",
+                        "details": {},
+                        "message": "이미 확정되었거나 폐기된 초안입니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `DRAFT_ALREADY_RESOLVED` — 이미 확정되었거나 폐기된 초안입니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "초안 항목을 고친다",
+        "tags": [
+          "ASS"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/characters": {
+      "get": {
+        "description": "최근에 확정한 것부터. 커서 페이지네이션이다.",
+        "operationId": "list_characters_v1_projects__projectId__characters_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "페이지 크기. 기본 20 · 최대 100",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "페이지 크기. 기본 20 · 최대 100",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "이전 응답의 `meta.next_cursor`. 첫 페이지는 비운다",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "이전 응답의 `meta.next_cursor`. 첫 페이지는 비운다",
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CharacterResponsePage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "확정된 캐릭터 목록",
+        "tags": [
+          "ASS"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/characters/{characterId}": {
+      "delete": {
+        "description": "되돌릴 수 없다. 속성과 확정 후 이력이 함께 지워진다. 원본 초안은 남는다.",
+        "operationId": "delete_character_v1_projects__projectId__characters__characterId__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "characterId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Characterid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "CHARACTER_NOT_FOUND": {
+                    "summary": "캐릭터를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "CHARACTER_NOT_FOUND",
+                        "details": {},
+                        "message": "캐릭터를 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `CHARACTER_NOT_FOUND` — 캐릭터를 찾을 수 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "캐릭터를 삭제한다",
+        "tags": [
+          "ASS"
+        ]
+      },
+      "get": {
+        "description": "속성마다 `origin`·`evidence` 가 있다 — AI 가 뽑은 설정인지 확정 후에도 보인다.",
+        "operationId": "get_character_v1_projects__projectId__characters__characterId__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "characterId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Characterid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CharacterResponseEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "CHARACTER_NOT_FOUND": {
+                    "summary": "캐릭터를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "CHARACTER_NOT_FOUND",
+                        "details": {},
+                        "message": "캐릭터를 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `CHARACTER_NOT_FOUND` — 캐릭터를 찾을 수 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "확정된 캐릭터를 조회한다",
+        "tags": [
+          "ASS"
+        ]
+      },
+      "patch": {
+        "description": "프로젝트의 editor 이상. 같은 이름의 캐릭터가 있으면 `DUPLICATE_CHARACTER_CANDIDATE`.",
+        "operationId": "update_character_v1_projects__projectId__characters__characterId__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "characterId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Characterid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CharacterUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CharacterResponseEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "CHARACTER_NOT_FOUND": {
+                    "summary": "캐릭터를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "CHARACTER_NOT_FOUND",
+                        "details": {},
+                        "message": "캐릭터를 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `CHARACTER_NOT_FOUND` — 캐릭터를 찾을 수 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "DUPLICATE_CHARACTER_CANDIDATE": {
+                    "summary": "같은 이름의 확정된 캐릭터가 이미 있습니다",
+                    "value": {
+                      "error": {
+                        "code": "DUPLICATE_CHARACTER_CANDIDATE",
+                        "details": {},
+                        "message": "같은 이름의 확정된 캐릭터가 이미 있습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `DUPLICATE_CHARACTER_CANDIDATE` — 같은 이름의 확정된 캐릭터가 이미 있습니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "캐릭터 이름을 고친다",
+        "tags": [
+          "ASS"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/characters/{characterId}/edit-history": {
+      "get": {
+        "description": "확정 시 승계된 속성과 이후 이름 변경. 오래된 것부터.",
+        "operationId": "character_history_v1_projects__projectId__characters__characterId__edit_history_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "characterId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Characterid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "페이지 크기. 기본 20 · 최대 100",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "페이지 크기. 기본 20 · 최대 100",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "이전 응답의 `meta.next_cursor`. 첫 페이지는 비운다",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "이전 응답의 `meta.next_cursor`. 첫 페이지는 비운다",
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditHistoryEntryPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "CHARACTER_NOT_FOUND": {
+                    "summary": "캐릭터를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "CHARACTER_NOT_FOUND",
+                        "details": {},
+                        "message": "캐릭터를 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `CHARACTER_NOT_FOUND` — 캐릭터를 찾을 수 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "캐릭터 편집 이력 (확정 후)",
+        "tags": [
+          "ASS"
         ]
       }
     },

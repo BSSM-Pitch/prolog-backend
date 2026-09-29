@@ -53,6 +53,7 @@ def resolve(spec: dict[str, Any], schema: dict[str, Any] | None) -> dict[str, An
 
 
 def spec_op(spec: dict[str, Any], method: str, path: str) -> dict[str, Any] | None:
+    path = path.partition("?")[0]  # 쿼리스트링은 경로 템플릿에 없다
     for template, methods in spec["paths"].items():
         if re.fullmatch(re.sub(r"\{[^}]+\}", "[^/]+", template), "/v1" + path):
             return methods.get(method.lower())

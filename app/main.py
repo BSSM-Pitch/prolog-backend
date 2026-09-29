@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from starlette.exceptions import HTTPException
 
 from app.api.router import router as api_router
+from app.authoring.ass.router import router as ass_router
 from app.content.manuscripts.router import router as manuscripts_router
 from app.core import openapi
 from app.core.errors import AppError
@@ -85,6 +86,7 @@ for _router in (
     projects_router,
     notifications_router,
     manuscripts_router,
+    ass_router,
     api_router,
 ):
     app.include_router(_router, prefix="/v1")

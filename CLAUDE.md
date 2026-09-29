@@ -16,8 +16,8 @@
 | 서비스 | StoryForge — AI 기반 스토리 구조 관리 IDE |
 | 레포 경로 | `~/Desktop/전공동` |
 | 스택 | FastAPI · PostgreSQL · SQLAlchemy(asyncpg) · Alembic(psycopg) · uv |
-| 현재 단계 | **Phase 2a 완료** (잡·워커 내구성). 다음은 Phase 2b — REX · `ai` 워커 · LLM 게이트웨이 |
-| git | `a6ea4e9` 첫 커밋(84파일) → `d00610a` CLAUDE.md 복원 → `f586427` AUTH v0.2 → `66b4f67` 감사 P0 → `3f0eca7` 감사 P1 → `87c9006` 조합 레이어 → `a382a5c` 감사 P2 → `8d20b20` 감사 P3 → `a381109` OpenAPI → `583e00a` PG16 → `ec649f0` Phase 1 인프라 → `205d0dd` manuscript_count → `73427d3` NOTI → `c10290d` OpenAPI → `a2d4471` MSU·챕터 → `5a2d79f` 업로드 콜백·s3mock·복합 FK → `62d5837` 추출 워커 → `a19dd01` OpenAPI 계약·목록 커서·팀 유래 멤버 → `cf65615` 검증 스크립트 → `56c197f` 스키마 이름·seed → Phase 2a 잡 내구성(이 문서와 같은 커밋) |
+| 현재 단계 | **Phase 2a 완료** + **ASS 수동 경로**(AI 없이 만들 수 있는 캐릭터 절반). 다음은 Phase 2b — REX · `ai` 워커 · LLM 게이트웨이 |
+| git | `a6ea4e9` 첫 커밋(84파일) → `d00610a` CLAUDE.md 복원 → `f586427` AUTH v0.2 → `66b4f67` 감사 P0 → `3f0eca7` 감사 P1 → `87c9006` 조합 레이어 → `a382a5c` 감사 P2 → `8d20b20` 감사 P3 → `a381109` OpenAPI → `583e00a` PG16 → `ec649f0` Phase 1 인프라 → `205d0dd` manuscript_count → `73427d3` NOTI → `c10290d` OpenAPI → `a2d4471` MSU·챕터 → `5a2d79f` 업로드 콜백·s3mock·복합 FK → `62d5837` 추출 워커 → `a19dd01` OpenAPI 계약·목록 커서·팀 유래 멤버 → `cf65615` 검증 스크립트 → `56c197f` 스키마 이름·seed → `a9e979b` Phase 2a 잡 내구성 → ASS 수동 경로(이 문서와 같은 커밋) |
 
 ### 실행
 
@@ -57,6 +57,10 @@ cd ~/Desktop/전공동 && uv run ruff check . && uv run ruff format --check . \
 4. **비밀번호를 저장하지 않는다.** Google OAuth 단일이다. bcrypt/argon2를 되살리지 않는다.
 5. **디스크 여유를 확인하고 시작한다.** 2026-09 작업 중 ENOSPC로 전체가 멈춘 적이 있다.
    `df -h /System/Volumes/Data`가 5GB 미만이면 작업을 시작하지 않는다.
+   **Desktop 은 iCloud 동기화 대상이다.** 디스크가 차면 macOS 가 파일을 클라우드로 내보낸다(dataless).
+   그러면 `.venv` 의 파이썬 파일 import 가 수십 분 멈추다 `Errno 60 Operation timed out` 로 죽는다
+   — 테스트가 이유 없이 멈추면 이것부터 본다: `find . -flags +dataless | wc -l`.
+   복구: 저장소 파일은 `brctl download <path>`, `.venv` 는 `uv sync --reinstall`.
 
 ---
 
@@ -69,7 +73,7 @@ cd ~/Desktop/전공동 && uv run ruff check . && uv run ruff format --check . \
 | — | `app.api` | 조합 레이어. 모든 Ring 위에 있다 (아래 규칙 참조) |
 | 1 | `app.platform_` | `auth` · `teams` · `projects` · `notifications` |
 | 2 | `app.content` | `manuscripts` — 원고·챕터·추출 (Phase 1 완료) |
-| 3 | `app.authoring` | `nlcd` · `ass` · `rex` |
+| 3 | `app.authoring` | `nlcd` · `ass`(캐릭터 초안·확정 — 수동 경로) · `rex` |
 | 4 | `app.insight` | `scds` · `ssm` · `aiq` · `rcv` · `fts` |
 
 **경로 주의:** AUTH 모듈은 `app/platform_/auth/`다. `app/modules/auth/`가 아니다.
@@ -108,6 +112,10 @@ import가 아니라 SQL이므로 `core-is-a-leaf` 계약에 걸리지 않는다.
 **두 개 이상 모듈의 데이터가 한 응답에 필요할 때만 여기로 올린다.** 그 외 엔드포인트는
 모듈 라우터에 남는다. 모듈끼리는 서로를 import 하지 못하지만(규칙 3) 이 레이어는 모든 Ring
 위에 있어 각 모듈을 호출해 응답을 합칠 수 있다. 반대 방향(모듈 → `api`)은 `rings` 계약이 막는다.
+
+**캐릭터 초안은 ASS 소유다** (`app/authoring/ass/models.py`). ERD 가 "ASS 의 핵심" 으로 두고 ASS 가
+편집·확정한다. NLCD 는 추출 결과를 넘길 뿐이고, `ring3-independent` 때문에 import 가 아니라
+이벤트로 넘긴다(2b). 한때 초안 모델이 `nlcd/models.py` 에 있었다 — 그대로 두면 확정이 규칙 3 을 어긴다.
 
 현재 올라와 있는 것: 멤버 목록(`username` 합성) · 초대 생성(`invited_email` → 사용자 조회) ·
 `GET /teams/{teamId}/projects`(TEAM 경로에 PRJ 데이터).
@@ -446,6 +454,11 @@ Phase 1 착수 전 필요: localstack 또는 elasticmq. Redis도 아직 아무�
 좀비 회수(attempt 대조) · 인프라 실패 자동 재시도 · 업로드 콜백 유실 스위퍼. 실물에서
 `durability.py poison`·`dup` 둘 다 **통과**(재현되지 않음), 같은 시나리오가 `tests/test_durability.py` 에 있다.
 **남겨 둔 것:** 받은 사람이 초대 토큰을 얻을 경로 없음(알림에 토큰 없음·메일 없음).
+**완료 (ASS 수동 경로):** `origin='user_added'` 경로 15 오퍼레이션 — 빈 초안 · 초안 조회/목록/이름 수정 ·
+항목 추가/수정/삭제 · 확정(create/merge) · 폐기 · 초안 이력(항목별 `item_id` 필터) · 캐릭터 목록/조회/
+이름 수정/삭제 · 캐릭터 이력. `0004`(`source_job_id` 이름 · 빈 초안 `source_text` NULL ·
+`characters.created_from_draft_id`/`confirmed_at` · 이력 `item_id`). e2e 에 캐릭터 경로, seed 에
+확정 캐릭터 2 · 검토 대기 초안 1(화면 23 의 윤서). **AI 경로(NLCD forward · suggestions)는 없다.**
 **다음 (Phase 2b):** REX · `ai` 워커 · LLM 게이트웨이 · 핸들러 공통 계약 · `/retry` API ·
 `jobs.idempotency_key`. LLM 공급자 · 비용 컬럼(`model`·`token_in/out`, DDL 에 없음) 결정 필요.
 
@@ -463,7 +476,14 @@ Phase 1 착수 전 필요: localstack 또는 elasticmq. Redis도 아직 아무�
    - TEAM·PRJ 멤버 목록 · 챕터 목록 · TEAM 초대 목록: 명세에 커서 여부가 적혀 있지 않다.
      §6.6 에 따라 앞의 셋은 커서로 바꿨고, **TEAM 초대 목록(`GET /teams/{teamId}/invitations`)은
      아직 전체 반환이다**
-   - **authoring ERD: `character_drafts.status` 의 `pending`(ERD 는 `editing`) ·
+   - **ASS (이번 구현에서 명세와 다르게 한 것 — 승인 필요):** 확정 캐릭터 속성을 `string[]` 이 아니라
+     `{attribute_id, field, value, evidence, origin}` 로 반환(ERD: 확정 후에도 origin 이 보여야 한다) ·
+     영향 관계를 `target/type/status` 가 아니라 `value` 하나로(DDL·화면) · 항목에 `evidence` 추가(화면
+     "원문 근거") · 항목 PATCH 에 `field`(화면 "카테고리" 입력) · `source_session_id` → `source_job_id`(ERD) ·
+     캐릭터 `PATCH`(이름)·`DELETE` 는 ASS 명세에 없다(요청으로 추가. SCDS 의 `PUT .../characters/{id}` 와
+     겹칠 수 있다) · 이력 목록 커서 · 이력 항목에 `history_id`·`before/after_value`·`item_id`·`edited_by` ·
+     폐기 응답이 `{draft_id, status}` 가 아니라 초안 전체 · ERD 의 `actor_user_id` 는 DDL `edited_by`
+   - **authoring ERD: `character_drafts.status` 의 `pending`(ERD 는 `editing`, API 는 명세대로 `pending_review`) ·
      `character_drafts.source_text` · `world_rules.title`·`category` — ERD 에 없거나 다르지만
      현재 DDL 이 낫다고 판단해 유지했다 (`0002`)**
    - **MSU: `source_type`(`file`→`upload`) · `file_url`→`file_key` · `status` enum ·
@@ -484,7 +504,7 @@ Phase 1 착수 전 필요: localstack 또는 elasticmq. Redis도 아직 아무�
 
 ## 10. 반드시 추가할 테스트
 
-현재 30 경로 · 48 오퍼레이션에 테스트 90개다 (`/v1/health` 제외).
+현재 40 경로 · 63 오퍼레이션에 테스트 98개다 (`/v1/health` 제외).
 **TEAM·PRJ 24개 오퍼레이션에 빠짐없이 테스트가 닿는다.**
 
 이 절의 목록은 비었다 — 5종 모두 들어갔다. 리프레시 토큰 재사용 거부 · 테넌트 격리 ·

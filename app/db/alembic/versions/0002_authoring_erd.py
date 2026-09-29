@@ -90,6 +90,14 @@ CREATE INDEX world_rules_keywords_gin
 # 되돌리면 재설계된 컬럼의 **데이터는 사라진다**(jsonb ↔ 개별 컬럼은 무손실 변환이 아니다).
 # 구조만 0001 모양으로 복원한다.
 DOWNGRADE = """
+-- 0001 모양으로 옮길 수 없는 행을 먼저 치운다. 없으면 NOT NULL·CHECK 복원에서 멈춘다.
+-- 재설계된 세 테이블은 버린다(위 주석대로 무손실 변환이 아니다). world_rules.origin 은 되돌린다.
+DELETE FROM authoring.character_edit_histories;
+DELETE FROM authoring.character_draft_items;
+DELETE FROM authoring.character_attributes;
+UPDATE authoring.world_rules
+    SET origin = CASE origin WHEN 'ai_extracted' THEN 'ai' ELSE 'manual' END;
+
 DROP INDEX authoring.world_rules_keywords_gin;
 ALTER TABLE authoring.world_rules
     ALTER COLUMN description DROP NOT NULL,

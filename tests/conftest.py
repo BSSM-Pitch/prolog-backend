@@ -44,9 +44,26 @@ def _ensure_database() -> None:
             conn.execute(f'CREATE DATABASE "{dbname}"')
 
 
+def _empty_tables() -> None:
+    """downgrade 전에 지난 실행이 남긴 행을 비운다(clean_tables 는 테스트 **시작** 에 비운다).
+
+    downgrade 는 구조를 되돌린다 — 행이 있으면 NOT NULL 복원 같은 곳에서 멈춘다.
+    `pytest_configure` 가드가 이 DB 가 `_test` 임을 이미 확인했다.
+    """
+    with psycopg.connect(SYNC_URL, autocommit=True) as conn:
+        rows = conn.execute(
+            "SELECT table_schema, table_name FROM information_schema.tables "
+            "WHERE table_schema = ANY(%s) AND table_type = 'BASE TABLE'",
+            (list(SCHEMAS),),
+        ).fetchall()
+        if rows:
+            conn.execute(f"TRUNCATE {', '.join(f'"{s}"."{t}"' for s, t in rows)} CASCADE")
+
+
 @pytest.fixture(scope="session", autouse=True)
 def migrate() -> Iterator[None]:
     _ensure_database()
+    _empty_tables()
     cfg = Config("alembic.ini")
     command.downgrade(cfg, "base")
     command.upgrade(cfg, "head")
