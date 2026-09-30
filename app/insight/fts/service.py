@@ -36,6 +36,7 @@ from app.insight.fts.schemas import (
     Priority,
     SimilarCandidate,
     Status,
+    StatusCounts,
     TimelineTrack,
     UnresolvedItem,
     UnresolvedResponse,
@@ -193,6 +194,17 @@ def _overlap(stmt: Any, chapter_from: int | None, chapter_to: int | None) -> Any
     if chapter_from is not None:
         stmt = stmt.where((payoff.is_(None)) | (payoff >= chapter_from))
     return stmt
+
+
+async def status_counts(session: AsyncSession, project_id: UUID) -> StatusCounts:
+    stmt = (
+        select(Foreshadowing.status, func.count())
+        .where(Foreshadowing.project_id == project_id)
+        .group_by(Foreshadowing.status)
+    )
+    counts = {"unresolved": 0, "resolved": 0, "orphaned": 0}
+    counts.update({status: n for status, n in await session.execute(stmt)})
+    return StatusCounts(**counts)
 
 
 # --- 복선 CRUD --------------------------------------------------------------

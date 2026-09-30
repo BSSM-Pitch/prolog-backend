@@ -11,6 +11,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, StringConstraints
 
+from app.core.response import Page, PageMeta
+
 Status = Literal["unresolved", "resolved", "orphaned"]
 Role = Literal["setup", "linked", "payoff"]
 Priority = Literal["low", "medium", "high"]
@@ -111,3 +113,21 @@ class ChapterForeshadowing(BaseModel):
     foreshadowing_id: UUID
     title: str
     role: Role
+
+
+class StatusCounts(BaseModel):
+    """화면 04 의 "미회수 3건 · 회수 완료 5건". 명세에 없다(제안 목록)."""
+
+    unresolved: int
+    resolved: int
+    orphaned: int
+
+
+class ForeshadowingPageMeta(PageMeta):
+    status_counts: StatusCounts = Field(
+        description="필터와 무관한 이 프로젝트의 상태별 복선 수(현황 카드용)"
+    )
+
+
+class ForeshadowingPage(Page[ForeshadowingResponse]):
+    meta: ForeshadowingPageMeta

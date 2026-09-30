@@ -943,6 +943,52 @@
         "title": "ForeshadowingCreate",
         "type": "object"
       },
+      "ForeshadowingPage": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/ForeshadowingResponse"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ForeshadowingPageMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ForeshadowingPage",
+        "type": "object"
+      },
+      "ForeshadowingPageMeta": {
+        "properties": {
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "다음 페이지 커서. null 이면 마지막 페이지다. 다음 요청의 `cursor` 에 넣는다",
+            "title": "Next Cursor"
+          },
+          "status_counts": {
+            "$ref": "#/components/schemas/StatusCounts",
+            "description": "필터와 무관한 이 프로젝트의 상태별 복선 수(현황 카드용)"
+          }
+        },
+        "required": [
+          "next_cursor",
+          "status_counts"
+        ],
+        "title": "ForeshadowingPageMeta",
+        "type": "object"
+      },
       "ForeshadowingResponse": {
         "properties": {
           "chapters": {
@@ -1075,26 +1121,6 @@
           "data"
         ],
         "title": "ForeshadowingResponseEnvelope",
-        "type": "object"
-      },
-      "ForeshadowingResponsePage": {
-        "properties": {
-          "data": {
-            "items": {
-              "$ref": "#/components/schemas/ForeshadowingResponse"
-            },
-            "title": "Data",
-            "type": "array"
-          },
-          "meta": {
-            "$ref": "#/components/schemas/PageMeta"
-          }
-        },
-        "required": [
-          "data",
-          "meta"
-        ],
-        "title": "ForeshadowingResponsePage",
         "type": "object"
       },
       "ForeshadowingUpdate": {
@@ -2600,6 +2626,30 @@
           "email"
         ],
         "title": "SignupTicketResponse",
+        "type": "object"
+      },
+      "StatusCounts": {
+        "description": "화면 04 의 \"미회수 3건 · 회수 완료 5건\". 명세에 없다(제안 목록).",
+        "properties": {
+          "orphaned": {
+            "title": "Orphaned",
+            "type": "integer"
+          },
+          "resolved": {
+            "title": "Resolved",
+            "type": "integer"
+          },
+          "unresolved": {
+            "title": "Unresolved",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "unresolved",
+          "resolved",
+          "orphaned"
+        ],
+        "title": "StatusCounts",
         "type": "object"
       },
       "TeamCreate": {
@@ -8819,7 +8869,7 @@
     },
     "/v1/projects/{projectId}/foreshadowings": {
       "get": {
-        "description": "먼저 만든 복선부터. 커서 페이지네이션이다.",
+        "description": "먼저 만든 복선부터. 커서 페이지네이션이다.\n\n`meta.status_counts` 는 필터와 무관한 프로젝트 전체의 상태별 개수다(화면 04 복선 현황).",
         "operationId": "list_foreshadowings_v1_projects__projectId__foreshadowings_get",
         "parameters": [
           {
@@ -8963,7 +9013,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ForeshadowingResponsePage"
+                  "$ref": "#/components/schemas/ForeshadowingPage"
                 }
               }
             },

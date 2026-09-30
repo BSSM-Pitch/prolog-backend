@@ -165,6 +165,12 @@ async def test_unresolved_advisories_and_timeline(client: AsyncClient) -> None:
     assert len(ranged.json()["data"]) == 3
     resolved = await client.get(f"{base}?status=resolved", headers=h)
     assert [f["title"] for f in resolved.json()["data"]] == ["두 번째 기록 원장"]
+    # 현황 카드: 필터와 무관한 프로젝트 전체 개수
+    assert resolved.json()["meta"]["status_counts"] == {
+        "unresolved": 3,
+        "resolved": 1,
+        "orphaned": 0,
+    }
 
 
 async def test_chapter_deletion_orphans_and_unresolves(

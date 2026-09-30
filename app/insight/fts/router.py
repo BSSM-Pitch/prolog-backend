@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Path, Query, status
 from app.core import errors
 from app.core.deps import require_project_role
 from app.core.pagination import DEFAULT_LIMIT, Cursor, Limit, decode_cursor, next_cursor
-from app.core.response import Envelope, Page, ok, raises
+from app.core.response import Envelope, ok, raises
 from app.db.session import Session
 from app.insight.fts import service
 from app.insight.fts.schemas import (
@@ -14,6 +14,7 @@ from app.insight.fts.schemas import (
     ChapterBody,
     ChapterForeshadowing,
     ForeshadowingCreate,
+    ForeshadowingPage,
     ForeshadowingResponse,
     ForeshadowingUpdate,
     LinkBody,
@@ -121,7 +122,7 @@ async def of_chapter(
     ALL,
     dependencies=[Viewer],
     summary="복선 목록",
-    response_model=Page[ForeshadowingResponse],
+    response_model=ForeshadowingPage,
 )
 async def list_foreshadowings(
     project_id: ProjectId,
@@ -134,7 +135,10 @@ async def list_foreshadowings(
     linked_character_id: UUID | None = None,
     linked_event_id: UUID | None = None,
 ) -> dict[str, Any]:
-    """먼저 만든 복선부터. 커서 페이지네이션이다."""
+    """먼저 만든 복선부터. 커서 페이지네이션이다.
+
+    `meta.status_counts` 는 필터와 무관한 프로젝트 전체의 상태별 개수다(화면 04 복선 현황).
+    """
     rows = await service.list_foreshadowings(
         session,
         project_id,
@@ -147,6 +151,7 @@ async def list_foreshadowings(
         linked_event_id=linked_event_id,
     )
     page, meta = next_cursor(rows, limit)
+    meta["status_counts"] = (await service.status_counts(session, project_id)).model_dump()
     return ok(await service.to_responses(session, page), meta)
 
 

@@ -482,56 +482,85 @@ AI 추출(`rule-extractions` 1~4)은 2b. seed 에 규칙 2(화면 21).
 **다음:**
 
 1. **명세 수정 제안을 Notion 에 반영** (코드가 아니라 문서 작업이다)
-   - TEAM·PRJ: PRJ status 에 `revoked` 없음, PRJ 초대 `expires_at` 없음,
-     `DUPLICATE_INVITATION`·`INVITATION_NOT_PENDING` 미정의, `EMAIL_CONFLICT`(409),
-     ERD 의 `token_hash` 표기, TEAM §4.11 권한 미지정
-   - AUTH: 초대 생성 응답의 `token` 필드, 수락 요청 본문
-   - **PRJ §4.6 멤버 목록: 팀 프로젝트면 팀원을 포함하고 `source`(`project`|`team`) 로
-     출처를 표시한다(`a19dd01`). 팀 유래 멤버의 `role` 은 항상 `editor`, `joined_at` 은 팀
-     가입 시각이다. 명세에 없는 필드다.** PRJ §4.9·§4.11(역할 변경·내보내기)은 팀 유래 멤버에
-     `MEMBER_NOT_FOUND` 다 — 팀에서 처리한다는 서술이 필요하다
-   - TEAM·PRJ 멤버 목록 · 챕터 목록 · TEAM 초대 목록: 명세에 커서 여부가 적혀 있지 않다.
-     §6.6 에 따라 앞의 셋은 커서로 바꿨고, **TEAM 초대 목록(`GET /teams/{teamId}/invitations`)은
-     아직 전체 반환이다**
-   - **ASS (이번 구현에서 명세와 다르게 한 것 — 승인 필요):** 확정 캐릭터 속성을 `string[]` 이 아니라
-     `{attribute_id, field, value, evidence, origin}` 로 반환(ERD: 확정 후에도 origin 이 보여야 한다) ·
-     영향 관계를 `target/type/status` 가 아니라 `value` 하나로(DDL·화면) · 항목에 `evidence` 추가(화면
-     "원문 근거") · 항목 PATCH 에 `field`(화면 "카테고리" 입력) · `source_session_id` → `source_job_id`(ERD) ·
-     캐릭터 `PATCH`(이름)·`DELETE` 는 ASS 명세에 없다(요청으로 추가. SCDS 의 `PUT .../characters/{id}` 와
-     겹칠 수 있다) · 이력 목록 커서 · 이력 항목에 `history_id`·`before/after_value`·`item_id`·`edited_by` ·
-     폐기 응답이 `{draft_id, status}` 가 아니라 초안 전체 · ERD 의 `actor_user_id` 는 DDL `edited_by`
-   - **REX:** `title` 필수(명세 WorldRule 에 없음 — 화면 21 이 모든 규칙을 "R01 · 제목" + 설명으로 보여준다) ·
-     `category` 는 API 에 내지 않는다(화면 미사용, 컬럼은 남김) · 목록 커서(명세 미기재) ·
-     `extraction_id` 는 DDL `extraction_job_id` · 응답에 `title`·`source_chapter_no`·`created_at` 추가 ·
-     명세에 단건 조회가 없어 만들지 않았다 · 화면의 "확정 10 · 검토 대기 2" 에서 검토 대기는 AI 추출 후보다
-     (world_rules 가 아니라 추출 잡 결과에 있다 — 명세 §4.4)
-   - **FTS:** 챕터를 번호가 아니라 **id 로 받는다**(원고가 여럿이면 번호가 겹친다 — `setup_chapter_id` ·
+
+   표시: **[코드]** 코드가 맞음 → Notion 을 코드에 맞게 고친다 · **[명세]** 명세가 맞음 → 코드를
+   고쳐야 한다(코드 작업이 남았다) · **[둘 다]** 명세에 먼저 추가하고 코드가 따른다.
+
+   **AUTH**
+   - [코드] §3·§4 에 남은 로컬 가입/로그인·네이버·비밀번호 재설정 서술 삭제 — v0.2 계약은 이 문서 §5
+   - [둘 다] 이메일 UNIQUE 충돌(`users_email_lower_uq`) 코드 없음 — `EMAIL_CONFLICT`(409) 추가 후 매핑.
+     지금은 500 이다(§12)
+
+   **TEAM · PRJ**
+   - [코드] 초대 생성 응답의 `token` 원문 · 수락 요청 본문 `{"token"}` (§6.4 `token_hash` 방식)
+   - [코드] ERD 의 `token_hash` 표기 — ERD 에 없다(DDL 이 정본)
+   - [코드] PRJ 초대 status 에 `revoked`(취소) · PRJ 초대 `expires_at` 이 명세에 없다
+   - [코드] `DUPLICATE_INVITATION`(409) · `INVITATION_NOT_PENDING`(409) 이 명세 에러 코드 표에 없다
+   - [코드] TEAM §4.11 권한 미지정 — 코드가 정한 권한을 적는다
+   - [코드] PRJ §4.6 멤버 목록: 팀 프로젝트면 팀원 포함 + `source`(`project`|`team`), 팀 유래 멤버는
+     `role = editor` · `joined_at` = 팀 가입 시각. §4.9·§4.11(역할 변경·내보내기)은 팀 유래 멤버에
+     `MEMBER_NOT_FOUND` — "팀에서 처리한다" 서술 필요 (`a19dd01`)
+   - [코드] TEAM·PRJ 멤버 목록 · 챕터 목록이 커서라는 것을 명세에 적는다
+   - [명세] TEAM 초대 목록(`GET /teams/{teamId}/invitations`)이 아직 전체 반환 — §6.6 커서로 바꿔야 한다
+
+   **MSU**
+   - [코드] `source_type` `file`→`upload` · `file_url`→`file_key` · status `draft|processing|ready|failed` ·
+     `Manuscript.error` 삭제(사유는 잡의 `error`) · 업로드 방식 multipart → presigned URL + `.../file/complete`
+   - [코드] 챕터 경로 `/manuscripts/{m}/chapters` → `/projects/{p}/chapters`
+   - [코드] 지원 형식 목록(`txt`·`docx`)을 명세에 적는다. 그 밖은 발급 단계에서 `UNSUPPORTED_FILE_FORMAT`
+     (`details.supported`)
+   - [코드] `FILE_TOO_LARGE`(413) 도달 불가 — presigned PUT 은 크기를 막지 못한다. 삭제하거나, 필요하면
+     presigned POST(content-length-range)로 바꿀 때 되살린다
+   - [코드] "업로드된 파일 없음"(complete 콜백인데 객체가 없음) 전용 코드가 없다 — 지금은 `INVALID_INPUT`
+   - [코드] 편집 이력 §4.10: 목록에 본문 포함 · `version_id`·`version_no`·`source`·`char_count`·`updated_at`
+     필드 · 디바운스 정책(5분 창 · 길이 변화 1,000자 · 창 안 덮어쓰기 · 업로드는 항상 새 스냅샷)을 적는다.
+     되돌리기(restore)는 확장 항목 그대로
+   - [코드] content ERD 의 `manuscript_versions` 에 `project_id`·`chapter_id`·`version_no`·`char_count`·
+     `source` 가 없다
+
+   **NOTI**
+   - [코드] 설정 PATCH 는 보낸 채널만 바꾼다 · 설정 조회는 다섯 유형 고정 배열(페이지 없음)
+   - [코드] 이메일 연동(§2.3 · §3 8~10 · `EMAIL_INTEGRATION_NOT_FOUND`·`EMAIL_ALREADY_CONNECTED`) —
+     **구현하지 않기로 확정**(§12). 명세에서 빼거나 "보류" 로 표시. 화면 31 의 연동 영역도 같다
+
+   **ASS**
+   - [코드] 확정 캐릭터 속성을 `string[]` 이 아니라 `{attribute_id, field, value, evidence, origin}` 로
+     (ERD: 확정 후에도 origin 이 보여야 한다)
+   - [코드] 영향 관계를 `target/type/status` 가 아니라 `value` 하나로(DDL · 화면 23)
+   - [코드] 초안 항목에 `evidence`(화면 "원문 근거") · 항목 PATCH 에 `field`(화면 "카테고리")
+   - [코드] `source_session_id` → `source_job_id`(ERD)
+   - [코드] 캐릭터 `PATCH`(이름)·`DELETE` 가 ASS 명세에 없다 — 추가하고 SCDS `PUT .../characters/{id}` 와
+     역할을 나눈다
+   - [코드] 편집 이력 목록 커서 · 항목에 `history_id`·`before/after_value`·`item_id`·`edited_by` ·
+     초안 이력의 `item_id` 필터(화면 "편집 이력 N건" 은 항목 하나의 이력)
+   - [코드] 폐기 응답이 `{draft_id, status}` 가 아니라 초안 전체
+   - [코드] `create_new` 는 동명 캐릭터를 만든다(화면 37). ERD 의 `UNIQUE (project_id, lower(name))` 를
+     "앱 레벨 409" 로 고친다(0005)
+   - [코드] 초안 status: API `pending_review`(명세) · DB `pending` · ERD `editing` — ERD 를 맞춘다.
+     ERD 에 `character_drafts.source_text` 추가 · `actor_user_id` → DDL `edited_by`
+   - [코드] SCDS 명세의 `traits`/`values`/`influences` → ASS 이름(§12 결정, SCDS 명세 수정)
+
+   **REX**
+   - [코드] `title` 필수(화면 21 이 모든 규칙을 "R01 · 제목" + 설명으로 보여준다) · 응답에 `title`·
+     `source_chapter_no`·`created_at` · `category` 는 API 에 내지 않는다(화면 미사용)
+   - [코드] `extraction_id` 는 DDL `extraction_job_id` · 목록 커서 · 명세에 단건 조회가 없다(그대로)
+   - [코드] ERD 의 `world_rules` 에 `title`·`category` 가 없다
+
+   **FTS**
+   - [코드] 챕터를 번호가 아니라 **id 로 받는다**(원고가 여럿이면 번호가 겹친다): `setup_chapter_id` ·
      `payoff_chapter_id` · `chapter_id`, 경로 `/chapters/{chapterId}/foreshadowings` ·
-     `/linked-chapters/{chapterId}`). 응답은 명세대로 번호를 주고 `chapters[{chapter_id, chapter_no, role}]`
-     를 덧붙인다 · status 에 `orphaned`(ERD 12항) · 연결 챕터 추가·회수 지정/취소 응답이 복선 전체 ·
-     안내 문구는 화면 24("…장에 설치한 … 회수를 고려해 보세요") · 미회수는 현재 챕터 이전 설치만 ·
-     `sort` 두 값이 같은 순서 · 사건 연결(`target_type=event`) 미지원 · 링크 해제 경로가
-     `/links/character/{targetId}` · 타임라인·미회수·안내는 페이지로 자르지 않는다
-   - **insight ERD:** `foreshadowing_chapters.chapter_id` 의 `ON DELETE RESTRICT` 와 `orphaned` 상태가
-     서로 모순이다(RESTRICT 면 설치 챕터가 지워지지 않는다). FK 없음 + 이벤트로 바꿨다(0006).
-     `setup_chapter_no`·`payoff_chapter_no` 캐시도 챕터 번호 변경 때 낡아서 없앴다
-   - **NOTI:** 설정 PATCH 는 보낸 채널만 바꾼다(명세 예시는 둘 다 보낸다) · 설정 조회는 다섯 유형 고정 배열
-     (페이지 없음) · 화면 31 의 "Gmail / 네이버 메일 연동" 은 AUTH v0.2(naver 제거)와 충돌한다 — 연동을 할지,
-     한다면 gmail 만인지 명세 결정이 필요하다
-   - **MSU 편집 이력:** 목록 항목에 본문 전문을 담는다(화면 32 가 고른 스냅샷의 본문을 보여주는데 명세에 단건
-     조회가 없다 — 목록이 무거워지면 단건 조회 + `VERSION_NOT_FOUND` 를 명세에 추가) · `source`·`version_no`·
-     `char_count`·`updated_at`(덮어쓴 시각) 은 명세에 없다 · 되돌리기(restore)는 명세 확장 항목이라 만들지 않았다 ·
-     화면의 "27장" 이 무엇인지(스냅샷 시점 챕터 수? 편집 위치?) 불명 — 응답에 없다
-   - **authoring ERD: `character_drafts.status` 의 `pending`(ERD 는 `editing`, API 는 명세대로 `pending_review`) ·
-     `character_drafts.source_text` · `world_rules.title`·`category` — ERD 에 없거나 다르지만
-     현재 DDL 이 낫다고 판단해 유지했다 (`0002`)**
-   - **MSU: `source_type`(`file`→`upload`) · `file_url`→`file_key` · `status` enum ·
-     업로드 방식(multipart→presigned URL + `.../file/complete` 콜백) · `Manuscript.error` 삭제 ·
-     챕터 경로(`/manuscripts/{m}/chapters`→`/projects/{p}/chapters`) ·
-     `FILE_TOO_LARGE`(413) 도달 불가 · "업로드된 파일 없음" 코드 부재(지금은 `INVALID_INPUT`) ·
-     **추출 지원 형식 목록 부재** — `UNSUPPORTED_FILE_FORMAT` 이 전제하는 목록이 명세에 없다.
-     지금은 `txt`·`docx` 2종이고 `pdf` 는 발급은 되지만 추출에서 실패한다**
-2. ~~NOTI 알림 설정~~ 해소(`0007`). 이메일 연동(§3 8~10)은 발송 경로가 없고 AUTH v0.2 가 naver 를 뺐다 — 만들지 않았다
+     `/linked-chapters/{chapterId}`. 응답은 번호 + `chapters[{chapter_id, chapter_no, role}]`
+   - [코드] status 에 `orphaned`(설치 챕터 삭제, 명세 12항) · 연결 챕터 추가·회수 지정/취소 응답이 복선 전체
+   - [코드] 목록 `meta.status_counts`(`unresolved`·`resolved`·`orphaned`, 필터 무관) — 화면 04 "미회수 3건 ·
+     회수 완료 5건"
+   - [코드] 안내 문구는 화면 24 · 미회수 목록은 현재 챕터 이전에 설치된 것만 · 타임라인·미회수·안내는 페이지 없음
+   - [코드] 미회수 `sort` 두 값(`elapsed_desc`·`setup_chapter_asc`)이 같은 순서다 — 하나로 합친다
+   - [코드] 사건 연결(`target_type=event`)은 SCDS 이후 · 링크 해제 경로 `/links/character/{targetId}`
+   - [코드] insight ERD: `foreshadowing_chapters.chapter_id` 의 `ON DELETE RESTRICT` 는 `orphaned` 와 모순
+     (설치 챕터가 지워지지 않는다) → FK 없음 + `chapter.deleted` 이벤트(0006). `setup_chapter_no`·
+     `payoff_chapter_no` 캐시는 챕터 번호 변경 때 낡아서 없앴다
+
+2. ~~NOTI 알림 설정~~ 해소(`0007`). 이메일 연동은 구현하지 않기로 확정(§12)
 3. ~~`manuscript_versions` 디바운스~~ 결정·구현(`0008`, `app/content/manuscripts/versions.py`)
 
 **완료 (PG16 전환):** compose 를 5433 으로 고정하고 `pgdata` 볼륨을 붙였다. 빈 볼륨에
@@ -600,5 +629,8 @@ AI 추출(`rule-extractions` 1~4)은 2b. seed 에 규칙 2(화면 21).
 - **결정 — SCDS 이름 매핑은 별칭 없이 ASS 이름으로 통일한다** (`personality_tags`·`core_values`·
   `influence_relations`·`emotion_keywords`). ERD 가 이미 그렇게 결론냈고, 프론트가 아직 붙지 않아
   부채가 없다. SCDS 명세의 `traits`/`values`/`influences` 는 Notion 수정 대상이다
+- **결정 — 이메일 연동(NOTI §2.3 · §3 8~10, 화면 31 "이메일 연동") 은 구현하지 않는다.** AUTH v0.2 가
+  네이버를 제거했고 메일 발송 경로가 없다. `email_enabled` 설정은 저장만 하고 아무 것도 보내지 않는다.
+  `platform.email_integrations` 테이블은 0001 에 남아 있지만 쓰지 않는다
 - 프론트엔드 계약 미대조. `# ASSUMPTION:` 주석으로 표시되어 있으나,
   어긋나면 Phase 0 전체를 손봐야 한다 (ROADMAP 113행)
