@@ -180,6 +180,7 @@ def run(client: httpx.Client) -> None:
 
     characters(client, b, project_id)
     world_rules(client, b, project_id)
+    foreshadowings(client, b, project_id, ms["manuscript_id"])
 
 
 def characters(client: httpx.Client, t: str, pid: str) -> None:
@@ -282,6 +283,54 @@ def world_rules(client: httpx.Client, t: str, pid: str) -> None:
         raise Blocked("규칙 PATCH 가 키워드만 바꾸지 않았다")
     call("규칙 삭제", client, "DELETE", path, 204, t)
     call("삭제된 규칙 수정", client, "PATCH", path, 404, t, json={"title": "x"})
+
+
+def foreshadowings(client: httpx.Client, t: str, pid: str, ms: str) -> None:
+    """FTS — 설치·연결·회수 · 미회수 · 타임라인 · 설치 챕터 삭제 → orphaned(실제 워커 경유)."""
+    ch = {}
+    for no in (11, 12, 13):
+        body = {"manuscript_id": ms, "chapter_no": no, "title": f"{no}장"}
+        ch[no] = call(
+            f"챕터 생성({no})", client, "POST", f"/projects/{pid}/chapters", 201, t, json=body
+        )["data"]["chapter_id"]
+    base = f"/projects/{pid}/foreshadowings"
+    body = {"title": "붉은 흉터", "setup_chapter_id": ch[11]}
+    f = call("복선 생성", client, "POST", base, 201, t, json=body)["data"]
+    path = f"{base}/{f['foreshadowing_id']}"
+    call(
+        "연결 챕터 추가",
+        client,
+        "POST",
+        f"{path}/linked-chapters",
+        201,
+        t,
+        json={"chapter_id": ch[12]},
+    )
+    early = {"payoff_chapter_id": ch[11]}
+    call("회수 지정(설치와 같은 장)", client, "PUT", f"{path}/payoff", 200, t, json=early)
+    call("회수 취소", client, "DELETE", f"{path}/payoff", 200, t)
+    call("회수 취소(이미 미회수)", client, "DELETE", f"{path}/payoff", 409, t)
+    call("미회수 목록", client, "GET", f"{base}/unresolved?current_chapter=13", 200, t)
+    call("미회수 안내", client, "GET", f"{base}/unresolved/advisories?current_chapter=13", 200, t)
+    call("복선 타임라인", client, "GET", f"/projects/{pid}/foreshadowing-timeline", 200, t)
+    call("복선 목록", client, "GET", base, 200, t)
+    refs = call(
+        "챕터의 복선", client, "GET", f"/projects/{pid}/chapters/{ch[11]}/foreshadowings", 200, t
+    )
+    if [r["role"] for r in refs["data"]] != ["setup"]:
+        raise Blocked("설치 챕터 역참조가 setup 이 아니다")
+    call("설치 챕터 삭제", client, "DELETE", f"/projects/{pid}/chapters/{ch[11]}", 204, t)
+
+    def orphaned() -> Any:
+        res = client.get(BASE + path, headers={"Authorization": f"Bearer {t}"})
+        return res.json()["data"] if res.json()["data"]["status"] == "orphaned" else None
+
+    wait_for("orphaned 전이(outbox → 워커)", orphaned)
+    call("orphaned 복선", client, "GET", path, 200, t)
+    fix = {"setup_chapter_id": ch[12]}
+    fixed = call("설치 챕터 재지정", client, "PATCH", path, 200, t, json=fix)["data"]
+    if fixed["status"] != "unresolved":
+        raise Blocked("재지정 뒤에도 orphaned 다")
 
 
 def main() -> None:

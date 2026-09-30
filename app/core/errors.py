@@ -90,6 +90,15 @@ DuplicateCharacterCandidate = _err(
 # --- REX (§1.4) ---------------------------------------------------------
 WorldRuleNotFound = _err("WORLD_RULE_NOT_FOUND", 404, "규칙을 찾을 수 없습니다")
 
+# --- FTS (§1.4) ---------------------------------------------------------
+ForeshadowingNotFound = _err("FORESHADOWING_NOT_FOUND", 404, "해당 복선을 찾을 수 없습니다")
+LinkedChapterNotFound = _err("LINKED_CHAPTER_NOT_FOUND", 404, "연결 챕터가 없습니다")
+LinkTargetNotFound = _err("LINK_TARGET_NOT_FOUND", 404, "연결하려는 대상이 없습니다")
+InvalidPayoffChapter = _err(
+    "INVALID_PAYOFF_CHAPTER", 400, "회수 챕터는 설치 챕터보다 앞설 수 없습니다"
+)
+PayoffNotSet = _err("PAYOFF_NOT_SET", 409, "회수되지 않은 복선입니다")
+
 # --- 잡 파이프라인 (Phase 2 에서 사용) ----------------------------------
 InvalidStatusTransition = _err("INVALID_STATUS_TRANSITION", 409, "허용되지 않는 상태 전이입니다")
 

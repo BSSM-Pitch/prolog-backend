@@ -114,6 +114,11 @@ async def list_chapters(
     return list((await session.execute(stmt)).scalars())
 
 
+async def chapters_of(session: AsyncSession, manuscript_id: UUID) -> list[Chapter]:
+    stmt = select(Chapter).where(Chapter.manuscript_id == manuscript_id)
+    return list((await session.execute(stmt)).scalars())
+
+
 async def add_chapter(session: AsyncSession, chapter: Chapter) -> Chapter:
     session.add(chapter)
     await session.flush()

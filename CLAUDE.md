@@ -74,7 +74,7 @@ cd ~/dev/prolog && uv run ruff check . && uv run ruff format --check . \
 | 1 | `app.platform_` | `auth` · `teams` · `projects` · `notifications` |
 | 2 | `app.content` | `manuscripts` — 원고·챕터·추출 (Phase 1 완료) |
 | 3 | `app.authoring` | `nlcd` · `ass`(캐릭터 초안·확정 — 수동 경로) · `rex`(세계관 규칙 CRUD — 수동 경로) |
-| 4 | `app.insight` | `scds` · `ssm` · `aiq` · `rcv` · `fts` |
+| 4 | `app.insight` | `scds` · `ssm` · `aiq` · `rcv` · `fts`(복선 — 사용자 지정, AI 없음) |
 
 **경로 주의:** AUTH 모듈은 `app/platform_/auth/`다. `app/modules/auth/`가 아니다.
 언더스코어가 붙은 `platform_`인 이유는 파이썬 표준 라이브러리 `platform`과의 충돌 회피다.
@@ -131,7 +131,7 @@ Celery 는 쓰지 않는다 — 단순 루프 + SQS redrive 로 충분하다(2b 
 | 워커 | 하는 일 | 소비 큐 |
 | --- | --- | --- |
 | `worker/outbox_relay.py` | `published_at IS NULL` 폴링 → 큐 발송 → 표시 | (생산자) |
-| `worker/notifier.py` | 도메인 이벤트 → `notifications` INSERT (inbox 로 1회) | `notify` |
+| `worker/notifier.py` | 도메인 이벤트 소비: 알림 INSERT · `chapter.deleted` → FTS 정리 (소비자별 inbox) | `notify` |
 | `worker/extractor.py` | `manuscript_extraction` 잡 → S3 읽기 → 본문 채우고 `ready` | `io` |
 | `worker/sweeper.py` | 주기 작업: 좀비 잡 회수 · 업로드 콜백 유실 회수 | (없음) |
 
@@ -148,6 +148,11 @@ Celery 는 쓰지 않는다 — 단순 루프 + SQS redrive 로 충분하다(2b 
   시도를 다 쓰면 `failed` 로 남고 `ALARM` ERROR 로그. 대상 실패 처리는 `sweeper.ON_FAILED` 훅.
 - 임계치는 전부 Settings 다: `job_zombie_seconds_io|ai` · `upload_sweep_after_seconds` ·
   `queue_max_receive_count` · `sweeper_interval_seconds`. 장편 추출이 5분을 넘기면 io 값을 올린다.
+
+**Ring 을 거스르는 알림은 이벤트다.** 아래 Ring 이 위 Ring 의 데이터를 정리해야 하면(예: 챕터 삭제 →
+복선 orphaned) 아래 Ring 은 outbox 이벤트만 남기고, 위 Ring 이 `worker/notifier.py` 를 통해 받는다
+(`app/insight/fts/events.py`). 그래서 `foreshadowing_chapters.chapter_id` 에는 FK 가 없다(0006) —
+RESTRICT 면 MSU 가 FTS 를 알아야 하고, CASCADE 면 이벤트가 닿기 전에 참조 정보가 사라진다.
 
 **큐는 3종이다**: `io`(잡) · `ai`(Phase 3 잡) · `notify`(도메인 이벤트).
 릴레이가 `aggregate_type == 'job'` 이면 payload 의 `queue` 로, 아니면 `notify` 로 보낸다.
@@ -461,6 +466,10 @@ Phase 1 착수 전 필요: localstack 또는 elasticmq. Redis도 아직 아무�
 확정 캐릭터 2 · 검토 대기 초안 1(화면 23 의 윤서). **AI 경로(NLCD forward · suggestions)는 없다.**
 **완료 (REX 수동 경로):** 명세 §3 의 5~8(`/world-rules` 목록·추가·수정·삭제). `origin='user_added'` 만.
 AI 추출(`rule-extractions` 1~4)은 2b. seed 에 규칙 2(화면 21).
+**완료 (FTS):** 명세 15개 중 14 — 복선 CRUD · 연결 챕터 · 회수/취소 · 미회수 · 안내(템플릿) · 타임라인 ·
+캐릭터 연결 · 챕터 역참조. `0006`(어휘 `unresolved|resolved|orphaned` · `setup|payoff|linked` ·
+챕터 FK 제거 · 번호 캐시 제거). 챕터/원고 삭제 → `chapter.deleted` → orphaned(설치)·unresolved(회수).
+**사건 연결은 없다**(SCDS 이후). seed 에 복선 2.
 **다음 (Phase 2b):** REX · `ai` 워커 · LLM 게이트웨이 · 핸들러 공통 계약 · `/retry` API ·
 `jobs.idempotency_key`. LLM 공급자 · 비용 컬럼(`model`·`token_in/out`, DDL 에 없음) 결정 필요.
 
@@ -490,6 +499,16 @@ AI 추출(`rule-extractions` 1~4)은 2b. seed 에 규칙 2(화면 21).
      `extraction_id` 는 DDL `extraction_job_id` · 응답에 `title`·`source_chapter_no`·`created_at` 추가 ·
      명세에 단건 조회가 없어 만들지 않았다 · 화면의 "확정 10 · 검토 대기 2" 에서 검토 대기는 AI 추출 후보다
      (world_rules 가 아니라 추출 잡 결과에 있다 — 명세 §4.4)
+   - **FTS:** 챕터를 번호가 아니라 **id 로 받는다**(원고가 여럿이면 번호가 겹친다 — `setup_chapter_id` ·
+     `payoff_chapter_id` · `chapter_id`, 경로 `/chapters/{chapterId}/foreshadowings` ·
+     `/linked-chapters/{chapterId}`). 응답은 명세대로 번호를 주고 `chapters[{chapter_id, chapter_no, role}]`
+     를 덧붙인다 · status 에 `orphaned`(ERD 12항) · 연결 챕터 추가·회수 지정/취소 응답이 복선 전체 ·
+     안내 문구는 화면 24("…장에 설치한 … 회수를 고려해 보세요") · 미회수는 현재 챕터 이전 설치만 ·
+     `sort` 두 값이 같은 순서 · 사건 연결(`target_type=event`) 미지원 · 링크 해제 경로가
+     `/links/character/{targetId}` · 타임라인·미회수·안내는 페이지로 자르지 않는다
+   - **insight ERD:** `foreshadowing_chapters.chapter_id` 의 `ON DELETE RESTRICT` 와 `orphaned` 상태가
+     서로 모순이다(RESTRICT 면 설치 챕터가 지워지지 않는다). FK 없음 + 이벤트로 바꿨다(0006).
+     `setup_chapter_no`·`payoff_chapter_no` 캐시도 챕터 번호 변경 때 낡아서 없앴다
    - **authoring ERD: `character_drafts.status` 의 `pending`(ERD 는 `editing`, API 는 명세대로 `pending_review`) ·
      `character_drafts.source_text` · `world_rules.title`·`category` — ERD 에 없거나 다르지만
      현재 DDL 이 낫다고 판단해 유지했다 (`0002`)**

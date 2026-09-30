@@ -1,7 +1,7 @@
 """화면 개발용 기본 데이터 — `uv run python -m scripts.verify.seed`.
 
 사용자 1 · 팀 1 · 프로젝트 2(개인 · 팀) · 원고 1 · 챕터 3 · 확정 캐릭터 2 · 검토 대기 초안 1 ·
-세계관 규칙 2 를 넣는다. 이미 있으면 아무것도
+세계관 규칙 2 · 복선 2 를 넣는다. 이미 있으면 아무것도
 하지 않는다(여러 번 돌려도 쌓이지 않는다). 새로 시작하려면:
 
     uv run alembic downgrade base && uv run alembic upgrade head
@@ -36,6 +36,8 @@ from app.content.manuscripts.schemas import ChapterCreate, ManuscriptCreate, Man
 from app.core.config import settings
 from app.core.deps import CurrentUser
 from app.db.session import SessionFactory
+from app.insight.fts import service as fts
+from app.insight.fts.schemas import ForeshadowingCreate
 from app.platform_.auth.models import User
 from app.platform_.projects import service as projects
 from app.platform_.projects.schemas import ProjectCreate
@@ -174,15 +176,34 @@ async def main() -> None:
         await manuscripts.update(
             session, shared.project_id, manuscript.manuscript_id, ManuscriptUpdate(content=body)
         )
+        chapter_ids = []
         for no, (title, text) in enumerate(CHAPTERS, start=1):
-            await manuscripts.create_chapter(
+            chapter = await manuscripts.create_chapter(
                 session,
                 shared.project_id,
                 ChapterCreate(
                     manuscript_id=manuscript.manuscript_id, chapter_no=no, title=title, content=text
                 ),
             )
+            chapter_ids.append(chapter.chapter_id)
         cast = await _characters(session, shared.project_id, user.id)
+        # 화면 04 · 24: 회수 완료 하나, 미회수 하나
+        key, _ = await fts.create(
+            session,
+            shared.project_id,
+            ForeshadowingCreate(title="할머니의 연필 점", setup_chapter_id=chapter_ids[0]),
+        )
+        await fts.add_linked(session, shared.project_id, key.foreshadowing_id, chapter_ids[1])
+        await fts.set_payoff(session, shared.project_id, key.foreshadowing_id, chapter_ids[2])
+        light, _ = await fts.create(
+            session,
+            shared.project_id,
+            ForeshadowingCreate(title="누가 등대에 불을 켰나", setup_chapter_id=chapter_ids[1]),
+        )
+        cast += [
+            f"foreshadow  {key.foreshadowing_id}  {key.title} (resolved)",
+            f"foreshadow  {light.foreshadowing_id}  {light.title} (unresolved)",
+        ]
         for title, description, keywords in RULES:
             rule = await rex.create_rule(
                 session,

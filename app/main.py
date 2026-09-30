@@ -13,6 +13,7 @@ from app.content.manuscripts.router import router as manuscripts_router
 from app.core import openapi
 from app.core.errors import AppError
 from app.core.response import Envelope, ok
+from app.insight.fts.router import router as fts_router
 from app.platform_.auth.router import router as auth_router
 from app.platform_.auth.router import users_router
 from app.platform_.notifications.router import router as notifications_router
@@ -89,6 +90,7 @@ for _router in (
     manuscripts_router,
     ass_router,
     rex_router,
+    fts_router,
     api_router,
 ):
     app.include_router(_router, prefix="/v1")

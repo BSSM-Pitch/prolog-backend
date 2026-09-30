@@ -33,6 +33,7 @@ from app.content.manuscripts.schemas import (
 )
 from app.content.manuscripts.storage import Storage, content_type_of, object_key
 from app.core import errors
+from app.events.outbox import emit
 from app.jobs import service as jobs
 
 CHAPTER_NO_UQ = "chapters_manuscript_no_uq"
@@ -118,8 +119,31 @@ async def update(
     return await _one(session, manuscript)
 
 
+def _chapter_deleted(session: AsyncSession, chapter: Chapter) -> None:
+    """챕터를 참조하는 다른 모듈(FTS)은 이 이벤트로 정리한다.
+
+    여기서 그들을 부르지 않는다(규칙 1 — Ring 2 는 Ring 4 를 모른다).
+    """
+    emit(
+        session,
+        aggregate_type="chapter",
+        aggregate_id=chapter.id,
+        event_type="chapter.deleted",
+        payload={
+            "project_id": str(chapter.project_id),
+            "manuscript_id": str(chapter.manuscript_id),
+            "chapter_id": str(chapter.id),
+            "chapter_no": chapter.chapter_no,
+        },
+    )
+
+
 async def delete(session: AsyncSession, project_id: UUID, manuscript_id: UUID) -> None:
-    await session.delete(await _get(session, project_id, manuscript_id))
+    """원고를 지우면 챕터도 CASCADE 로 지워진다 — 챕터마다 삭제 이벤트를 남긴다."""
+    manuscript = await _get(session, project_id, manuscript_id)
+    for chapter in await repo.chapters_of(session, manuscript.id):
+        _chapter_deleted(session, chapter)
+    await session.delete(manuscript)
     await session.flush()
 
 
@@ -299,5 +323,7 @@ async def update_chapter(
 
 
 async def delete_chapter(session: AsyncSession, project_id: UUID, chapter_id: UUID) -> None:
-    await session.delete(await _get_chapter(session, project_id, chapter_id))
+    chapter = await _get_chapter(session, project_id, chapter_id)
+    _chapter_deleted(session, chapter)
+    await session.delete(chapter)
     await session.flush()
