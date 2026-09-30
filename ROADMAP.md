@@ -11,7 +11,7 @@
 ## 0. 세션 시작하면 이것부터
 
 ```bash
-cd ~/Desktop/전공동
+cd ~/dev/prolog
 uv run ruff check . && uv run ruff format --check . && uv run mypy app && uv run lint-imports
 DATABASE_URL="postgresql+asyncpg://kmsmss@localhost:5432/prolog_test" uv run pytest -q   # 28 passed
 uv run uvicorn app.main:app --reload                                                     # http://localhost:8000/docs

@@ -14,7 +14,7 @@
 | 항목 | 값 |
 | --- | --- |
 | 서비스 | StoryForge — AI 기반 스토리 구조 관리 IDE |
-| 레포 경로 | `~/Desktop/전공동` |
+| 레포 경로 | `~/dev/prolog` (2026-09-30 iCloud 동기화 밖으로 이동. 옛 경로 `~/Desktop/전공동`) |
 | 스택 | FastAPI · PostgreSQL · SQLAlchemy(asyncpg) · Alembic(psycopg) · uv |
 | 현재 단계 | **Phase 2a 완료** + **ASS 수동 경로**(AI 없이 만들 수 있는 캐릭터 절반). 다음은 Phase 2b — REX · `ai` 워커 · LLM 게이트웨이 |
 | git | `a6ea4e9` 첫 커밋(84파일) → `d00610a` CLAUDE.md 복원 → `f586427` AUTH v0.2 → `66b4f67` 감사 P0 → `3f0eca7` 감사 P1 → `87c9006` 조합 레이어 → `a382a5c` 감사 P2 → `8d20b20` 감사 P3 → `a381109` OpenAPI → `583e00a` PG16 → `ec649f0` Phase 1 인프라 → `205d0dd` manuscript_count → `73427d3` NOTI → `c10290d` OpenAPI → `a2d4471` MSU·챕터 → `5a2d79f` 업로드 콜백·s3mock·복합 FK → `62d5837` 추출 워커 → `a19dd01` OpenAPI 계약·목록 커서·팀 유래 멤버 → `cf65615` 검증 스크립트 → `56c197f` 스키마 이름·seed → `a9e979b` Phase 2a 잡 내구성 → ASS 수동 경로(이 문서와 같은 커밋) |
@@ -26,20 +26,20 @@ dev DB 는 **compose 의 PostgreSQL 16** 이다. 호스트 포트는 **5433** �
 (`down -v` 는 지운다).
 
 ```bash
-cd ~/Desktop/전공동 && docker compose -p prolog up -d   # 프로젝트명 필수: 디렉터리명이 비ASCII다
-cd ~/Desktop/전공동 && uv run uvicorn app.main:app --reload
+cd ~/dev/prolog && docker compose up -d   # 프로젝트 이름은 compose 파일의 `name: prolog`
+cd ~/dev/prolog && uv run uvicorn app.main:app --reload
 ```
 
 ### 테스트
 
 ```bash
-cd ~/Desktop/전공동 && DATABASE_URL="postgresql+asyncpg://prolog:prolog@localhost:5433/prolog_test" uv run pytest -q
+cd ~/dev/prolog && DATABASE_URL="postgresql+asyncpg://prolog:prolog@localhost:5433/prolog_test" uv run pytest -q
 ```
 
 ### 품질 게이트 (커밋 전 필수)
 
 ```bash
-cd ~/Desktop/전공동 && uv run ruff check . && uv run ruff format --check . \
+cd ~/dev/prolog && uv run ruff check . && uv run ruff format --check . \
   && uv run mypy app && uv run lint-imports \
   && DATABASE_URL="postgresql+asyncpg://prolog:prolog@localhost:5433/prolog_test" uv run pytest -q
 ```
@@ -57,10 +57,10 @@ cd ~/Desktop/전공동 && uv run ruff check . && uv run ruff format --check . \
 4. **비밀번호를 저장하지 않는다.** Google OAuth 단일이다. bcrypt/argon2를 되살리지 않는다.
 5. **디스크 여유를 확인하고 시작한다.** 2026-09 작업 중 ENOSPC로 전체가 멈춘 적이 있다.
    `df -h /System/Volumes/Data`가 5GB 미만이면 작업을 시작하지 않는다.
-   **Desktop 은 iCloud 동기화 대상이다.** 디스크가 차면 macOS 가 파일을 클라우드로 내보낸다(dataless).
-   그러면 `.venv` 의 파이썬 파일 import 가 수십 분 멈추다 `Errno 60 Operation timed out` 로 죽는다
-   — 테스트가 이유 없이 멈추면 이것부터 본다: `find . -flags +dataless | wc -l`.
-   복구: 저장소 파일은 `brctl download <path>`, `.venv` 는 `uv sync --reinstall`.
+   **저장소를 iCloud 동기화 폴더(Desktop·Documents)에 두지 않는다.** 예전 위치 `~/Desktop/전공동` 에서
+   디스크가 차자 macOS 가 `.venv`·소스·`.git` 파일을 클라우드로 내보냈고(dataless), import 가 수십 분
+   멈추다 `Errno 60` 로 죽었다. 편집 도중 파일 읽기가 불완전하게 끝난 적도 있다. 그래서 `~/dev/prolog` 로
+   옮겼다. 증상이 다시 보이면: `find . -flags +dataless | wc -l`.
 
 ---
 
@@ -554,5 +554,8 @@ Phase 1 착수 전 필요: localstack 또는 elasticmq. Redis도 아직 아무�
   (기본 15분)가 지난 잡 없는 upload draft 를 훑어, S3 에 객체가 있으면 콜백과 같은 경로로 추출을
   건다. 객체가 없으면 건드리지 않는다(아직 안 올린 정상 draft). 원고 행을 잠가 콜백과 겹쳐도
   잡은 하나다. "발급 시각" 컬럼이 없어 `updated_at` 을 쓴다 — 제목을 고치면 그만큼 늦게 줍는다
+- **결정 — SCDS 이름 매핑은 별칭 없이 ASS 이름으로 통일한다** (`personality_tags`·`core_values`·
+  `influence_relations`·`emotion_keywords`). ERD 가 이미 그렇게 결론냈고, 프론트가 아직 붙지 않아
+  부채가 없다. SCDS 명세의 `traits`/`values`/`influences` 는 Notion 수정 대상이다
 - 프론트엔드 계약 미대조. `# ASSUMPTION:` 주석으로 표시되어 있으나,
   어긋나면 Phase 0 전체를 손봐야 한다 (ROADMAP 113행)
