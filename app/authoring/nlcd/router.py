@@ -75,7 +75,11 @@ async def get_extraction(
     job = await service.get(session, project_id, extraction_id)
     body = ok(
         service.to_response(job),
-        {"removed_evidence_count": (job.result or {}).get("removed_evidence_count", 0)}
+        {
+            "removed_evidence_count": ((job.result or {}).get("meta") or {}).get(
+                "removed_evidence_count", 0
+            )
+        }
         if job.status == "completed"
         else {},
     )

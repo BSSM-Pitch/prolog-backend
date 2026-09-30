@@ -16,7 +16,7 @@
 | 서비스 | StoryForge — AI 기반 스토리 구조 관리 IDE |
 | 레포 경로 | `~/dev/prolog` (2026-09-30 iCloud 동기화 밖으로 이동. 옛 경로 `~/Desktop/전공동`) |
 | 스택 | FastAPI · PostgreSQL · SQLAlchemy(asyncpg) · Alembic(psycopg) · uv |
-| 현재 단계 | **Phase 2b 진행 중** — `prolog-ai` 연동: AI 포트 · `ai` 워커 · **NLCD 완료**. 다음은 REX · AIQ · SCDS · SSM 의 AI 경로 |
+| 현재 단계 | **Phase 2b 진행 중** — `prolog-ai` 연동: AI 포트 · `ai` 워커 · NLCD · **REX 추출 완료**. 다음은 AIQ · SCDS · SSM |
 | git | `a6ea4e9` 첫 커밋(84파일) → `d00610a` CLAUDE.md 복원 → `f586427` AUTH v0.2 → `66b4f67` 감사 P0 → `3f0eca7` 감사 P1 → `87c9006` 조합 레이어 → `a382a5c` 감사 P2 → `8d20b20` 감사 P3 → `a381109` OpenAPI → `583e00a` PG16 → `ec649f0` Phase 1 인프라 → `205d0dd` manuscript_count → `73427d3` NOTI → `c10290d` OpenAPI → `a2d4471` MSU·챕터 → `5a2d79f` 업로드 콜백·s3mock·복합 FK → `62d5837` 추출 워커 → `a19dd01` OpenAPI 계약·목록 커서·팀 유래 멤버 → `cf65615` 검증 스크립트 → `56c197f` 스키마 이름·seed → `a9e979b` Phase 2a 잡 내구성 → ASS 수동 경로(이 문서와 같은 커밋) |
 
 ### 실행
@@ -134,7 +134,7 @@ Celery 는 쓰지 않는다 — 단순 루프 + SQS redrive 로 충분하다(2b 
 | `worker/notifier.py` | 도메인 이벤트 소비: 알림 INSERT · `chapter.deleted` → FTS 정리 (소비자별 inbox) | `notify` |
 | `worker/extractor.py` | `manuscript_extraction` 잡 → S3 읽기 → 본문 채우고 `ready` | `io` |
 | `worker/sweeper.py` | 주기 작업: 좀비 잡 회수 · 업로드 콜백 유실 회수 | (없음) |
-| `worker/ai_worker.py` | AI 잡 — `job_type` 별 핸들러(`HANDLERS`). 지금은 `nl_extraction` | `ai` |
+| `worker/ai_worker.py` | AI 잡 — `job_type` 별 핸들러(`HANDLERS`): `nl_extraction` · `rule_extraction` | `ai` |
 
 **내구성 규칙 (2a).** 어기면 durability.py 가 다시 재현한다.
 - **메시지 하나가 워커를 죽이지 않는다.** 소비 루프는 `app/events/consumer.py` 하나다. 처리에
@@ -195,7 +195,8 @@ RESTRICT 면 MSU 가 FTS 를 알아야 하고, CASCADE 면 이벤트가 닿기 �
 | `Extractor` | stdlib (`txt`·`docx`) | `FileExtractor` 직접 |
 | `AIClient` | `prolog-ai` 패키지(`app/ai/client.py`) | `FakeAI`(결과를 순서대로 준다) |
 
-**AI 는 `app/ai/client.py` 로만 부른다.** 패키지는 동기이고 예외를 던지지 않는다(`data` | `error`).
+**AI 잡은 `app/ai/jobs.run` 위에 짓는다** — 선점·prepare 커밋 → 스레드에서 호출 → 전이와 `on_success`/`on_failure`
+를 한 트랜잭션에. 모듈 핸들러는 `prepare`·`call` 만 정한다. **AI 는 `app/ai/client.py` 로만 부른다.** 패키지는 동기이고 예외를 던지지 않는다(`data` | `error`).
 워커 핸들러는 포트를 인자로 받고(스레드에서 호출), 요청 경로에서 부를 곳(SCDS 룰 검출)은
 `Depends(ai_client)` — 테스트는 `dependency_overrides`. 패키지의 `USE_FAKE_LLM=1` 은 빈 응답뿐이라
 테스트 시나리오에 쓰지 않는다. **자동 재시도는 `AI_*_TIMEOUT` 만**(`is_retryable` — 근거는 주석).
@@ -487,6 +488,8 @@ AI 추출(`rule-extractions` 1~4)은 2b. seed 에 규칙 2(화면 21).
 **완료 (NLCD, Phase 2b 첫 모듈):** 명세 5종 — 제출(조합 레이어) · 폴링 · 재시도 · 이력 · forward(조합 레이어).
 추출은 `ops.jobs`(`nl_extraction`, `ai` 큐) 한 행이고 `extraction_id` 가 잡 id 다. forward 는 ASS 초안을
 만든다(`source_job_id`, 항목 전부 `ai_extracted` + 근거). 잡 행을 잠가 두 번 눌러도 초안은 하나다.
+**완료 (REX AI 추출):** 명세 §4.1~4.4 — 요청(원고 `ready` 만) · 폴링 · 재시도 · 확정. 후보는 잡 결과에
+남고 확정해야 `world_rules`(`ai_extracted`, `extraction_job_id`)가 된다. 후보별 검토 상태(`reviews`).
 **다음 (Phase 2b):** REX · `ai` 워커 · LLM 게이트웨이 · 핸들러 공통 계약 · `/retry` API ·
 `jobs.idempotency_key`. LLM 공급자 · 비용 컬럼(`model`·`token_in/out`, DDL 에 없음) 결정 필요.
 
@@ -571,6 +574,12 @@ AI 추출(`rule-extractions` 1~4)은 2b. seed 에 규칙 2(화면 21).
      `source_chapter_no`·`created_at` · `category` 는 API 에 내지 않는다(화면 미사용)
    - [코드] `extraction_id` 는 DDL `extraction_job_id` · 목록 커서 · 명세에 단건 조회가 없다(그대로)
    - [코드] ERD 의 `world_rules` 에 `title`·`category` 가 없다
+
+   - [코드] AI 추출: 확정 요청에 `ignored_indices`(화면 21 "무시") · 후보에 `index`·`review_status`·`rule_id` ·
+     이미 확정한 후보는 건너뛴다(명세 미정) · 원고가 `ready` 가 아니면 `INVALID_INPUT`(명세에 코드 없음) ·
+     재시도는 `failed` 에서만, 그 밖은 `EXTRACTION_NOT_READY`(명세 §4.3 문구가 모호하다) · 후보 `title` 은
+     패키지가 준다 · `source_chapter` 는 패키지가 항상 null(원고 텍스트만 받아 챕터를 모른다) ·
+     추출 목록 API 가 명세에 없다 — 화면 21 이 검토 대기 후보를 모으려면 필요하다
 
    **FTS**
    - [코드] 챕터를 번호가 아니라 **id 로 받는다**(원고가 여럿이면 번호가 겹친다): `setup_chapter_id` ·

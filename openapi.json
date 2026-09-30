@@ -119,6 +119,55 @@
         "title": "AttributeResponse",
         "type": "object"
       },
+      "CandidateEdit": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "violation_keywords": {
+            "anyOf": [
+              {
+                "items": {
+                  "maxLength": 100,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 50,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Violation Keywords"
+          }
+        },
+        "title": "CandidateEdit",
+        "type": "object"
+      },
       "ChapterBody": {
         "properties": {
           "chapter_id": {
@@ -2953,6 +3002,216 @@
         "title": "RelatedRef",
         "type": "object"
       },
+      "RuleCandidate": {
+        "description": "추출 결과의 규칙 하나. `index` 로 확정·무시한다(명세 `selected_indices`).",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "evidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence"
+          },
+          "index": {
+            "title": "Index",
+            "type": "integer"
+          },
+          "review_status": {
+            "enum": [
+              "pending",
+              "confirmed",
+              "ignored"
+            ],
+            "title": "Review Status",
+            "type": "string"
+          },
+          "rule_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "확정했으면 만든 규칙 id",
+            "title": "Rule Id"
+          },
+          "source_chapter": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Chapter"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "violation_keywords": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Violation Keywords",
+            "type": "array"
+          }
+        },
+        "required": [
+          "index",
+          "title",
+          "description",
+          "violation_keywords",
+          "evidence",
+          "source_chapter",
+          "review_status",
+          "rule_id"
+        ],
+        "title": "RuleCandidate",
+        "type": "object"
+      },
+      "RuleExtractionConfirm": {
+        "description": "명세 §4.4 + `ignored_indices`(화면 21 \"무시\", 명세에 없다).",
+        "properties": {
+          "edits": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CandidateEdit"
+            },
+            "default": {},
+            "title": "Edits",
+            "type": "object"
+          },
+          "ignored_indices": {
+            "default": [],
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 200,
+            "title": "Ignored Indices",
+            "type": "array"
+          },
+          "selected_indices": {
+            "default": [],
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 200,
+            "title": "Selected Indices",
+            "type": "array"
+          }
+        },
+        "title": "RuleExtractionConfirm",
+        "type": "object"
+      },
+      "RuleExtractionEnvelope": {
+        "description": "명세 §4.2 \"실패\" 는 200 에 `data`(status=failed) 와 `error` 를 함께 준다.",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RuleExtractionResponse"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "status=failed 일 때만 있다"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "RuleExtractionEnvelope",
+        "type": "object"
+      },
+      "RuleExtractionResponse": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "extracted_rules": {
+            "items": {
+              "$ref": "#/components/schemas/RuleCandidate"
+            },
+            "title": "Extracted Rules",
+            "type": "array"
+          },
+          "extraction_id": {
+            "format": "uuid",
+            "title": "Extraction Id",
+            "type": "string"
+          },
+          "manuscript_id": {
+            "format": "uuid",
+            "title": "Manuscript Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "extracting",
+              "completed",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "extraction_id",
+          "manuscript_id",
+          "status",
+          "extracted_rules",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "RuleExtractionResponse",
+        "type": "object"
+      },
+      "RuleExtractionResponseEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RuleExtractionResponse"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "RuleExtractionResponseEnvelope",
+        "type": "object"
+      },
       "SessionResponse": {
         "properties": {
           "tokens": {
@@ -4056,6 +4315,27 @@
           "data"
         ],
         "title": "WorldRuleResponseEnvelope",
+        "type": "object"
+      },
+      "WorldRuleResponseListEnvelope": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/WorldRuleResponse"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "WorldRuleResponseListEnvelope",
         "type": "object"
       },
       "WorldRuleResponsePage": {
@@ -12971,6 +13251,678 @@
         "summary": "파일 업로드를 마쳤다고 알린다",
         "tags": [
           "MSU"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/manuscripts/{manuscriptId}/rule-extractions": {
+      "post": {
+        "description": "비동기다. `status` 는 `queued` 로 시작한다 — 조회로 폴링한다.\n\n본문이 준비된(`ready`) 원고만 된다. 업로드 추출 중이거나 빈 원고면 `INVALID_INPUT`.\n화면 21 의 \"원고에서 다시 추출\" 도 이 요청이다(새 추출).",
+        "operationId": "request_extraction_v1_projects__projectId__manuscripts__manuscriptId__rule_extractions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "manuscriptId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Manuscriptid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleExtractionResponseEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "MANUSCRIPT_NOT_FOUND": {
+                    "summary": "원고를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "MANUSCRIPT_NOT_FOUND",
+                        "details": {},
+                        "message": "원고를 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `MANUSCRIPT_NOT_FOUND` — 원고를 찾을 수 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "원고에서 규칙 추출을 요청한다",
+        "tags": [
+          "REX"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/manuscripts/{manuscriptId}/rule-extractions/{extractionId}": {
+      "get": {
+        "description": "`queued` → `extracting` → `completed` | `failed`.\n\n완료면 `extracted_rules` 에 후보가 오고, 후보마다 `review_status`(`pending` · `confirmed` ·\n`ignored`)가 있다. 규칙이 없으면 빈 배열이다(오류 아님). 실패면 200 에 `error` 가 함께 온다.",
+        "operationId": "get_extraction_v1_projects__projectId__manuscripts__manuscriptId__rule_extractions__extractionId__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "manuscriptId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Manuscriptid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "extractionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Extractionid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleExtractionEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "RULE_EXTRACTION_NOT_FOUND": {
+                    "summary": "추출 작업을 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "RULE_EXTRACTION_NOT_FOUND",
+                        "details": {},
+                        "message": "추출 작업을 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다\n- `RULE_EXTRACTION_NOT_FOUND` — 추출 작업을 찾을 수 없습니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "규칙 추출 결과를 조회한다 (폴링)",
+        "tags": [
+          "REX"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/manuscripts/{manuscriptId}/rule-extractions/{extractionId}/confirm": {
+      "post": {
+        "description": "`selected_indices` 의 후보를 `origin = ai_extracted` 규칙으로 만든다.\n\n새로 만든 규칙만 돌려준다.\n\n- `edits` 로 확정 전에 제목·설명·키워드를 고친다(키는 선택한 index).\n- `ignored_indices` 는 후보를 \"무시\" 로 표시한다(화면 21). 무시한 후보도 나중에 확정할 수 있다.\n- 이미 확정한 후보는 다시 만들지 않는다. 완료 전이면 `EXTRACTION_NOT_READY`.",
+        "operationId": "confirm_extraction_v1_projects__projectId__manuscripts__manuscriptId__rule_extractions__extractionId__confirm_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "manuscriptId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Manuscriptid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "extractionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Extractionid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuleExtractionConfirm"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorldRuleResponseListEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "RULE_EXTRACTION_NOT_FOUND": {
+                    "summary": "추출 작업을 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "RULE_EXTRACTION_NOT_FOUND",
+                        "details": {},
+                        "message": "추출 작업을 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다\n- `RULE_EXTRACTION_NOT_FOUND` — 추출 작업을 찾을 수 없습니다"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "EXTRACTION_NOT_READY": {
+                    "summary": "추출이 아직 완료되지 않았습니다",
+                    "value": {
+                      "error": {
+                        "code": "EXTRACTION_NOT_READY",
+                        "details": {},
+                        "message": "추출이 아직 완료되지 않았습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `EXTRACTION_NOT_READY` — 추출이 아직 완료되지 않았습니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "추출 후보를 규칙으로 확정한다",
+        "tags": [
+          "REX"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/manuscripts/{manuscriptId}/rule-extractions/{extractionId}/retry": {
+      "post": {
+        "description": "`failed` 에서만 된다(아니면 `EXTRACTION_NOT_READY`).\n\n완료본을 다시 뽑으려면 새 추출을 요청한다.",
+        "operationId": "retry_extraction_v1_projects__projectId__manuscripts__manuscriptId__rule_extractions__extractionId__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "manuscriptId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Manuscriptid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "extractionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Extractionid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleExtractionResponseEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "RULE_EXTRACTION_NOT_FOUND": {
+                    "summary": "추출 작업을 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "RULE_EXTRACTION_NOT_FOUND",
+                        "details": {},
+                        "message": "추출 작업을 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다\n- `RULE_EXTRACTION_NOT_FOUND` — 추출 작업을 찾을 수 없습니다"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "EXTRACTION_NOT_READY": {
+                    "summary": "추출이 아직 완료되지 않았습니다",
+                    "value": {
+                      "error": {
+                        "code": "EXTRACTION_NOT_READY",
+                        "details": {},
+                        "message": "추출이 아직 완료되지 않았습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `EXTRACTION_NOT_READY` — 추출이 아직 완료되지 않았습니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "규칙 추출을 다시 시도한다",
+        "tags": [
+          "REX"
         ]
       }
     },

@@ -97,6 +97,8 @@ AlreadyForwarded = _err("ALREADY_FORWARDED", 409, "이미 구조화 시스템으
 
 # --- REX (§1.4) ---------------------------------------------------------
 WorldRuleNotFound = _err("WORLD_RULE_NOT_FOUND", 404, "규칙을 찾을 수 없습니다")
+RuleExtractionNotFound = _err("RULE_EXTRACTION_NOT_FOUND", 404, "추출 작업을 찾을 수 없습니다")
+# EXTRACTION_NOT_READY(409) 는 NLCD 와 같은 코드다 — ExtractionNotReady 를 함께 쓴다.
 
 # --- FTS (§1.4) ---------------------------------------------------------
 ForeshadowingNotFound = _err("FORESHADOWING_NOT_FOUND", 404, "해당 복선을 찾을 수 없습니다")

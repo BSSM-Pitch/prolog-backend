@@ -1,9 +1,8 @@
 """AI 워커 — `python -m worker.ai_worker`.
 
-ai 큐에서 `job.queued` 를 받아 잡 종류별 핸들러에 넘긴다. 지금은 `nl_extraction` 하나다
-(REX · AIQ · SCDS · SSM 은 핸들러를 여기 등록한다). 잡은 DB 에 있고 메시지는 알림일 뿐이다 —
-같은 잡이 두 번 와도 선점에서 한쪽만 이긴다. 한 큐에 소비자를 둘 붙이지 않으므로(SQS) ai 잡은
-전부 이 워커가 받는다.
+ai 큐에서 `job.queued` 를 받아 잡 종류별 핸들러(`HANDLERS`)에 넘긴다. 잡은 DB 에 있고
+메시지는 알림일 뿐이다 — 같은 잡이 두 번 와도 선점에서 한쪽만 이긴다. 한 큐에 소비자를 둘
+붙이지 않으므로(SQS) ai 잡은 전부 이 워커가 받는다.
 
 AI 호출은 오래 걸린다(호출당 30~90초 · 최대 3회). ai 큐의 visibility timeout 은
 `queue_visibility_seconds_ai`(15분)이다. 실제 LLM 을 부르려면 `OPENROUTER_API_KEY` 가 필요하고,
@@ -19,6 +18,7 @@ from uuid import UUID
 from app.ai.client import AIClient, PrologAI
 from app.authoring.nlcd import job_handler as nlcd
 from app.authoring.nlcd.service import JOB_TYPE as NLCD_JOB
+from app.authoring.rex import extraction as rex
 from app.db.session import SessionFactory
 from app.events.consumer import consume
 from app.events.queue import AI_QUEUE, SqsQueue
@@ -26,7 +26,7 @@ from app.events.queue import AI_QUEUE, SqsQueue
 log = logging.getLogger(__name__)
 
 Handler = Callable[[Any, UUID, AIClient], Awaitable[str]]
-HANDLERS: dict[str, Handler] = {NLCD_JOB: nlcd.handle}
+HANDLERS: dict[str, Handler] = {NLCD_JOB: nlcd.handle, rex.JOB_TYPE: rex.handle}
 
 ai: AIClient = PrologAI()
 

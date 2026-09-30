@@ -190,6 +190,7 @@ def run(client: httpx.Client) -> None:
     world_rules(client, b, project_id)
     foreshadowings(client, b, project_id, ms["manuscript_id"])
     nl_extraction(client, b, project_id)
+    rule_extraction(client, b, project_id, ms["manuscript_id"])
     settings = call("알림 설정", client, "GET", "/users/me/notification-settings", 200, b)
     if len(settings["data"]) != 5:
         raise Blocked("알림 설정이 유형 5개가 아니다")
@@ -375,6 +376,23 @@ def nl_extraction(client: httpx.Client, t: str, pid: str) -> None:
     if draft["data"]["source_job_id"] != eid:
         raise Blocked("초안이 추출 잡에 연결되지 않았다")
     call("재전달", client, "POST", f"{base}/{eid}/forward", 409, t, json={})
+
+
+def rule_extraction(client: httpx.Client, t: str, pid: str, ms: str) -> None:
+    """REX AI 추출 — 요청 → ai 워커 → 폴링 → 확정(후보가 있으면)."""
+    base = f"/projects/{pid}/manuscripts/{ms}/rule-extractions"
+    eid = call("규칙 추출 요청", client, "POST", base, 202, t)["data"]["extraction_id"]
+
+    def done() -> Any:
+        res = client.get(f"{BASE}{base}/{eid}", headers={"Authorization": f"Bearer {t}"})
+        return res.json() if res.json()["data"]["status"] in ("completed", "failed") else None
+
+    wait_for("규칙 추출 완료(ai 워커)", done, timeout=60)
+    got = call("규칙 추출 결과", client, "GET", f"{base}/{eid}", 200, t)
+    if got["data"]["status"] != "completed":
+        raise Blocked(f"규칙 추출 실패: {got.get('error')}")
+    picked = {"selected_indices": [c["index"] for c in got["data"]["extracted_rules"]][:1]}
+    call("추출 규칙 확정", client, "POST", f"{base}/{eid}/confirm", 201, t, json=picked)
 
 
 def main() -> None:
