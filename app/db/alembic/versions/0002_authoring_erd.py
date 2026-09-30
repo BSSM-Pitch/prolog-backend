@@ -95,6 +95,8 @@ DOWNGRADE = """
 DELETE FROM authoring.character_edit_histories;
 DELETE FROM authoring.character_draft_items;
 DELETE FROM authoring.character_attributes;
+-- 값을 옛 어휘로 바꾸기 전에 새 어휘의 CHECK 를 먼저 뗀다(아래에서 옛 CHECK 를 단다).
+ALTER TABLE authoring.world_rules DROP CONSTRAINT world_rules_origin_chk;
 UPDATE authoring.world_rules
     SET origin = CASE origin WHEN 'ai_extracted' THEN 'ai' ELSE 'manual' END;
 
@@ -102,7 +104,6 @@ DROP INDEX authoring.world_rules_keywords_gin;
 ALTER TABLE authoring.world_rules
     ALTER COLUMN description DROP NOT NULL,
     ALTER COLUMN origin SET DEFAULT 'manual',
-    DROP CONSTRAINT world_rules_origin_chk,
     ADD CONSTRAINT world_rules_origin_chk CHECK (origin IN ('manual','ai'));
 
 DROP INDEX authoring.character_edit_histories_draft_idx;
