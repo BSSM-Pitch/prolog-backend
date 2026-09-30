@@ -73,7 +73,7 @@ cd ~/dev/prolog && uv run ruff check . && uv run ruff format --check . \
 | — | `app.api` | 조합 레이어. 모든 Ring 위에 있다 (아래 규칙 참조) |
 | 1 | `app.platform_` | `auth` · `teams` · `projects` · `notifications` |
 | 2 | `app.content` | `manuscripts` — 원고·챕터·추출 (Phase 1 완료) |
-| 3 | `app.authoring` | `nlcd` · `ass`(캐릭터 초안·확정 — 수동 경로) · `rex` |
+| 3 | `app.authoring` | `nlcd` · `ass`(캐릭터 초안·확정 — 수동 경로) · `rex`(세계관 규칙 CRUD — 수동 경로) |
 | 4 | `app.insight` | `scds` · `ssm` · `aiq` · `rcv` · `fts` |
 
 **경로 주의:** AUTH 모듈은 `app/platform_/auth/`다. `app/modules/auth/`가 아니다.
@@ -459,6 +459,8 @@ Phase 1 착수 전 필요: localstack 또는 elasticmq. Redis도 아직 아무�
 이름 수정/삭제 · 캐릭터 이력. `0004`(`source_job_id` 이름 · 빈 초안 `source_text` NULL ·
 `characters.created_from_draft_id`/`confirmed_at` · 이력 `item_id`). e2e 에 캐릭터 경로, seed 에
 확정 캐릭터 2 · 검토 대기 초안 1(화면 23 의 윤서). **AI 경로(NLCD forward · suggestions)는 없다.**
+**완료 (REX 수동 경로):** 명세 §3 의 5~8(`/world-rules` 목록·추가·수정·삭제). `origin='user_added'` 만.
+AI 추출(`rule-extractions` 1~4)은 2b. seed 에 규칙 2(화면 21).
 **다음 (Phase 2b):** REX · `ai` 워커 · LLM 게이트웨이 · 핸들러 공통 계약 · `/retry` API ·
 `jobs.idempotency_key`. LLM 공급자 · 비용 컬럼(`model`·`token_in/out`, DDL 에 없음) 결정 필요.
 
@@ -483,6 +485,11 @@ Phase 1 착수 전 필요: localstack 또는 elasticmq. Redis도 아직 아무�
      캐릭터 `PATCH`(이름)·`DELETE` 는 ASS 명세에 없다(요청으로 추가. SCDS 의 `PUT .../characters/{id}` 와
      겹칠 수 있다) · 이력 목록 커서 · 이력 항목에 `history_id`·`before/after_value`·`item_id`·`edited_by` ·
      폐기 응답이 `{draft_id, status}` 가 아니라 초안 전체 · ERD 의 `actor_user_id` 는 DDL `edited_by`
+   - **REX:** `title` 필수(명세 WorldRule 에 없음 — 화면 21 이 모든 규칙을 "R01 · 제목" + 설명으로 보여준다) ·
+     `category` 는 API 에 내지 않는다(화면 미사용, 컬럼은 남김) · 목록 커서(명세 미기재) ·
+     `extraction_id` 는 DDL `extraction_job_id` · 응답에 `title`·`source_chapter_no`·`created_at` 추가 ·
+     명세에 단건 조회가 없어 만들지 않았다 · 화면의 "확정 10 · 검토 대기 2" 에서 검토 대기는 AI 추출 후보다
+     (world_rules 가 아니라 추출 잡 결과에 있다 — 명세 §4.4)
    - **authoring ERD: `character_drafts.status` 의 `pending`(ERD 는 `editing`, API 는 명세대로 `pending_review`) ·
      `character_drafts.source_text` · `world_rules.title`·`category` — ERD 에 없거나 다르지만
      현재 DDL 이 낫다고 판단해 유지했다 (`0002`)**

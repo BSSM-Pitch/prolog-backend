@@ -1,7 +1,7 @@
 """화면 개발용 기본 데이터 — `uv run python -m scripts.verify.seed`.
 
-사용자 1 · 팀 1 · 프로젝트 2(개인 · 팀) · 원고 1 · 챕터 3 · 확정 캐릭터 2 · 검토 대기 초안 1
-을 넣는다. 이미 있으면 아무것도
+사용자 1 · 팀 1 · 프로젝트 2(개인 · 팀) · 원고 1 · 챕터 3 · 확정 캐릭터 2 · 검토 대기 초안 1 ·
+세계관 규칙 2 를 넣는다. 이미 있으면 아무것도
 하지 않는다(여러 번 돌려도 쌓이지 않는다). 새로 시작하려면:
 
     uv run alembic downgrade base && uv run alembic upgrade head
@@ -29,6 +29,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.authoring.ass import service as ass
 from app.authoring.ass.models import CharacterDraftItem
 from app.authoring.ass.schemas import CATEGORY_OF, ConfirmRequest, DraftCreate, ItemField
+from app.authoring.rex import service as rex
+from app.authoring.rex.schemas import WorldRuleCreate
 from app.content.manuscripts import service as manuscripts
 from app.content.manuscripts.schemas import ChapterCreate, ManuscriptCreate, ManuscriptUpdate
 from app.core.config import settings
@@ -114,6 +116,13 @@ async def _characters(session: AsyncSession, project_id: UUID, user_id: UUID) ->
     return out
 
 
+# 화면 "21 · 설정 규칙" 의 확정 규칙 두 개
+RULES = [
+    ("붉은 빛과 기억", "붉은 빛에 노출된 기억은 하루 뒤 흐려진다", ["기억이 선명하게 남음"]),
+    ("지하 기록실", "지하 기록실에는 금속을 반입할 수 없다", ["금속 반입", "칼을 들고 기록실"]),
+]
+
+
 def _refuse_non_local() -> None:
     host = urlsplit(settings.database_url.replace("+asyncpg", "")).hostname
     if host not in ("localhost", "127.0.0.1", "::1"):
@@ -174,6 +183,13 @@ async def main() -> None:
                 ),
             )
         cast = await _characters(session, shared.project_id, user.id)
+        for title, description, keywords in RULES:
+            rule = await rex.create_rule(
+                session,
+                shared.project_id,
+                WorldRuleCreate(title=title, description=description, violation_keywords=keywords),
+            )
+            cast.append(f"world_rule  {rule.rule_id}  {title}")
         await session.commit()
 
     print("seed 완료")

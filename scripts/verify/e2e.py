@@ -179,6 +179,7 @@ def run(client: httpx.Client) -> None:
     call("알림 목록(bob)", client, "GET", "/notifications", 200, b)
 
     characters(client, b, project_id)
+    world_rules(client, b, project_id)
 
 
 def characters(client: httpx.Client, t: str, pid: str) -> None:
@@ -262,6 +263,25 @@ def characters(client: httpx.Client, t: str, pid: str) -> None:
     did = doomed["data"]["character_id"]
     call("캐릭터 삭제", client, "DELETE", f"{chars}/{did}", 204, t)
     call("삭제된 캐릭터", client, "GET", f"{chars}/{did}", 404, t)
+
+
+def world_rules(client: httpx.Client, t: str, pid: str) -> None:
+    """REX 직접 입력 — 추가 · 목록 · 수정 · 삭제."""
+    rules = f"/projects/{pid}/world-rules"
+    body = {
+        "title": "붉은 문",
+        "description": "붉은 문은 비가 그친 뒤에만 열린다",
+        "violation_keywords": ["비 오는 중에 열림", "맑은 날 개방"],
+    }
+    rule = call("규칙 추가", client, "POST", rules, 201, t, json=body)["data"]
+    path = f"{rules}/{rule['rule_id']}"
+    call("규칙 목록", client, "GET", rules, 200, t)
+    kw = {"violation_keywords": ["문이 저절로 열림"]}
+    edited = call("규칙 키워드 수정", client, "PATCH", path, 200, t, json=kw)["data"]
+    if edited["violation_keywords"] != ["문이 저절로 열림"] or edited["title"] != "붉은 문":
+        raise Blocked("규칙 PATCH 가 키워드만 바꾸지 않았다")
+    call("규칙 삭제", client, "DELETE", path, 204, t)
+    call("삭제된 규칙 수정", client, "PATCH", path, 404, t, json={"title": "x"})
 
 
 def main() -> None:

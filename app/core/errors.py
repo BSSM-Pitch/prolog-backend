@@ -87,6 +87,9 @@ DuplicateCharacterCandidate = _err(
     "DUPLICATE_CHARACTER_CANDIDATE", 409, "같은 이름의 확정된 캐릭터가 이미 있습니다"
 )
 
+# --- REX (§1.4) ---------------------------------------------------------
+WorldRuleNotFound = _err("WORLD_RULE_NOT_FOUND", 404, "규칙을 찾을 수 없습니다")
+
 # --- 잡 파이프라인 (Phase 2 에서 사용) ----------------------------------
 InvalidStatusTransition = _err("INVALID_STATUS_TRANSITION", 409, "허용되지 않는 상태 전이입니다")
 
