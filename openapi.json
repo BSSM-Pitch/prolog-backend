@@ -1706,6 +1706,119 @@
         "title": "NotificationResponseEnvelope",
         "type": "object"
       },
+      "NotificationSettingResponse": {
+        "description": "명세 §2.2. 바꾼 적 없는 유형은 기본값(둘 다 true)이다.",
+        "properties": {
+          "email_enabled": {
+            "description": "이메일 수신 여부. 연동 계정이 없거나 발송 경로가 없으면 보내지 않는다",
+            "title": "Email Enabled",
+            "type": "boolean"
+          },
+          "in_app_enabled": {
+            "title": "In App Enabled",
+            "type": "boolean"
+          },
+          "type": {
+            "enum": [
+              "team_invite",
+              "project_invite",
+              "team_joined",
+              "mention",
+              "system"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "in_app_enabled",
+          "email_enabled"
+        ],
+        "title": "NotificationSettingResponse",
+        "type": "object"
+      },
+      "NotificationSettingResponseEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/NotificationSettingResponse"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "NotificationSettingResponseEnvelope",
+        "type": "object"
+      },
+      "NotificationSettingResponseListEnvelope": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/NotificationSettingResponse"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "NotificationSettingResponseListEnvelope",
+        "type": "object"
+      },
+      "NotificationSettingUpdate": {
+        "description": "명세 §4.7. 보낸 채널만 바뀐다.",
+        "properties": {
+          "email_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Enabled"
+          },
+          "in_app_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "In App Enabled"
+          },
+          "type": {
+            "enum": [
+              "team_invite",
+              "project_invite",
+              "team_joined",
+              "mention",
+              "system"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "NotificationSettingUpdate",
+        "type": "object"
+      },
       "OAuthGoogleRequest": {
         "properties": {
           "oauth_code": {
@@ -15491,6 +15604,134 @@
         "summary": "내 역할을 바꾼다",
         "tags": [
           "AUTH"
+        ]
+      }
+    },
+    "/v1/users/me/notification-settings": {
+      "get": {
+        "description": "알림 유형 다섯 개(팀 초대 · 프로젝트 초대 · 팀 합류 · 멘션 · 시스템)마다 채널 설정.\n\n바꾼 적 없는 유형은 둘 다 `true` 다. 목록이 고정이라 페이지로 자르지 않는다.",
+        "operationId": "get_settings_v1_users_me_notification_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationSettingResponseListEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "내 알림 설정",
+        "tags": [
+          "NOTI"
+        ]
+      },
+      "patch": {
+        "description": "유형 하나의 채널을 바꾼다. 보낸 채널만 바뀐다.\n\n`in_app_enabled = false` 면 그 유형의 알림이 더는 만들어지지 않는다. 이메일은 아직 발송\n경로가 없어 `email_enabled` 는 저장만 된다(연동이 생기면 그때 쓴다).",
+        "operationId": "update_setting_v1_users_me_notification_settings_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationSettingUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationSettingResponseEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "알림 설정을 바꾼다",
+        "tags": [
+          "NOTI"
         ]
       }
     }

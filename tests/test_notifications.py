@@ -131,3 +131,66 @@ async def test_other_users_notification_is_404(client: AsyncClient, db: AsyncSes
         await client.delete(f"/notifications/{nid}", headers=guest["headers"])
     ).status_code == 204
     assert (await client.get("/notifications", headers=guest["headers"])).json()["data"] == []
+
+
+async def test_settings_default_and_per_type_update(client: AsyncClient) -> None:
+    """화면 31: 유형마다 서비스 알림 / 이메일을 따로 켜고 끈다."""
+    user = await signup(client, "ns1@example.com")
+    h = user["headers"]
+    res = await client.get("/users/me/notification-settings", headers=h)
+    assert res.json()["data"] == [
+        {"type": t, "in_app_enabled": True, "email_enabled": True}
+        for t in ("team_invite", "project_invite", "team_joined", "mention", "system")
+    ]
+
+    res = await client.patch(
+        "/users/me/notification-settings",
+        json={"type": "mention", "email_enabled": False},
+        headers=h,
+    )
+    assert res.json()["data"] == {"type": "mention", "in_app_enabled": True, "email_enabled": False}
+    res = await client.patch(
+        "/users/me/notification-settings",
+        json={"type": "mention", "in_app_enabled": False},
+        headers=h,
+    )
+    # 보내지 않은 채널은 그대로다
+    assert res.json()["data"] == {
+        "type": "mention",
+        "in_app_enabled": False,
+        "email_enabled": False,
+    }
+    listed = (await client.get("/users/me/notification-settings", headers=h)).json()["data"]
+    assert [s for s in listed if s["type"] != "mention"] == [
+        {"type": t, "in_app_enabled": True, "email_enabled": True}
+        for t in ("team_invite", "project_invite", "team_joined", "system")
+    ]
+
+    res = await client.patch(
+        "/users/me/notification-settings",
+        json={"type": "digest", "in_app_enabled": False},
+        headers=h,
+    )
+    assert code(res) == "INVALID_INPUT"
+
+
+async def test_in_app_off_suppresses_that_type(client: AsyncClient, db: AsyncSession) -> None:
+    owner = await signup(client, "ns-owner@example.com")
+    invitee = await signup(client, "ns-invitee@example.com")
+    await client.patch(
+        "/users/me/notification-settings",
+        json={"type": "team_invite", "in_app_enabled": False},
+        headers=invitee["headers"],
+    )
+    team_id = (await client.post("/teams", json={"name": "N"}, headers=owner["headers"])).json()[
+        "data"
+    ]["team_id"]
+    await client.post(
+        f"/teams/{team_id}/invitations",
+        json={"invited_email": "ns-invitee@example.com", "role": "member"},
+        headers=owner["headers"],
+    )
+    queue = FakeQueue()
+    assert await relay_once(db, queue, batch=10) == 1
+    assert await notify_from_event(db, queue.sent[0][1]) is None
+    assert (await client.get("/notifications", headers=invitee["headers"])).json()["data"] == []

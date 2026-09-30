@@ -1,7 +1,8 @@
 """화면 개발용 기본 데이터 — `uv run python -m scripts.verify.seed`.
 
 사용자 1 · 팀 1 · 프로젝트 2(개인 · 팀) · 원고 1 · 챕터 3 · 확정 캐릭터 2 · 검토 대기 초안 1 ·
-세계관 규칙 2 · 복선 2 를 넣는다. 이미 있으면 아무것도
+세계관 규칙 2 · 복선 2 ·
+알림 설정 1(멘션 이메일 끔 — 화면 31) 을 넣는다. 이미 있으면 아무것도
 하지 않는다(여러 번 돌려도 쌓이지 않는다). 새로 시작하려면:
 
     uv run alembic downgrade base && uv run alembic upgrade head
@@ -39,6 +40,8 @@ from app.db.session import SessionFactory
 from app.insight.fts import service as fts
 from app.insight.fts.schemas import ForeshadowingCreate
 from app.platform_.auth.models import User
+from app.platform_.notifications import service as notifications
+from app.platform_.notifications.schemas import NotificationSettingUpdate
 from app.platform_.projects import service as projects
 from app.platform_.projects.schemas import ProjectCreate
 from app.platform_.teams import service as teams
@@ -199,6 +202,9 @@ async def main() -> None:
             session,
             shared.project_id,
             ForeshadowingCreate(title="누가 등대에 불을 켰나", setup_chapter_id=chapter_ids[1]),
+        )
+        await notifications.update_setting(
+            session, user.id, NotificationSettingUpdate(type="mention", email_enabled=False)
         )
         cast += [
             f"foreshadow  {key.foreshadowing_id}  {key.title} (resolved)",

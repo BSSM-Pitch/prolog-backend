@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Literal
+from typing import Literal, get_args
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -8,6 +8,8 @@ from app.core.response import Page, PageMeta
 
 # 명세 §2.1 의 예시 enum. 서버가 만드는 값이라 요청으로 들어오지 않는다.
 NotificationType = Literal["team_invite", "project_invite", "team_joined", "mention", "system"]
+# 화면 31 의 행 순서다. 설정 조회는 이 다섯을 항상 다 돌려준다.
+NOTIFICATION_TYPES: tuple[NotificationType, ...] = get_args(NotificationType)
 
 
 class RelatedRef(BaseModel):
@@ -46,3 +48,21 @@ class NotificationPage(Page[NotificationResponse]):
 
 class ReadAllResponse(BaseModel):
     updated_count: int
+
+
+class NotificationSettingResponse(BaseModel):
+    """명세 §2.2. 바꾼 적 없는 유형은 기본값(둘 다 true)이다."""
+
+    type: NotificationType
+    in_app_enabled: bool
+    email_enabled: bool = Field(
+        description="이메일 수신 여부. 연동 계정이 없거나 발송 경로가 없으면 보내지 않는다"
+    )
+
+
+class NotificationSettingUpdate(BaseModel):
+    """명세 §4.7. 보낸 채널만 바뀐다."""
+
+    type: NotificationType
+    in_app_enabled: bool | None = None
+    email_enabled: bool | None = None

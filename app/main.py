@@ -17,6 +17,7 @@ from app.insight.fts.router import router as fts_router
 from app.platform_.auth.router import router as auth_router
 from app.platform_.auth.router import users_router
 from app.platform_.notifications.router import router as notifications_router
+from app.platform_.notifications.router import settings_router as notification_settings_router
 from app.platform_.projects.router import router as projects_router
 from app.platform_.teams.router import router as teams_router
 
@@ -87,6 +88,7 @@ for _router in (
     teams_router,
     projects_router,
     notifications_router,
+    notification_settings_router,
     manuscripts_router,
     ass_router,
     rex_router,

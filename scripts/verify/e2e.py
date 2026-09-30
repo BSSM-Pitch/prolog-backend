@@ -181,6 +181,11 @@ def run(client: httpx.Client) -> None:
     characters(client, b, project_id)
     world_rules(client, b, project_id)
     foreshadowings(client, b, project_id, ms["manuscript_id"])
+    settings = call("알림 설정", client, "GET", "/users/me/notification-settings", 200, b)
+    if len(settings["data"]) != 5:
+        raise Blocked("알림 설정이 유형 5개가 아니다")
+    off = {"type": "mention", "email_enabled": False}
+    call("알림 설정 변경", client, "PATCH", "/users/me/notification-settings", 200, b, json=off)
 
 
 def characters(client: httpx.Client, t: str, pid: str) -> None:

@@ -13,7 +13,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core import errors
 from app.platform_.notifications import repository as repo
 from app.platform_.notifications.models import Notification
-from app.platform_.notifications.schemas import NotificationResponse, RelatedRef
+from app.platform_.notifications.schemas import (
+    NOTIFICATION_TYPES,
+    NotificationResponse,
+    NotificationSettingResponse,
+    NotificationSettingUpdate,
+    RelatedRef,
+)
 
 IN_APP = "in_app"
 
@@ -53,10 +59,9 @@ async def create(
     `channels_sent` 는 **실제 발송 결과**다(CLAUDE.md §8). 메일 발송 경로가 아직 없으므로
     항상 `["in_app"]` 이다 — 설정값을 그대로 베끼지 않는다.
     """
-    settings_row = await repo.settings_for(session, user_id)
-    if settings_row is not None:
-        if not settings_row.in_app_enabled or type in settings_row.muted_types:
-            return None
+    setting = (await repo.settings_of(session, user_id)).get(type)
+    if setting is not None and not setting.in_app_enabled:
+        return None
 
     row = await repo.add(
         session,
@@ -120,3 +125,32 @@ async def mark_all_read(session: AsyncSession, user_id: UUID) -> int:
 async def delete(session: AsyncSession, notification_id: UUID, user_id: UUID) -> None:
     await session.delete(await _get(session, notification_id, user_id))
     await session.flush()
+
+
+async def settings(session: AsyncSession, user_id: UUID) -> list[NotificationSettingResponse]:
+    """다섯 유형을 전부, 화면 31 의 순서로. 행이 없는 유형은 기본값이다."""
+    rows = await repo.settings_of(session, user_id)
+    return [
+        NotificationSettingResponse(
+            type=t,
+            in_app_enabled=rows[t].in_app_enabled if t in rows else True,
+            email_enabled=rows[t].email_enabled if t in rows else True,
+        )
+        for t in NOTIFICATION_TYPES
+    ]
+
+
+async def update_setting(
+    session: AsyncSession, user_id: UUID, body: NotificationSettingUpdate
+) -> NotificationSettingResponse:
+    current = next(s for s in await settings(session, user_id) if s.type == body.type)
+    row = await repo.upsert_setting(
+        session,
+        user_id,
+        body.type,
+        current.in_app_enabled if body.in_app_enabled is None else body.in_app_enabled,
+        current.email_enabled if body.email_enabled is None else body.email_enabled,
+    )
+    return NotificationSettingResponse(
+        type=body.type, in_app_enabled=row.in_app_enabled, email_enabled=row.email_enabled
+    )

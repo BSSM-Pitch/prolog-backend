@@ -2,6 +2,7 @@ from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import func, literal, select, tuple_, update
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.platform_.notifications.models import Notification, NotificationSetting
@@ -67,6 +68,21 @@ async def add(session: AsyncSession, notification: Notification) -> Notification
     return notification
 
 
-async def settings_for(session: AsyncSession, user_id: UUID) -> NotificationSetting | None:
+async def settings_of(session: AsyncSession, user_id: UUID) -> dict[str, NotificationSetting]:
     stmt = select(NotificationSetting).where(NotificationSetting.user_id == user_id)
-    return (await session.execute(stmt)).scalar_one_or_none()
+    return {row.type: row for row in (await session.execute(stmt)).scalars()}
+
+
+async def upsert_setting(
+    session: AsyncSession, user_id: UUID, type: str, in_app: bool, email: bool
+) -> NotificationSetting:
+    stmt = (
+        insert(NotificationSetting)
+        .values(user_id=user_id, type=type, in_app_enabled=in_app, email_enabled=email)
+        .on_conflict_do_update(
+            index_elements=["user_id", "type"],
+            set_={"in_app_enabled": in_app, "email_enabled": email},
+        )
+        .returning(NotificationSetting)
+    )
+    return (await session.execute(stmt)).scalar_one()

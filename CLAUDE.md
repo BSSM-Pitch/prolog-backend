@@ -470,6 +470,9 @@ AI 추출(`rule-extractions` 1~4)은 2b. seed 에 규칙 2(화면 21).
 캐릭터 연결 · 챕터 역참조. `0006`(어휘 `unresolved|resolved|orphaned` · `setup|payoff|linked` ·
 챕터 FK 제거 · 번호 캐시 제거). 챕터/원고 삭제 → `chapter.deleted` → orphaned(설치)·unresolved(회수).
 **사건 연결은 없다**(SCDS 이후). seed 에 복선 2.
+**완료 (NOTI 알림 설정):** 명세 §3 의 6·7. `0007` 로 `notification_settings` 를 사용자 × 유형 행으로
+(화면 31 · 명세 §2.2 가 같다 — 한 행 + `muted_types` 로는 유형별 이메일을 표현 못 했다). 바꾼 유형만 행이
+있고 없으면 둘 다 켜짐. `in_app_enabled = false` 인 유형은 알림을 만들지 않는다. 이메일은 저장만.
 **다음 (Phase 2b):** REX · `ai` 워커 · LLM 게이트웨이 · 핸들러 공통 계약 · `/retry` API ·
 `jobs.idempotency_key`. LLM 공급자 · 비용 컬럼(`model`·`token_in/out`, DDL 에 없음) 결정 필요.
 
@@ -509,6 +512,9 @@ AI 추출(`rule-extractions` 1~4)은 2b. seed 에 규칙 2(화면 21).
    - **insight ERD:** `foreshadowing_chapters.chapter_id` 의 `ON DELETE RESTRICT` 와 `orphaned` 상태가
      서로 모순이다(RESTRICT 면 설치 챕터가 지워지지 않는다). FK 없음 + 이벤트로 바꿨다(0006).
      `setup_chapter_no`·`payoff_chapter_no` 캐시도 챕터 번호 변경 때 낡아서 없앴다
+   - **NOTI:** 설정 PATCH 는 보낸 채널만 바꾼다(명세 예시는 둘 다 보낸다) · 설정 조회는 다섯 유형 고정 배열
+     (페이지 없음) · 화면 31 의 "Gmail / 네이버 메일 연동" 은 AUTH v0.2(naver 제거)와 충돌한다 — 연동을 할지,
+     한다면 gmail 만인지 명세 결정이 필요하다
    - **authoring ERD: `character_drafts.status` 의 `pending`(ERD 는 `editing`, API 는 명세대로 `pending_review`) ·
      `character_drafts.source_text` · `world_rules.title`·`category` — ERD 에 없거나 다르지만
      현재 DDL 이 낫다고 판단해 유지했다 (`0002`)**
@@ -518,7 +524,7 @@ AI 추출(`rule-extractions` 1~4)은 2b. seed 에 규칙 2(화면 21).
      `FILE_TOO_LARGE`(413) 도달 불가 · "업로드된 파일 없음" 코드 부재(지금은 `INVALID_INPUT`) ·
      **추출 지원 형식 목록 부재** — `UNSUPPORTED_FILE_FORMAT` 이 전제하는 목록이 명세에 없다.
      지금은 `txt`·`docx` 2종이고 `pdf` 는 발급은 되지만 추출에서 실패한다**
-2. NOTI 명세 §3 의 6~10번(알림 설정·이메일 연동) — 설정 테이블 구조가 명세와 다르다
+2. ~~NOTI 알림 설정~~ 해소(`0007`). 이메일 연동(§3 8~10)은 발송 경로가 없고 AUTH v0.2 가 naver 를 뺐다 — 만들지 않았다
 3. `manuscript_versions` 디바운스 — ROADMAP §12-3 미결. 정하지 말고 물어라
 
 **완료 (PG16 전환):** compose 를 5433 으로 고정하고 `pgdata` 볼륨을 붙였다. 빈 볼륨에

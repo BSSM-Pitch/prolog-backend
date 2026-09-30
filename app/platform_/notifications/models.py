@@ -28,15 +28,15 @@ class Notification(Base, Timestamps):
 
 
 class NotificationSetting(Base, Timestamps):
+    """유형별 채널 설정(0007). 기본값에서 바꾼 유형만 행이 있다 — 없으면 둘 다 켜짐."""
+
     __tablename__ = "notification_settings"
     __table_args__ = {"schema": "platform"}
 
-    id: Mapped[UUID] = pk()
-    user_id: Mapped[UUID] = fk_uuid()
+    user_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True)
+    type: Mapped[str] = mapped_column(String(50), primary_key=True)
     in_app_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     email_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
-    # ASSUMPTION: 유형별 음소거는 명세 미정의. text[] 로 둔다.
-    muted_types: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)
 
 
 class EmailIntegration(Base, Timestamps):
