@@ -240,6 +240,13 @@ def characters(client: httpx.Client, t: str, pid: str) -> None:
     merged = call("merge 확정", client, "POST", f"{drafts}/{d2}/confirm", 200, t, json=merge)
     if [a["value"] for a in merged["data"]["emotion_keywords"]] != ["불안"]:
         raise Blocked("merge 가 항목을 합치지 않았다")
+    twin_draft = draft("윤서")
+    new = {"resolution": "create_new"}
+    twin = call(
+        "동명 새 인물로 확정", client, "POST", f"{drafts}/{twin_draft}/confirm", 201, t, json=new
+    )
+    if twin["data"]["character_id"] == cid:
+        raise Blocked("create_new 가 기존 캐릭터를 돌려줬다")
 
     d3 = draft("임시")
     call("초안 폐기", client, "POST", f"{drafts}/{d3}/discard", 200, t)

@@ -186,9 +186,9 @@ async def confirm(
 ) -> dict[str, Any]:
     """동기 처리다. 실패하면 편집 내용은 그대로 남고, 같은 요청을 다시 보내면 된다.
 
-    - 본문 없음(`{}`) 또는 `create_new`: 새 캐릭터 → **201**. 같은 이름의 캐릭터가 있으면
+    - 본문 없음(`{}`): 새 캐릭터 → **201**. 같은 이름(대소문자 무시)의 캐릭터가 있으면
       `DUPLICATE_CHARACTER_CANDIDATE`(409) 이고 `details.candidate_character_id` 가 온다.
-      `create_new` 도 이름이 겹치면 409 다 — 초안 이름을 바꾼 뒤 다시 확정한다.
+    - `create_new`: 이름이 겹쳐도 새 캐릭터를 만든다 → **201**. 동명 캐릭터가 하나 더 생긴다.
     - `merge` + `merge_target_character_id`: 기존 캐릭터에 항목을 합친다 → **200**.
       이미 있는 값은 건너뛴다. 대상이 없으면 `CHARACTER_NOT_FOUND`.
     - 이름이 비어 있으면 `MISSING_REQUIRED_FIELD`(`details.field = character_name`).

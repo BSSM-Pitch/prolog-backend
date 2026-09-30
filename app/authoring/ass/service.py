@@ -15,7 +15,6 @@ from uuid import UUID
 
 from sqlalchemy import func, literal, select, tuple_
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.authoring.ass.models import (
@@ -45,8 +44,6 @@ from app.authoring.ass.schemas import (
 )
 from app.core import errors
 
-# 0001: UNIQUE (project_id, lower(name)) WHERE status = 'active'. 409 판정 근거다.
-CHARACTER_NAME_UQ = "characters_project_name_active_uq"
 ACTION_OUT = {"create": "added", "update": "modified", "delete": "removed"}
 Cursor = tuple[datetime, UUID] | None
 
@@ -386,34 +383,34 @@ async def discard(session: AsyncSession, project_id: UUID, draft_id: UUID) -> Dr
 # --- 확정 -----------------------------------------------------------------
 
 
-async def _duplicate(session: AsyncSession, project_id: UUID, name: str) -> errors.AppError:
-    stmt = select(Character.id).where(
-        Character.project_id == project_id,
-        func.lower(Character.name) == name.lower(),
-        Character.status == "active",
-    )
-    candidate = (await session.execute(stmt)).scalar_one_or_none()
-    return errors.DuplicateCharacterCandidate(candidate_character_id=str(candidate))
+async def _check_name(
+    session: AsyncSession, project_id: UUID, name: str, *, exclude: UUID | None = None
+) -> None:
+    """같은 이름(대소문자 무시)의 확정 캐릭터가 있으면 409 + 가장 먼저 만든 후보.
 
-
-async def _save(session: AsyncSession, character: Character, **changes: Any) -> None:
-    """이름 UNIQUE 위반을 409 로 번역한다. 세이브포인트라 바깥 트랜잭션은 살아 있다.
-
-    변경은 **세이브포인트 안에서** 건다 — `begin_nested()` 가 들어가기 전에 밀린 변경을
-    flush 하므로, 밖에서 바꾸면 위반이 세이브포인트 바깥에서 터진다.
+    DB 제약이 없으므로(0005 — 화면 37 이 동명 캐릭터를 허용한다) 앱이 판정한다. 같은 이름을
+    동시에 확정하는 두 요청이 둘 다 검사를 통과하지 않게 이름 단위 advisory lock 으로 줄 세운다
+    (트랜잭션이 끝나면 풀린다).
     """
-    # 롤백된 세이브포인트는 객체를 만료시킨다 — 에러에 쓸 값을 먼저 잡는다.
-    project_id, name = character.project_id, changes.get("name", character.name)
-    try:
-        async with session.begin_nested():
-            for key, value in changes.items():
-                setattr(character, key, value)
-            session.add(character)
-            await session.flush()
-    except IntegrityError as exc:
-        if errors.constraint_name(exc) != CHARACTER_NAME_UQ:
-            raise
-        raise await _duplicate(session, project_id, name) from exc
+    key = func.hashtextextended(
+        func.concat("character:", str(project_id), ":", func.lower(name)), 0
+    )
+    await session.execute(select(func.pg_advisory_xact_lock(key)))
+    stmt = (
+        select(Character.id)
+        .where(
+            Character.project_id == project_id,
+            func.lower(Character.name) == func.lower(name),
+            Character.status == "active",
+        )
+        .order_by(Character.created_at, Character.id)
+        .limit(1)
+    )
+    if exclude is not None:
+        stmt = stmt.where(Character.id != exclude)
+    candidate = (await session.execute(stmt)).scalar_one_or_none()
+    if candidate is not None:
+        raise errors.DuplicateCharacterCandidate(candidate_character_id=str(candidate))
 
 
 async def confirm(
@@ -424,8 +421,9 @@ async def confirm(
     항목의 `evidence`·`origin` 은 그대로 승계한다(두 테이블이 같은 모양인 이유).
     이미 있는 값(같은 category · 대소문자 무시 같은 value)은 건너뛴다 — attributes 의 UNIQUE 다.
 
-    `create_new` 는 제약을 풀지 않는다. 같은 이름이면 여전히 409 이고, 초안 이름을 바꾼 뒤
-    다시 확정해야 한다(ERD: "create_new 는 이름 변경을 강제").
+    - resolution 없음: 같은 이름의 확정 캐릭터가 있으면 409 + `candidate_character_id`.
+    - `create_new`: 이름을 검사하지 않는다 — 화면 37 이 "같은 이름의 인물이 하나 더 생겨요" 라고
+      알린 뒤 고른 선택지다.
     """
     draft = await _pending(session, project_id, draft_id)
     if not draft.name:
@@ -449,10 +447,13 @@ async def confirm(
         character.updated_at = func.now()
         created = False
     else:
+        if body.resolution is None:
+            await _check_name(session, project_id, draft.name)
         character = Character(
             project_id=project_id, name=draft.name, created_from_draft_id=draft.id
         )
-        await _save(session, character)
+        session.add(character)
+        await session.flush()
         created = True
 
     trail = {"character_id": character.id, "draft_id": draft.id, "phase": "confirmed"}
@@ -531,8 +532,10 @@ async def update_character(
 ) -> CharacterResponse:
     character = await _character(session, project_id, character_id, lock=True)
     if body.name != character.name:
+        # 이름 변경에는 "그래도 만들기" 선택지가 없으므로 겹치면 409 다.
+        await _check_name(session, project_id, body.name, exclude=character.id)
         before = character.name
-        await _save(session, character, name=body.name)
+        character.name = body.name
         _log(
             session,
             project_id,

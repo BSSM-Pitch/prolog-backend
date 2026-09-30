@@ -554,6 +554,10 @@ Phase 1 착수 전 필요: localstack 또는 elasticmq. Redis도 아직 아무�
   (기본 15분)가 지난 잡 없는 upload draft 를 훑어, S3 에 객체가 있으면 콜백과 같은 경로로 추출을
   건다. 객체가 없으면 건드리지 않는다(아직 안 올린 정상 draft). 원고 행을 잠가 콜백과 겹쳐도
   잡은 하나다. "발급 시각" 컬럼이 없어 `updated_at` 을 쓴다 — 제목을 고치면 그만큼 늦게 줍는다
+- **결정 — 캐릭터 동명 허용** (`0005`). 화면 37 "새 인물로 만들기" 가 "같은 이름의 인물이 하나 더
+  생겨요" 라고 알린 뒤 진행하므로 `characters_project_name_active_uq` 를 없앴다(ERD 의 "앱 레벨 경고로
+  완화"). 중복 판정은 `ass.service._check_name` — resolution 없는 확정과 이름 변경만 409, `create_new` 는
+  검사하지 않는다. 동시 확정은 이름 단위 `pg_advisory_xact_lock` 으로 줄 세운다(없으면 경합 테스트가 깨진다)
 - **결정 — SCDS 이름 매핑은 별칭 없이 ASS 이름으로 통일한다** (`personality_tags`·`core_values`·
   `influence_relations`·`emotion_keywords`). ERD 가 이미 그렇게 결론냈고, 프론트가 아직 붙지 않아
   부채가 없다. SCDS 명세의 `traits`/`values`/`influences` 는 Notion 수정 대상이다

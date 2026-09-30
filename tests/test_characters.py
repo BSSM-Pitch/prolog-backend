@@ -4,6 +4,7 @@
 편집 이력은 append-only 이고, 화면의 "편집 이력 N건" 은 항목 하나의 이력이다.
 """
 
+import asyncio
 from uuid import UUID
 
 from httpx import AsyncClient
@@ -164,9 +165,6 @@ async def test_duplicate_name_then_merge_or_rename(client: AsyncClient) -> None:
     assert res.status_code == 409
     assert code(res) == "DUPLICATE_CHARACTER_CANDIDATE"
     assert res.json()["error"]["details"] == {"candidate_character_id": char["character_id"]}
-    # create_new 도 이름이 겹치면 409 — 이름을 바꿔야 한다(ERD)
-    res = await client.post(confirm, json={"resolution": "create_new"}, headers=h)
-    assert code(res) == "DUPLICATE_CHARACTER_CANDIDATE"
     # 409 뒤에도 초안은 그대로다(화면의 "다시 시도")
     draft = (await client.get(f"/projects/{pid}/character-drafts/{second}", headers=h)).json()
     assert draft["data"]["status"] == "pending_review"
@@ -182,16 +180,40 @@ async def test_duplicate_name_then_merge_or_rename(client: AsyncClient) -> None:
     assert [a["value"] for a in merged["core_values"]] == ["약속 중시"]  # 중복은 건너뛴다
     assert [a["value"] for a in merged["personality_tags"]] == ["신중함"]
 
-    third = await _draft(client, user, pid)
-    await client.patch(
-        f"/projects/{pid}/character-drafts/{third}", json={"character_name": "재현"}, headers=h
-    )
+    # 화면 37 "새 인물로 만들기": 같은 이름의 인물이 하나 더 생긴다
+    third = await _draft(client, user, pid, name="윤서")
     res = await client.post(
         f"/projects/{pid}/character-drafts/{third}/confirm",
         json={"resolution": "create_new"},
         headers=h,
     )
-    assert res.status_code == 201
+    assert res.status_code == 201, res.text
+    twin = res.json()["data"]
+    assert twin["name"] == "윤서" and twin["character_id"] != char["character_id"]
+    listed = (await client.get(f"/projects/{pid}/characters", headers=h)).json()["data"]
+    assert sorted(c["name"] for c in listed) == ["윤서", "윤서"]
+
+    # 동명이 둘이어도 후보는 가장 먼저 만든 쪽이다
+    fourth = await _draft(client, user, pid, name="윤서")
+    res = await client.post(
+        f"/projects/{pid}/character-drafts/{fourth}/confirm", json={}, headers=h
+    )
+    assert res.json()["error"]["details"] == {"candidate_character_id": char["character_id"]}
+
+
+async def test_same_name_confirmed_concurrently_makes_one(client: AsyncClient) -> None:
+    """제약이 없으므로 앱 판정이 경합에서 뚫리면 사용자가 고르지 않은 동명이 생긴다."""
+    user, pid = await _project(client, "ch8@example.com")
+    drafts = [await _draft(client, user, pid, name="민아") for _ in range(2)]
+    results = await asyncio.gather(
+        *(
+            client.post(
+                f"/projects/{pid}/character-drafts/{d}/confirm", json={}, headers=user["headers"]
+            )
+            for d in drafts
+        )
+    )
+    assert sorted(r.status_code for r in results) == [201, 409]
 
 
 async def test_merge_target_must_exist(client: AsyncClient) -> None:
