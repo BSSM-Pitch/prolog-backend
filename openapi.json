@@ -119,6 +119,36 @@
         "title": "AttributeResponse",
         "type": "object"
       },
+      "Candidate": {
+        "properties": {
+          "character_id": {
+            "format": "uuid",
+            "title": "Character Id",
+            "type": "string"
+          },
+          "conflict_target": {
+            "title": "Conflict Target",
+            "type": "string"
+          },
+          "matched_keyword": {
+            "title": "Matched Keyword",
+            "type": "string"
+          },
+          "rule_id": {
+            "format": "uuid",
+            "title": "Rule Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule_id",
+          "character_id",
+          "conflict_target",
+          "matched_keyword"
+        ],
+        "title": "Candidate",
+        "type": "object"
+      },
       "CandidateEdit": {
         "properties": {
           "description": {
@@ -598,6 +628,370 @@
         "title": "ConfirmRequest",
         "type": "object"
       },
+      "ConflictAction": {
+        "properties": {
+          "action": {
+            "enum": [
+              "accepted",
+              "ignored",
+              "modified"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "modified_content": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modified Content"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "title": "ConflictAction",
+        "type": "object"
+      },
+      "ConflictCheckEnvelope": {
+        "description": "명세 §4.7 \"실패\" 는 200 에 `data`(status=failed) 와 `error` 를 함께 준다.",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ConflictCheckResponse"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "status=failed 일 때만 있다"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "ConflictCheckEnvelope",
+        "type": "object"
+      },
+      "ConflictCheckResponse": {
+        "properties": {
+          "check_id": {
+            "format": "uuid",
+            "title": "Check Id",
+            "type": "string"
+          },
+          "conflict_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Conflict Ids",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "event_id": {
+            "format": "uuid",
+            "title": "Event Id",
+            "type": "string"
+          },
+          "rule_result": {
+            "$ref": "#/components/schemas/RuleResult"
+          },
+          "status": {
+            "enum": [
+              "skipped",
+              "queued",
+              "analyzing",
+              "completed",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "check_id",
+          "event_id",
+          "status",
+          "rule_result",
+          "conflict_ids",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ConflictCheckResponse",
+        "type": "object"
+      },
+      "ConflictCheckResponseEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ConflictCheckResponse"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "ConflictCheckResponseEnvelope",
+        "type": "object"
+      },
+      "ConflictResponse": {
+        "properties": {
+          "advice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Advice"
+          },
+          "chapter": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chapter"
+          },
+          "chapter_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chapter Id"
+          },
+          "character_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Character Id"
+          },
+          "check_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Check Id"
+          },
+          "conflict_id": {
+            "format": "uuid",
+            "title": "Conflict Id",
+            "type": "string"
+          },
+          "conflict_target": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conflict Target"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "detected_by": {
+            "enum": [
+              "rule",
+              "ai"
+            ],
+            "title": "Detected By",
+            "type": "string"
+          },
+          "event_id": {
+            "format": "uuid",
+            "title": "Event Id",
+            "type": "string"
+          },
+          "input_event": {
+            "title": "Input Event",
+            "type": "string"
+          },
+          "matched_keyword": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matched Keyword"
+          },
+          "modified_content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modified Content"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "rule_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule Id"
+          },
+          "severity": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Severity"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "accepted",
+              "ignored",
+              "modified"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "conflict_id",
+          "check_id",
+          "event_id",
+          "character_id",
+          "rule_id",
+          "chapter_id",
+          "chapter",
+          "conflict_target",
+          "matched_keyword",
+          "input_event",
+          "detected_by",
+          "severity",
+          "advice",
+          "status",
+          "modified_content",
+          "created_at",
+          "resolved_at"
+        ],
+        "title": "ConflictResponse",
+        "type": "object"
+      },
+      "ConflictResponseEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ConflictResponse"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "ConflictResponseEnvelope",
+        "type": "object"
+      },
+      "ConflictResponsePage": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/ConflictResponse"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PageMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ConflictResponsePage",
+        "type": "object"
+      },
       "DraftCreate": {
         "properties": {
           "character_name": {
@@ -947,6 +1341,110 @@
           "error"
         ],
         "title": "ErrorResponse",
+        "type": "object"
+      },
+      "EventCreate": {
+        "properties": {
+          "character_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Character Ids",
+            "type": "array"
+          },
+          "content": {
+            "maxLength": 5000,
+            "minLength": 1,
+            "title": "Content",
+            "type": "string"
+          }
+        },
+        "required": [
+          "character_ids",
+          "content"
+        ],
+        "title": "EventCreate",
+        "type": "object"
+      },
+      "EventCreated": {
+        "properties": {
+          "conflict_check": {
+            "$ref": "#/components/schemas/ConflictCheckResponse"
+          },
+          "event": {
+            "$ref": "#/components/schemas/EventResponse"
+          }
+        },
+        "required": [
+          "event",
+          "conflict_check"
+        ],
+        "title": "EventCreated",
+        "type": "object"
+      },
+      "EventCreatedEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/EventCreated"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "EventCreatedEnvelope",
+        "type": "object"
+      },
+      "EventResponse": {
+        "properties": {
+          "chapter": {
+            "title": "Chapter",
+            "type": "integer"
+          },
+          "chapter_id": {
+            "format": "uuid",
+            "title": "Chapter Id",
+            "type": "string"
+          },
+          "character_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Character Ids",
+            "type": "array"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "event_id": {
+            "format": "uuid",
+            "title": "Event Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "chapter_id",
+          "chapter",
+          "character_ids",
+          "content",
+          "created_at"
+        ],
+        "title": "EventResponse",
         "type": "object"
       },
       "ExtractedInfluenceItem": {
@@ -1663,6 +2161,64 @@
           "data"
         ],
         "title": "HealthEnvelope",
+        "type": "object"
+      },
+      "HistoryItem": {
+        "properties": {
+          "conflict_id": {
+            "format": "uuid",
+            "title": "Conflict Id",
+            "type": "string"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "accepted",
+              "ignored",
+              "modified"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "conflict_id",
+          "status",
+          "resolved_at"
+        ],
+        "title": "HistoryItem",
+        "type": "object"
+      },
+      "HistoryItemPage": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/HistoryItem"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PageMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "HistoryItemPage",
         "type": "object"
       },
       "ItemCreate": {
@@ -3332,6 +3888,49 @@
           "data"
         ],
         "title": "RuleExtractionResponseEnvelope",
+        "type": "object"
+      },
+      "RuleResult": {
+        "properties": {
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/Candidate"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
+          "has_candidate": {
+            "title": "Has Candidate",
+            "type": "boolean"
+          },
+          "skipped": {
+            "title": "Skipped",
+            "type": "boolean"
+          },
+          "skipped_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skipped Reason"
+          },
+          "suppressed_count": {
+            "default": 0,
+            "title": "Suppressed Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "has_candidate",
+          "skipped",
+          "skipped_reason",
+          "candidates"
+        ],
+        "title": "RuleResult",
         "type": "object"
       },
       "SelectionRange": {
@@ -7058,6 +7657,195 @@
         ]
       }
     },
+    "/v1/projects/{projectId}/chapters/{chapterId}/events": {
+      "post": {
+        "description": "룰 검출은 **이 요청 안에서** 끝난다(AI 호출 없음). `conflict_check.status`:\n\n- `skipped`: 참조할 설정이 없거나(`rule_result.skipped = true`) 후보가 없다.\n  AI 를 부르지 않는다.\n- `queued`: 후보가 있어 AI 분석 잡을 걸었다 — `GET .../conflict-checks/{checkId}` 로 폴링한다.\n\n전에 `ignored` 로 처리한 같은 조합(캐릭터 · 규칙 · 사건 문장)은 후보에서 빠진다\n(`rule_result.suppressed_count`). `character_ids` 는 이 프로젝트의 확정 캐릭터여야 한다.",
+        "operationId": "create_event_v1_projects__projectId__chapters__chapterId__events_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "chapterId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Chapterid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventCreatedEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "CHAPTER_NOT_FOUND": {
+                    "summary": "챕터를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "CHAPTER_NOT_FOUND",
+                        "details": {},
+                        "message": "챕터를 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "CHARACTER_NOT_FOUND": {
+                    "summary": "캐릭터를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "CHARACTER_NOT_FOUND",
+                        "details": {},
+                        "message": "캐릭터를 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `CHAPTER_NOT_FOUND` — 챕터를 찾을 수 없습니다\n- `CHARACTER_NOT_FOUND` — 캐릭터를 찾을 수 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RULE_ENGINE_ERROR": {
+                    "summary": "룰 기반 필터링 처리 중 서버 오류",
+                    "value": {
+                      "error": {
+                        "code": "RULE_ENGINE_ERROR",
+                        "details": {},
+                        "message": "룰 기반 필터링 처리 중 서버 오류"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `RULE_ENGINE_ERROR` — 룰 기반 필터링 처리 중 서버 오류"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "사건을 저장하고 룰 기반 충돌 후보를 검출한다",
+        "tags": [
+          "SCDS"
+        ]
+      }
+    },
     "/v1/projects/{projectId}/chapters/{chapterId}/foreshadowings": {
       "get": {
         "description": "챕터를 지우기 전에 부른다. `role = setup` 이 있으면 삭제 후 그 복선은 `orphaned` 가 되고,\n사용자가 설치 챕터를 다시 지정해야 한다(자동 재지정하지 않는다).",
@@ -9775,6 +10563,1092 @@
         "summary": "캐릭터 편집 이력 (확정 후)",
         "tags": [
           "ASS"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/conflict-checks/{checkId}": {
+      "get": {
+        "description": "`queued` → `analyzing` → `completed`(`conflict_ids`) | `failed`.\n\n실패면 200 에 `error` 가 함께 오고, 룰 후보는 조언 없는 충돌로 남는다(명세 §4.7).",
+        "operationId": "get_check_v1_projects__projectId__conflict_checks__checkId__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "checkId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Checkid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictCheckEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "CONFLICT_CHECK_NOT_FOUND": {
+                    "summary": "충돌 검사 작업을 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "CONFLICT_CHECK_NOT_FOUND",
+                        "details": {},
+                        "message": "충돌 검사 작업을 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `CONFLICT_CHECK_NOT_FOUND` — 충돌 검사 작업을 찾을 수 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "충돌 검사 상태 · 결과 (폴링)",
+        "tags": [
+          "SCDS"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/conflict-checks/{checkId}/retry": {
+      "post": {
+        "description": "`failed` 에서만(아니면 `INVALID_STATUS_TRANSITION`). 룰 후보로 남긴 미처리 충돌은 지우고\n같은 후보로 AI 분석만 다시 한다.",
+        "operationId": "retry_check_v1_projects__projectId__conflict_checks__checkId__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "checkId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Checkid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictCheckResponseEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "CONFLICT_CHECK_NOT_FOUND": {
+                    "summary": "충돌 검사 작업을 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "CONFLICT_CHECK_NOT_FOUND",
+                        "details": {},
+                        "message": "충돌 검사 작업을 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `CONFLICT_CHECK_NOT_FOUND` — 충돌 검사 작업을 찾을 수 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_STATUS_TRANSITION": {
+                    "summary": "허용되지 않는 상태 전이입니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_STATUS_TRANSITION",
+                        "details": {},
+                        "message": "허용되지 않는 상태 전이입니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_STATUS_TRANSITION` — 허용되지 않는 상태 전이입니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "AI 분석을 다시 시도한다",
+        "tags": [
+          "SCDS"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/conflicts": {
+      "get": {
+        "description": "최근 것부터. AI 디렉터 패널 · 화면 05 \"미검토만\" 은 `status=pending`.",
+        "operationId": "list_conflicts_v1_projects__projectId__conflicts_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "페이지 크기. 기본 20 · 최대 100",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "페이지 크기. 기본 20 · 최대 100",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "이전 응답의 `meta.next_cursor`. 첫 페이지는 비운다",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "이전 응답의 `meta.next_cursor`. 첫 페이지는 비운다",
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "pending",
+                    "accepted",
+                    "ignored",
+                    "modified"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "chapter_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Chapter Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "character_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Character Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "severity",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "low",
+                    "medium",
+                    "high"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Severity"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictResponsePage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "충돌(조언) 목록",
+        "tags": [
+          "SCDS"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/conflicts/history": {
+      "get": {
+        "description": "`pending` 이 아닌 충돌. 최근 것부터.",
+        "operationId": "history_v1_projects__projectId__conflicts_history_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "페이지 크기. 기본 20 · 최대 100",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "페이지 크기. 기본 20 · 최대 100",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "이전 응답의 `meta.next_cursor`. 첫 페이지는 비운다",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "이전 응답의 `meta.next_cursor`. 첫 페이지는 비운다",
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "character_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Character Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "chapter_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Chapter From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "chapter_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Chapter To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryItemPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "처리한 충돌 이력",
+        "tags": [
+          "SCDS"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/conflicts/{conflictId}": {
+      "get": {
+        "description": "`detected_by = rule` 이면 AI 분석이 실패해 조언 없이 남은 후보다.",
+        "operationId": "get_conflict_v1_projects__projectId__conflicts__conflictId__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "conflictId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Conflictid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictResponseEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "CONFLICT_NOT_FOUND": {
+                    "summary": "해당 충돌 항목을 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "CONFLICT_NOT_FOUND",
+                        "details": {},
+                        "message": "해당 충돌 항목을 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `CONFLICT_NOT_FOUND` — 해당 충돌 항목을 찾을 수 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "충돌을 조회한다",
+        "tags": [
+          "SCDS"
+        ]
+      },
+      "patch": {
+        "description": "화면 05: 제안 수용 = `accepted` · 무시 = `ignored` · 직접 수정 = `modified`\n(`modified_content` 필수).\n\n한 번만 처리한다(아니면 `INVALID_STATUS_TRANSITION`). `ignored` 는 같은 조합이 다시\n후보가 되지 않게 억제한다.",
+        "operationId": "resolve_v1_projects__projectId__conflicts__conflictId__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "conflictId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Conflictid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConflictAction"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictResponseEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "CONFLICT_NOT_FOUND": {
+                    "summary": "해당 충돌 항목을 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "CONFLICT_NOT_FOUND",
+                        "details": {},
+                        "message": "해당 충돌 항목을 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `CONFLICT_NOT_FOUND` — 해당 충돌 항목을 찾을 수 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_STATUS_TRANSITION": {
+                    "summary": "허용되지 않는 상태 전이입니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_STATUS_TRANSITION",
+                        "details": {},
+                        "message": "허용되지 않는 상태 전이입니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_STATUS_TRANSITION` — 허용되지 않는 상태 전이입니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "충돌을 처리한다 (수용 · 무시 · 수정)",
+        "tags": [
+          "SCDS"
         ]
       }
     },

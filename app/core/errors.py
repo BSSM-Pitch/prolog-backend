@@ -100,6 +100,13 @@ QaThreadNotFound = _err("QA_THREAD_NOT_FOUND", 404, "질문 스레드를 찾을 
 QaMessageNotFound = _err("QA_MESSAGE_NOT_FOUND", 404, "메시지를 찾을 수 없습니다")
 InvalidSelectionRange = _err("INVALID_SELECTION_RANGE", 400, "선택 범위가 원고 길이를 벗어났습니다")
 
+# --- SCDS (§1.5) --------------------------------------------------------
+EventNotFound = _err("EVENT_NOT_FOUND", 404, "사건을 찾을 수 없습니다")
+ConflictCheckNotFound = _err("CONFLICT_CHECK_NOT_FOUND", 404, "충돌 검사 작업을 찾을 수 없습니다")
+ConflictNotFound = _err("CONFLICT_NOT_FOUND", 404, "해당 충돌 항목을 찾을 수 없습니다")
+RuleEngineError = _err("RULE_ENGINE_ERROR", 500, "룰 기반 필터링 처리 중 서버 오류")
+# CHARACTER_NOT_FOUND · INVALID_STATUS_TRANSITION 은 ASS · 잡과 같은 코드다.
+
 # --- REX (§1.4) ---------------------------------------------------------
 WorldRuleNotFound = _err("WORLD_RULE_NOT_FOUND", 404, "규칙을 찾을 수 없습니다")
 RuleExtractionNotFound = _err("RULE_EXTRACTION_NOT_FOUND", 404, "추출 작업을 찾을 수 없습니다")

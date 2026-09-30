@@ -23,7 +23,10 @@ from app.core.errors import AppError
 from app.main import app
 
 # 스펙에 없어도 되는 코드와 그 이유. 도달 불가능한 코드를 선언하면 그게 오히려 거짓말이다.
-UNREACHABLE: dict[str, str] = {}  # INVALID_STATUS_TRANSITION 은 AIQ 재시도가 낸다
+UNREACHABLE = {
+    # 사건 단건 API 가 명세에 없다. 분석 잡이 돌 때 사건이 지워졌으면 잡의 error 로만 남는다.
+    "EVENT_NOT_FOUND": "잡 실패 사유 전용 — HTTP 로 나가는 경로가 없다",
+}
 
 SCHEMA_NAME = re.compile(r"[A-Z][A-Za-z0-9]*")
 

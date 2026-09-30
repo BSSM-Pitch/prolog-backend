@@ -16,7 +16,7 @@
 | 서비스 | StoryForge — AI 기반 스토리 구조 관리 IDE |
 | 레포 경로 | `~/dev/prolog` (2026-09-30 iCloud 동기화 밖으로 이동. 옛 경로 `~/Desktop/전공동`) |
 | 스택 | FastAPI · PostgreSQL · SQLAlchemy(asyncpg) · Alembic(psycopg) · uv |
-| 현재 단계 | **Phase 2b 진행 중** — `prolog-ai` 연동: AI 포트 · `ai` 워커 · NLCD · REX 추출 · **AIQ 완료**. 다음은 SCDS · SSM |
+| 현재 단계 | **Phase 2b 진행 중** — `prolog-ai` 연동: AI 포트 · `ai` 워커 · NLCD · REX 추출 · AIQ · **SCDS 완료**. 다음은 SSM |
 | git | `a6ea4e9` 첫 커밋(84파일) → `d00610a` CLAUDE.md 복원 → `f586427` AUTH v0.2 → `66b4f67` 감사 P0 → `3f0eca7` 감사 P1 → `87c9006` 조합 레이어 → `a382a5c` 감사 P2 → `8d20b20` 감사 P3 → `a381109` OpenAPI → `583e00a` PG16 → `ec649f0` Phase 1 인프라 → `205d0dd` manuscript_count → `73427d3` NOTI → `c10290d` OpenAPI → `a2d4471` MSU·챕터 → `5a2d79f` 업로드 콜백·s3mock·복합 FK → `62d5837` 추출 워커 → `a19dd01` OpenAPI 계약·목록 커서·팀 유래 멤버 → `cf65615` 검증 스크립트 → `56c197f` 스키마 이름·seed → `a9e979b` Phase 2a 잡 내구성 → ASS 수동 경로(이 문서와 같은 커밋) |
 
 ### 실행
@@ -134,7 +134,7 @@ Celery 는 쓰지 않는다 — 단순 루프 + SQS redrive 로 충분하다(2b 
 | `worker/notifier.py` | 도메인 이벤트 소비: 알림 INSERT · `chapter.deleted` → FTS 정리 (소비자별 inbox) | `notify` |
 | `worker/extractor.py` | `manuscript_extraction` 잡 → S3 읽기 → 본문 채우고 `ready` | `io` |
 | `worker/sweeper.py` | 주기 작업: 좀비 잡 회수 · 업로드 콜백 유실 회수 | (없음) |
-| `worker/ai_worker.py` | AI 잡 — `job_type` 별 핸들러(`HANDLERS`): `nl_extraction` · `rule_extraction` · `qa_answer` | `ai` |
+| `worker/ai_worker.py` | AI 잡 — `job_type` 별 핸들러(`HANDLERS`): `nl_extraction` · `rule_extraction` · `qa_answer` · `conflict_check` | `ai` |
 
 **내구성 규칙 (2a).** 어기면 durability.py 가 다시 재현한다.
 - **메시지 하나가 워커를 죽이지 않는다.** 소비 루프는 `app/events/consumer.py` 하나다. 처리에
@@ -493,6 +493,11 @@ AI 추출(`rule-extractions` 1~4)은 2b. seed 에 규칙 2(화면 21).
 **완료 (AIQ):** 명세 7종 — 스레드 목록·생성(+첫 질문)·상세·후속 질문·메시지 폴링·재시도·삭제. 질문 하나 =
 user 메시지 + pending assistant 메시지 + `qa_answer` 잡. 끝내 실패하면 메시지 `failed`(스위퍼 좀비 포함).
 `0009` scope `whole|chapter|selection`. 선택 구간은 `selected_text` 로 다시 찾는다(§12-4 결정).
+**완료 (SCDS):** 명세 §3 의 6~12 — 사건 저장 + 룰 검출(요청 안 동기, `Depends(ai_client)`) · 검사 폴링 ·
+재시도 · 충돌 목록/상세/처리 · 이력. `0010`(충돌 필드 · `pending` · 억제 UNIQUE 를 프로젝트별로).
+사건은 SCDS 소유이고 룰 입력(챕터 · 확정 캐릭터 · 세계관 규칙)은 전부 아래 Ring 이라 직접 읽는다.
+억제는 백엔드가 거른다(`sha256(character:rule:정규화한 본문)`). AI 가 끝내 실패하면 룰 후보가 조언 없는
+충돌(`detected_by = rule`)로 남는다.
 **다음 (Phase 2b):** REX · `ai` 워커 · LLM 게이트웨이 · 핸들러 공통 계약 · `/retry` API ·
 `jobs.idempotency_key`. LLM 공급자 · 비용 컬럼(`model`·`token_in/out`, DDL 에 없음) 결정 필요.
 
@@ -595,6 +600,18 @@ user 메시지 + pending assistant 메시지 + `qa_answer` 잡. 끝내 실패하
    - [코드] 화면 02 스레드의 "17장 · 22장"·답변의 "근거 · 17장" — 패키지 답변은 `content` 문자열 하나라
      근거 장면이 없다(패키지 TODO)
 
+   **SCDS**
+   - [코드] 명세 1~5(캐릭터 · 규칙 · 관계 조회/갱신)는 만들지 않았다 — ASS · REX 가 같은 리소스를 이미 낸다
+     (§12 이름 통일). 13(챕터 재검사, 선택)도 아직
+   - [코드] 충돌 status `pending` 은 명세대로(DDL `open` 을 0010 에서 바꿨다) · `detected_by`(rule|ai) ·
+     `matched_keyword`·`rule_id`·`chapter_id`·`chapter`(번호) 추가 · 목록 필터는 `chapter_id`(FTS 와 같은 이유)
+   - [코드] `rule_result.suppressed_count`(억제로 뺀 후보 수) · 사건 응답에 `chapter_id`·`created_at`
+   - [코드] AI 실패 시 룰 후보를 조언 없는 충돌로 만든다(명세 §4.7 "후보만 표시" + ERD "advice null") ·
+     재시도하면 그 충돌을 지우고 다시 분석한다
+   - [코드] 알 수 없는 챕터는 MSU 의 `CHAPTER_NOT_FOUND`, 캐릭터는 `CHARACTER_NOT_FOUND`(SCDS §1.5 에 있다)
+   - [코드] 화면 05 의 "근거 A · 4장 / 근거 B · 19장"(두 근거 장면)은 패키지가 주지 않는다(`related_chapter_ref` TODO)
+   - [코드] 패키지 룰 검출은 세계관 규칙 키워드만 본다(RULE-02). 캐릭터 가치관 판정(RULE-01)은 패키지 TODO
+
    **FTS**
    - [코드] 챕터를 번호가 아니라 **id 로 받는다**(원고가 여럿이면 번호가 겹친다): `setup_chapter_id` ·
      `payoff_chapter_id` · `chapter_id`, 경로 `/chapters/{chapterId}/foreshadowings` ·
@@ -621,7 +638,7 @@ user 메시지 + pending assistant 메시지 + `qa_answer` 잡. 끝내 실패하
 
 ## 10. 반드시 추가할 테스트
 
-현재 68 경로 · 101 오퍼레이션에 테스트 137개다 (`/v1/health` 제외).
+현재 74 경로 · 108 오퍼레이션에 테스트 142개다 (`/v1/health` 제외).
 **TEAM·PRJ 24개 오퍼레이션에 빠짐없이 테스트가 닿는다.**
 
 이 절의 목록은 비었다 — 5종 모두 들어갔다. 리프레시 토큰 재사용 거부 · 테넌트 격리 ·

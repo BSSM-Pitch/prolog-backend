@@ -1,6 +1,7 @@
+from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import ARRAY, Integer, String, Text
+from sqlalchemy import ARRAY, DateTime, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -39,13 +40,18 @@ class Conflict(Base, Timestamps):
     event_id: Mapped[UUID] = fk_uuid()
     character_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True))
     rule_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True))
-    # 룰 검출 시점에 만들고 advice 는 나중에 채운다. AI 실패는 데이터 손실이 아니다(§7).
+    # AI 가 남긴 충돌은 `ai`, AI 가 끝내 실패해 룰 후보만 남긴 것은 `rule`(advice 없음).
     detected_by: Mapped[str] = mapped_column(String(20), default="rule")  # rule | ai
     severity: Mapped[str | None] = mapped_column(String(20))
-    status: Mapped[str] = mapped_column(String(20), default="open")
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # 0010
     advice: Mapped[str | None] = mapped_column(Text)
     suppression_key: Mapped[str] = mapped_column(String(64))
     job_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True))
+    chapter_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True))
+    conflict_target: Mapped[str | None] = mapped_column(Text)
+    matched_keyword: Mapped[str | None] = mapped_column(Text)
+    modified_content: Mapped[str | None] = mapped_column(Text)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class ConflictSuppression(Base, Timestamps):

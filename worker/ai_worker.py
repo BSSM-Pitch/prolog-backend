@@ -23,6 +23,7 @@ from app.db.session import SessionFactory
 from app.events.consumer import consume
 from app.events.queue import AI_QUEUE, SqsQueue
 from app.insight.aiq import service as aiq
+from app.insight.scds import service as scds
 
 log = logging.getLogger(__name__)
 
@@ -31,6 +32,7 @@ HANDLERS: dict[str, Handler] = {
     NLCD_JOB: nlcd.handle,
     rex.JOB_TYPE: rex.handle,
     aiq.JOB_TYPE: aiq.handle,
+    scds.JOB_TYPE: scds.handle,
 }
 
 ai: AIClient = PrologAI()

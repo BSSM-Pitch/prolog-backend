@@ -257,19 +257,35 @@ class FakeAI:
     def run_scds_rules(
         self, event: Any, world_rules: Any, characters: Any = None
     ) -> dict[str, Any]:
-        return self._next("run_scds_rules", event, world_rules)
+        """룰 검출은 LLM 이 없는 순수 함수다 — 결과를 넣지 않았으면 **실제 패키지**로 돌린다."""
+        if self.results:
+            return self._next("run_scds_rules", event, world_rules, characters)
+        from prolog_ai import run_scds_rules
+
+        self.calls.append(("run_scds_rules", (event, world_rules, characters)))
+        return run_scds_rules(event, world_rules, characters)
 
     def run_scds_analysis(
         self, event: Any, rule_result: Any, characters: Any = None
     ) -> dict[str, Any]:
-        return self._next("run_scds_analysis", event, rule_result)
+        return self._next("run_scds_analysis", event, rule_result, characters)
 
     def run_ssm(self, manuscript_text: str, characters: Any = None) -> dict[str, Any]:
         return self._next("run_ssm", manuscript_text)
 
 
 app.dependency_overrides[google_oauth] = FakeGoogle
-app.dependency_overrides[ai_client] = FakeAI
+
+
+def fake_ai() -> FakeAI:
+    """FastAPI 는 클래스를 넘기면 `__init__(*results)` 를 요청 인자로 읽는다.
+
+    인자 없는 공장으로 준다.
+    """
+    return FakeAI()
+
+
+app.dependency_overrides[ai_client] = fake_ai
 app.dependency_overrides[storage] = FakeStorage
 
 

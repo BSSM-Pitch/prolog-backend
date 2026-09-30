@@ -192,6 +192,7 @@ def run(client: httpx.Client) -> None:
     nl_extraction(client, b, project_id)
     rule_extraction(client, b, project_id, ms["manuscript_id"])
     ask(client, b, project_id, ms["manuscript_id"])
+    conflicts(client, b, project_id, ms["manuscript_id"])
     settings = call("알림 설정", client, "GET", "/users/me/notification-settings", 200, b)
     if len(settings["data"]) != 5:
         raise Blocked("알림 설정이 유형 5개가 아니다")
@@ -415,6 +416,54 @@ def ask(client: httpx.Client, t: str, pid: str, ms: str) -> None:
     call("후속 질문", client, "POST", f"{base}/{tid}/messages", 201, t, json={"content": "왜요?"})
     call("스레드 목록", client, "GET", base, 200, t)
     call("완료된 답변 재시도", client, "POST", f"{poll}/retry", 409, t)
+
+
+def conflicts(client: httpx.Client, t: str, pid: str, ms: str) -> None:
+    """SCDS — 사건 저장(룰 검출 동기) → ai 워커 분석 → 검사 폴링 → 충돌 목록."""
+    body = {"manuscript_id": ms, "chapter_no": 20, "title": "20장"}
+    chapter = call("챕터 생성(20)", client, "POST", f"/projects/{pid}/chapters", 201, t, json=body)[
+        "data"
+    ]["chapter_id"]
+    drafts = f"/projects/{pid}/character-drafts"
+    did = call(
+        "초안(사건 인물)", client, "POST", drafts, 201, t, json={"character_name": "사건 인물"}
+    )["data"]["draft_id"]
+    cid = call("확정(사건 인물)", client, "POST", f"{drafts}/{did}/confirm", 201, t, json={})[
+        "data"
+    ]["character_id"]
+    rule = {
+        "title": "야간 통행",
+        "description": "밤에는 성문을 열 수 없다",
+        "violation_keywords": ["한밤에 성문"],
+    }
+    call("규칙 추가(SCDS)", client, "POST", f"/projects/{pid}/world-rules", 201, t, json=rule)
+    events = f"/projects/{pid}/chapters/{chapter}/events"
+    quiet = call(
+        "사건 저장(후보 없음)",
+        client,
+        "POST",
+        events,
+        201,
+        t,
+        json={"character_ids": [cid], "content": "낮에 문을 열었다."},
+    )
+    if quiet["data"]["conflict_check"]["status"] != "skipped":
+        raise Blocked("후보 없는 사건이 skipped 가 아니다")
+    loud = {"character_ids": [cid], "content": "그는 한밤에 성문을 열었다."}
+    made = call("사건 저장(후보 있음)", client, "POST", events, 201, t, json=loud)["data"]
+    check = made["conflict_check"]
+    if check["status"] != "queued":
+        raise Blocked("후보가 있는데 queued 가 아니다")
+    path = f"/projects/{pid}/conflict-checks/{check['check_id']}"
+
+    def analyzed() -> Any:
+        res = client.get(BASE + path, headers={"Authorization": f"Bearer {t}"})
+        return res.json() if res.json()["data"]["status"] in ("completed", "failed") else None
+
+    wait_for("AI 분석(ai 워커)", analyzed, timeout=60)
+    call("충돌 검사 결과", client, "GET", path, 200, t)
+    call("충돌 목록", client, "GET", f"/projects/{pid}/conflicts", 200, t)
+    call("충돌 이력", client, "GET", f"/projects/{pid}/conflicts/history", 200, t)
 
 
 def main() -> None:
