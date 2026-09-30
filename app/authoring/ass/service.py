@@ -249,6 +249,59 @@ async def create_draft(
     return await _draft_response(session, draft)
 
 
+async def character_name(session: AsyncSession, project_id: UUID, character_id: UUID) -> str | None:
+    """확정 캐릭터의 이름. 없으면 None.
+
+    NLCD 의 `target_character_id` 확인용이다(조합 레이어가 부른다).
+    """
+    stmt = select(Character.name).where(
+        Character.id == character_id,
+        Character.project_id == project_id,
+        Character.status == "active",
+    )
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def create_draft_from_extraction(
+    session: AsyncSession,
+    project_id: UUID,
+    *,
+    job_id: UUID,
+    source_text: str,
+    name: str | None,
+    extracted: dict[str, list[dict[str, Any]]],
+    user_id: UUID,
+) -> DraftResponse:
+    """NLCD forward(명세 §4.5)가 만드는 초안. 항목은 전부 `ai_extracted` 이고 근거를 갖는다.
+
+    AI 가 넣은 항목은 사용자 편집이 아니므로 편집 이력에 남기지 않는다. 영향 관계의 `type` 은
+    버린다 — 초안 항목은 `value` 하나다(DDL · 화면 23).
+    """
+    draft = CharacterDraft(
+        project_id=project_id,
+        source_job_id=job_id,
+        source_text=source_text,
+        name=name,
+        created_by=user_id,
+    )
+    session.add(draft)
+    await session.flush()
+    for field, items in extracted.items():
+        for item in items:
+            session.add(
+                CharacterDraftItem(
+                    project_id=project_id,
+                    draft_id=draft.id,
+                    category=CATEGORY_OF[field],  # type: ignore[index]
+                    value=item["value"],
+                    evidence=item.get("evidence"),
+                    origin="ai_extracted",
+                    created_at=func.clock_timestamp(),  # 추출 순서를 지킨다
+                )
+            )
+    return await _draft_response(session, draft)
+
+
 async def list_drafts(
     session: AsyncSession,
     project_id: UUID,

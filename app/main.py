@@ -6,8 +6,10 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from starlette.exceptions import HTTPException
 
+from app.api.nlcd import router as nlcd_forward_router
 from app.api.router import router as api_router
 from app.authoring.ass.router import router as ass_router
+from app.authoring.nlcd.router import router as nlcd_router
 from app.authoring.rex.router import router as rex_router
 from app.content.manuscripts.router import router as manuscripts_router
 from app.core import openapi
@@ -94,6 +96,8 @@ for _router in (
     rex_router,
     fts_router,
     api_router,
+    nlcd_router,
+    nlcd_forward_router,
 ):
     app.include_router(_router, prefix="/v1")
 

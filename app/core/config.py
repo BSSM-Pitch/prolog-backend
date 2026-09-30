@@ -37,11 +37,20 @@ class Settings(BaseSettings):
     # 장편 원고 추출이 정상적으로 이보다 오래 걸리면 살아 있는 잡을 죽인다 — 그때 늘린다.
     job_zombie_seconds_io: int = 5 * 60
     job_zombie_seconds_ai: int = 15 * 60
+    # prolog-ai 는 .env 를 읽지 않는다. 여기 값을 첫 호출 때 환경변수로 넘긴다(app.ai.client).
+    openrouter_api_key: str = ""
+    prolog_ai_model: str = ""
     # 업로드 콜백 유실 스위퍼: URL 발급(= 원고 updated_at) 후 이만큼 지난 draft 를 본다.
     # presigned TTL(10분) + 여유 5분.
     upload_sweep_after_seconds: int = 15 * 60
     # 이만큼 받고도 지워지지 않은 메시지는 `{queue}-dlq` 로 간다 (SQS redrive).
     queue_max_receive_count: int = 3
+    # 메시지를 받은 뒤 다른 소비자에게 다시 보이기까지. elasticmq 기본 30초는 AI 잡에 짧다 —
+    # prolog-ai 는 호출당 30~90초 · 최대 3회 시도(NLCD 최악 약 93초, REX·AIQ·SCDS 약 273초,
+    # SSM 은 챕터 수만큼). 좀비 판정(job_zombie_seconds_ai)과 같게 둔다. 시간 안에 못 끝내도 잡이
+    # 두 번 돌지는 않는다(선점이 막는다) — 헛수신을 줄이는 값이다.
+    queue_visibility_seconds_ai: int = 15 * 60
+    queue_visibility_seconds_io: int = 60
     sweeper_interval_seconds: float = 30.0
 
     # 원고 업로드는 presigned URL 이다(multipart 아님). 서버는 파일을 통과시키지 않는다.

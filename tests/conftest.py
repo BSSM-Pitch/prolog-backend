@@ -14,6 +14,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.ai.client import ai_client
 from app.content.manuscripts.storage import PresignedUpload, storage
 from app.core.config import settings
 from app.core.errors import AppError
@@ -212,7 +213,56 @@ class FakeGoogle:
         return GoogleIdentity(sub=sub, email=email or None)
 
 
+class FakeAI:
+    """AI 포트(`app.ai.client.AIClient`)의 테스트 구현.
+
+    패키지의 `USE_FAKE_LLM=1` 은 빈 응답뿐이라 시나리오를 줄 수 없다. 여기서는 돌려줄 결과를
+    순서대로 넣는다(`FakeAI(결과1, 결과2)`). 다 쓰면 빈 성공 응답이다.
+    받은 호출은 `calls` 에 남는다.
+    """
+
+    EMPTY_NLCD: ClassVar[dict[str, list[Any]]] = {
+        "personality_tags": [],
+        "core_values": [],
+        "influence_relations": [],
+        "emotion_keywords": [],
+    }
+
+    def __init__(self, *results: dict[str, Any]) -> None:
+        self.results = list(results)
+        self.calls: list[tuple[str, tuple[Any, ...]]] = []
+
+    def _next(self, name: str, *args: Any, default: Any = None) -> dict[str, Any]:
+        self.calls.append((name, args))
+        if self.results:
+            return self.results.pop(0)
+        return {"data": {} if default is None else default, "meta": {}}
+
+    def run_nlcd(self, source_text: str) -> dict[str, Any]:
+        return self._next("run_nlcd", source_text, default=dict(self.EMPTY_NLCD))
+
+    def run_rex(self, manuscript_text: str) -> dict[str, Any]:
+        return self._next("run_rex", manuscript_text)
+
+    def run_aiq(self, question: str, manuscript_text: str, *args: Any, **kw: Any) -> dict[str, Any]:
+        return self._next("run_aiq", question, manuscript_text)
+
+    def run_scds_rules(
+        self, event: Any, world_rules: Any, characters: Any = None
+    ) -> dict[str, Any]:
+        return self._next("run_scds_rules", event, world_rules)
+
+    def run_scds_analysis(
+        self, event: Any, rule_result: Any, characters: Any = None
+    ) -> dict[str, Any]:
+        return self._next("run_scds_analysis", event, rule_result)
+
+    def run_ssm(self, manuscript_text: str, characters: Any = None) -> dict[str, Any]:
+        return self._next("run_ssm", manuscript_text)
+
+
 app.dependency_overrides[google_oauth] = FakeGoogle
+app.dependency_overrides[ai_client] = FakeAI
 app.dependency_overrides[storage] = FakeStorage
 
 

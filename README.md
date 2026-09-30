@@ -38,6 +38,7 @@ uv run python -m worker.outbox_relay   # outbox → 큐 (io · ai · notify 로 
 uv run python -m worker.notifier       # 도메인 이벤트 → 알림
 uv run python -m worker.extractor      # 업로드된 원고에서 텍스트 추출
 uv run python -m worker.sweeper        # 주기 작업: 좀비 잡 회수 · 업로드 콜백 유실 회수
+uv run python -m worker.ai_worker      # AI 잡(자연어 추출 등). API 키 없이 돌리려면 USE_FAKE_LLM=1
 ```
 
 ## 테스트

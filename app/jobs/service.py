@@ -172,12 +172,22 @@ async def finish(
     return bool((await session.execute(stmt)).rowcount)  # type: ignore[attr-defined]
 
 
-async def retry(session: AsyncSession, job_id: UUID) -> Job | None:
-    """`failed → queued`. 시도가 남았을 때만. 다시 워커에게 알린다."""
+async def retry(session: AsyncSession, job_id: UUID, *, by_user: bool = False) -> Job | None:
+    """`failed → queued`. 다시 워커에게 알린다.
+
+    자동 재시도는 시도가 남았을 때만이다. 사용자가 누른 재시도(`by_user`)는 시도 수와
+    무관하게 한 번 더 준다(`max_attempt` 를 늘린다) — 소진된 잡을 사람이 되살리는 길이다.
+    """
+    values: dict[str, Any] = {"status": "queued", "finished_at": None}
+    where = [Job.id == job_id, Job.status == "failed"]
+    if by_user:
+        values["max_attempt"] = func.greatest(Job.max_attempt, Job.attempt + 1)
+    else:
+        where.append(Job.attempt < Job.max_attempt)
     stmt = (
         update(Job)
-        .where(Job.id == job_id, Job.status == "failed", Job.attempt < Job.max_attempt)
-        .values(status="queued", finished_at=None)
+        .where(*where)
+        .values(**values)
         .returning(Job)
         .execution_options(populate_existing=True)
     )

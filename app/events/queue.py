@@ -55,6 +55,16 @@ class SqsQueue:
             url = str(self._client.create_queue(QueueName=queue_name)["QueueUrl"])
             if not queue_name.endswith(DLQ_SUFFIX):
                 self._attach_dlq(url, queue_name)
+            # 큐별 visibility timeout. 없는 큐(notify)는 브로커 기본값(30초)이다. 이미 있는 큐에도
+            # 매번 건다(멱등) — create_queue 의 속성은 기존 큐에 반영되지 않는다.
+            visibility = {
+                AI_QUEUE: settings.queue_visibility_seconds_ai,
+                IO_QUEUE: settings.queue_visibility_seconds_io,
+            }.get(queue_name)
+            if visibility is not None:
+                self._client.set_queue_attributes(
+                    QueueUrl=url, Attributes={"VisibilityTimeout": str(visibility)}
+                )
             self._urls[queue_name] = url
         return self._urls[queue_name]
 

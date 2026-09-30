@@ -189,6 +189,7 @@ def run(client: httpx.Client) -> None:
     characters(client, b, project_id)
     world_rules(client, b, project_id)
     foreshadowings(client, b, project_id, ms["manuscript_id"])
+    nl_extraction(client, b, project_id)
     settings = call("알림 설정", client, "GET", "/users/me/notification-settings", 200, b)
     if len(settings["data"]) != 5:
         raise Blocked("알림 설정이 유형 5개가 아니다")
@@ -344,6 +345,36 @@ def foreshadowings(client: httpx.Client, t: str, pid: str, ms: str) -> None:
     fixed = call("설치 챕터 재지정", client, "PATCH", path, 200, t, json=fix)["data"]
     if fixed["status"] != "unresolved":
         raise Blocked("재지정 뒤에도 orphaned 다")
+
+
+def nl_extraction(client: httpx.Client, t: str, pid: str) -> None:
+    """NLCD — 제출 → ai 워커(USE_FAKE_LLM=1 이면 빈 추출) → 폴링 → forward → ASS 초안."""
+    base = f"/projects/{pid}/nl-extractions"
+    body = {"source_text": "윤서는 신중하지만 끝까지 물고 늘어졌다."}
+    eid = call("자연어 추출 제출", client, "POST", base, 202, t, json=body)["data"]["extraction_id"]
+    call("전달(완료 전)", client, "POST", f"{base}/{eid}/forward", 409, t, json={})
+
+    def done() -> Any:
+        res = client.get(f"{BASE}{base}/{eid}", headers={"Authorization": f"Bearer {t}"})
+        return res.json() if res.json()["data"]["status"] != "analyzing" else None
+
+    wait_for("추출 완료(ai 워커)", done, timeout=60)
+    got = call("추출 결과", client, "GET", f"{base}/{eid}", 200, t)
+    if got["data"]["status"] != "completed":
+        raise Blocked(f"추출 실패: {got.get('error')}")
+    call("추출 이력", client, "GET", base, 200, t)
+    fwd = call("구조화로 전달", client, "POST", f"{base}/{eid}/forward", 201, t, json={})["data"]
+    draft = call(
+        "전달된 초안",
+        client,
+        "GET",
+        f"/projects/{pid}/character-drafts/{fwd['forwarded_draft_id']}",
+        200,
+        t,
+    )
+    if draft["data"]["source_job_id"] != eid:
+        raise Blocked("초안이 추출 잡에 연결되지 않았다")
+    call("재전달", client, "POST", f"{base}/{eid}/forward", 409, t, json={})
 
 
 def main() -> None:

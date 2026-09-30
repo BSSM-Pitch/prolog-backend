@@ -16,7 +16,7 @@
 | 서비스 | StoryForge — AI 기반 스토리 구조 관리 IDE |
 | 레포 경로 | `~/dev/prolog` (2026-09-30 iCloud 동기화 밖으로 이동. 옛 경로 `~/Desktop/전공동`) |
 | 스택 | FastAPI · PostgreSQL · SQLAlchemy(asyncpg) · Alembic(psycopg) · uv |
-| 현재 단계 | **Phase 2a 완료** + **ASS 수동 경로**(AI 없이 만들 수 있는 캐릭터 절반). 다음은 Phase 2b — REX · `ai` 워커 · LLM 게이트웨이 |
+| 현재 단계 | **Phase 2b 진행 중** — `prolog-ai` 연동: AI 포트 · `ai` 워커 · **NLCD 완료**. 다음은 REX · AIQ · SCDS · SSM 의 AI 경로 |
 | git | `a6ea4e9` 첫 커밋(84파일) → `d00610a` CLAUDE.md 복원 → `f586427` AUTH v0.2 → `66b4f67` 감사 P0 → `3f0eca7` 감사 P1 → `87c9006` 조합 레이어 → `a382a5c` 감사 P2 → `8d20b20` 감사 P3 → `a381109` OpenAPI → `583e00a` PG16 → `ec649f0` Phase 1 인프라 → `205d0dd` manuscript_count → `73427d3` NOTI → `c10290d` OpenAPI → `a2d4471` MSU·챕터 → `5a2d79f` 업로드 콜백·s3mock·복합 FK → `62d5837` 추출 워커 → `a19dd01` OpenAPI 계약·목록 커서·팀 유래 멤버 → `cf65615` 검증 스크립트 → `56c197f` 스키마 이름·seed → `a9e979b` Phase 2a 잡 내구성 → ASS 수동 경로(이 문서와 같은 커밋) |
 
 ### 실행
@@ -73,7 +73,7 @@ cd ~/dev/prolog && uv run ruff check . && uv run ruff format --check . \
 | — | `app.api` | 조합 레이어. 모든 Ring 위에 있다 (아래 규칙 참조) |
 | 1 | `app.platform_` | `auth` · `teams` · `projects` · `notifications` |
 | 2 | `app.content` | `manuscripts` — 원고·챕터·추출 (Phase 1 완료) |
-| 3 | `app.authoring` | `nlcd` · `ass`(캐릭터 초안·확정 — 수동 경로) · `rex`(세계관 규칙 CRUD — 수동 경로) |
+| 3 | `app.authoring` | `nlcd`(자연어 추출 잡) · `ass`(캐릭터 초안·확정 — 수동 경로) · `rex`(세계관 규칙 CRUD — 수동 경로) |
 | 4 | `app.insight` | `scds` · `ssm` · `aiq` · `rcv` · `fts`(복선 — 사용자 지정, AI 없음) |
 
 **경로 주의:** AUTH 모듈은 `app/platform_/auth/`다. `app/modules/auth/`가 아니다.
@@ -125,7 +125,7 @@ import가 아니라 SQL이므로 `core-is-a-leaf` 계약에 걸리지 않는다.
 
 ### 워커 · 큐 (Phase 1에서 생김, 2a 에서 내구성)
 
-앱은 FastAPI 하나지만 **워커는 별도 프로세스 4종**이다. 전부 `app/` 을 그대로 import 한다.
+앱은 FastAPI 하나지만 **워커는 별도 프로세스 5종**이다. 전부 `app/` 을 그대로 import 한다.
 Celery 는 쓰지 않는다 — 단순 루프 + SQS redrive 로 충분하다(2b 에서 필요해지면 다시 판단).
 
 | 워커 | 하는 일 | 소비 큐 |
@@ -134,6 +134,7 @@ Celery 는 쓰지 않는다 — 단순 루프 + SQS redrive 로 충분하다(2b 
 | `worker/notifier.py` | 도메인 이벤트 소비: 알림 INSERT · `chapter.deleted` → FTS 정리 (소비자별 inbox) | `notify` |
 | `worker/extractor.py` | `manuscript_extraction` 잡 → S3 읽기 → 본문 채우고 `ready` | `io` |
 | `worker/sweeper.py` | 주기 작업: 좀비 잡 회수 · 업로드 콜백 유실 회수 | (없음) |
+| `worker/ai_worker.py` | AI 잡 — `job_type` 별 핸들러(`HANDLERS`). 지금은 `nl_extraction` | `ai` |
 
 **내구성 규칙 (2a).** 어기면 durability.py 가 다시 재현한다.
 - **메시지 하나가 워커를 죽이지 않는다.** 소비 루프는 `app/events/consumer.py` 하나다. 처리에
@@ -192,6 +193,13 @@ RESTRICT 면 MSU 가 FTS 를 알아야 하고, CASCADE 면 이벤트가 닿기 �
 | `Queue` | boto3 → elasticmq/SQS | `FakeQueue` |
 | `Storage` | boto3 → s3mock/S3 (presigned·head·get) | `FakeStorage` |
 | `Extractor` | stdlib (`txt`·`docx`) | `FileExtractor` 직접 |
+| `AIClient` | `prolog-ai` 패키지(`app/ai/client.py`) | `FakeAI`(결과를 순서대로 준다) |
+
+**AI 는 `app/ai/client.py` 로만 부른다.** 패키지는 동기이고 예외를 던지지 않는다(`data` | `error`).
+워커 핸들러는 포트를 인자로 받고(스레드에서 호출), 요청 경로에서 부를 곳(SCDS 룰 검출)은
+`Depends(ai_client)` — 테스트는 `dependency_overrides`. 패키지의 `USE_FAKE_LLM=1` 은 빈 응답뿐이라
+테스트 시나리오에 쓰지 않는다. **자동 재시도는 `AI_*_TIMEOUT` 만**(`is_retryable` — 근거는 주석).
+패키지가 usage 를 주지 않아 비용 컬럼은 없다. ai 큐 visibility 15분 · io 60초(`queue_visibility_*`).
 
 **지원 파일 형식의 단일 출처는 `extraction.SUPPORTED_FORMATS` 다.** 발급 허용 목록과 추출 가능
 목록을 따로 두면 어긋난다 — 실제로 pdf 가 발급은 되는데 추출에서 반드시 실패한 적이 있다.
@@ -476,6 +484,9 @@ AI 추출(`rule-extractions` 1~4)은 2b. seed 에 규칙 2(화면 21).
 **완료 (원고 편집 이력):** MSU 명세 §4.10 `GET .../versions`. 정책은 `versions.py` 머리말 — 업로드 추출은
 항상 새 스냅샷, 편집기 저장은 마지막 편집기 스냅샷이 5분 미만·길이 변화 1,000자 미만이면 **덮어쓰고**
 아니면 새 스냅샷(ERD 기준 + 창의 마지막 상태 보존). `0008`(`source` · `(manuscript_id, version_no)` UNIQUE).
+**완료 (NLCD, Phase 2b 첫 모듈):** 명세 5종 — 제출(조합 레이어) · 폴링 · 재시도 · 이력 · forward(조합 레이어).
+추출은 `ops.jobs`(`nl_extraction`, `ai` 큐) 한 행이고 `extraction_id` 가 잡 id 다. forward 는 ASS 초안을
+만든다(`source_job_id`, 항목 전부 `ai_extracted` + 근거). 잡 행을 잠가 두 번 눌러도 초안은 하나다.
 **다음 (Phase 2b):** REX · `ai` 워커 · LLM 게이트웨이 · 핸들러 공통 계약 · `/retry` API ·
 `jobs.idempotency_key`. LLM 공급자 · 비용 컬럼(`model`·`token_in/out`, DDL 에 없음) 결정 필요.
 
@@ -522,6 +533,20 @@ AI 추출(`rule-extractions` 1~4)은 2b. seed 에 규칙 2(화면 21).
    - [코드] 설정 PATCH 는 보낸 채널만 바꾼다 · 설정 조회는 다섯 유형 고정 배열(페이지 없음)
    - [코드] 이메일 연동(§2.3 · §3 8~10 · `EMAIL_INTEGRATION_NOT_FOUND`·`EMAIL_ALREADY_CONNECTED`) —
      **구현하지 않기로 확정**(§12). 명세에서 빼거나 "보류" 로 표시. 화면 31 의 연동 영역도 같다
+
+   **NLCD**
+   - [코드] 실패 응답은 200 에 `data`(status=failed) + `error` — 성공이면 `error: null` 이 함께 온다
+   - [코드] `analyzing` 은 잡 `queued`·`running` 의 별칭 · 제출·재시도 응답이 추출 전체(명세는 두세 필드)
+   - [코드] 재시도는 `failed` 에서만, 그 밖은 `EXTRACTION_NOT_READY`(명세는 completed 만 적었다).
+     자동 재시도를 다 쓴 추출도 사용자는 되살린다
+   - [코드] forward 는 `target_character_id` 가 있으면 초안 이름을 그 캐릭터 이름으로 채운다 — 확정하면
+     `DUPLICATE_CHARACTER_CANDIDATE` 로 병합이 이어진다(명세 "병합 대상 정보를 함께 실어"의 구현).
+     동명 캐릭터가 여럿이면 후보는 가장 먼저 만든 쪽이라 대상과 다를 수 있다
+   - [둘 다] 추출이 캐릭터 이름을 뽑지 않는다(패키지 TODO) — 대상 없는 forward 초안은 이름이 비어 있다
+   - [코드] 영향 관계의 `type` 은 추출 결과에는 있고 초안 항목에서는 버린다(ASS 항목은 `value` 하나)
+   - [코드] 중복 감지는 공백·대소문자만 무시한 같은 문장이다(명세는 "동일/유사")
+   - [코드] 에러 코드는 패키지와 명세 §1.4 가 같다(`INVALID_INPUT` · `AI_EXTRACTION_FAILED` ·
+     `AI_EXTRACTION_TIMEOUT`)
 
    **ASS**
    - [코드] 확정 캐릭터 속성을 `string[]` 이 아니라 `{attribute_id, field, value, evidence, origin}` 로
@@ -572,7 +597,7 @@ AI 추출(`rule-extractions` 1~4)은 2b. seed 에 규칙 2(화면 21).
 
 ## 10. 반드시 추가할 테스트
 
-현재 55 경로 · 85 오퍼레이션에 테스트 114개다 (`/v1/health` 제외).
+현재 59 경로 · 90 오퍼레이션에 테스트 123개다 (`/v1/health` 제외).
 **TEAM·PRJ 24개 오퍼레이션에 빠짐없이 테스트가 닿는다.**
 
 이 절의 목록은 비었다 — 5종 모두 들어갔다. 리프레시 토큰 재사용 거부 · 테넌트 격리 ·

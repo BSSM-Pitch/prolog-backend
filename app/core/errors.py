@@ -87,6 +87,14 @@ DuplicateCharacterCandidate = _err(
     "DUPLICATE_CHARACTER_CANDIDATE", 409, "같은 이름의 확정된 캐릭터가 이미 있습니다"
 )
 
+# --- NLCD (§1.4) --------------------------------------------------------
+ExtractionNotFound = _err("EXTRACTION_NOT_FOUND", 404, "해당 추출 작업을 찾을 수 없습니다")
+TargetCharacterNotFound = _err(
+    "TARGET_CHARACTER_NOT_FOUND", 404, "target_character_id 로 지정한 캐릭터가 없습니다"
+)
+ExtractionNotReady = _err("EXTRACTION_NOT_READY", 409, "추출이 아직 완료되지 않았습니다")
+AlreadyForwarded = _err("ALREADY_FORWARDED", 409, "이미 구조화 시스템으로 전달된 추출 결과입니다")
+
 # --- REX (§1.4) ---------------------------------------------------------
 WorldRuleNotFound = _err("WORLD_RULE_NOT_FOUND", 404, "규칙을 찾을 수 없습니다")
 

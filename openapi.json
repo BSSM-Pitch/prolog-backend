@@ -900,6 +900,352 @@
         "title": "ErrorResponse",
         "type": "object"
       },
+      "ExtractedInfluenceItem": {
+        "properties": {
+          "evidence": {
+            "title": "Evidence",
+            "type": "string"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "evidence"
+        ],
+        "title": "ExtractedInfluenceItem",
+        "type": "object"
+      },
+      "ExtractedItem": {
+        "properties": {
+          "evidence": {
+            "title": "Evidence",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "evidence"
+        ],
+        "title": "ExtractedItem",
+        "type": "object"
+      },
+      "ExtractionCreate": {
+        "properties": {
+          "source_text": {
+            "maxLength": 5000,
+            "minLength": 1,
+            "title": "Source Text",
+            "type": "string"
+          },
+          "target_character_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Character Id"
+          }
+        },
+        "required": [
+          "source_text"
+        ],
+        "title": "ExtractionCreate",
+        "type": "object"
+      },
+      "ExtractionEnvelope": {
+        "description": "명세 §4.2 \"실패\" 는 200 에 `data`(status=failed) 와 `error` 를 **함께** 준다.",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ExtractionResponse"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "status=failed 일 때만 있다"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "ExtractionEnvelope",
+        "type": "object"
+      },
+      "ExtractionResponse": {
+        "description": "상세(명세 §4.2). 완료 전에는 네 목록이 비어 있다.",
+        "properties": {
+          "core_values": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ExtractedItem"
+            },
+            "title": "Core Values",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "duplicate_of": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duplicate Of"
+          },
+          "emotion_keywords": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ExtractedItem"
+            },
+            "title": "Emotion Keywords",
+            "type": "array"
+          },
+          "extraction_id": {
+            "format": "uuid",
+            "title": "Extraction Id",
+            "type": "string"
+          },
+          "forwarded_draft_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Forwarded Draft Id"
+          },
+          "influence_relations": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ExtractedInfluenceItem"
+            },
+            "title": "Influence Relations",
+            "type": "array"
+          },
+          "personality_tags": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ExtractedItem"
+            },
+            "title": "Personality Tags",
+            "type": "array"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "source_text": {
+            "title": "Source Text",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "analyzing",
+              "completed",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "target_character_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Character Id"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "extraction_id",
+          "project_id",
+          "source_text",
+          "target_character_id",
+          "status",
+          "duplicate_of",
+          "forwarded_draft_id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ExtractionResponse",
+        "type": "object"
+      },
+      "ExtractionResponseEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ExtractionResponse"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "ExtractionResponseEnvelope",
+        "type": "object"
+      },
+      "ExtractionSummary": {
+        "description": "목록용(명세 §4.4 \"요약 필드만\").",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "duplicate_of": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duplicate Of"
+          },
+          "extraction_id": {
+            "format": "uuid",
+            "title": "Extraction Id",
+            "type": "string"
+          },
+          "forwarded_draft_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Forwarded Draft Id"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "source_text": {
+            "title": "Source Text",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "analyzing",
+              "completed",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "target_character_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Character Id"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "extraction_id",
+          "project_id",
+          "source_text",
+          "target_character_id",
+          "status",
+          "duplicate_of",
+          "forwarded_draft_id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ExtractionSummary",
+        "type": "object"
+      },
+      "ExtractionSummaryPage": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/ExtractionSummary"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PageMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ExtractionSummaryPage",
+        "type": "object"
+      },
       "ForeshadowingCreate": {
         "properties": {
           "description": {
@@ -1164,6 +1510,43 @@
           }
         },
         "title": "ForeshadowingUpdate",
+        "type": "object"
+      },
+      "ForwardResponse": {
+        "properties": {
+          "extraction_id": {
+            "format": "uuid",
+            "title": "Extraction Id",
+            "type": "string"
+          },
+          "forwarded_draft_id": {
+            "format": "uuid",
+            "title": "Forwarded Draft Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "extraction_id",
+          "forwarded_draft_id"
+        ],
+        "title": "ForwardResponse",
+        "type": "object"
+      },
+      "ForwardResponseEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ForwardResponse"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "ForwardResponseEnvelope",
         "type": "object"
       },
       "Health": {
@@ -13228,6 +13611,843 @@
         "summary": "프로젝트 멤버의 역할을 바꾼다",
         "tags": [
           "PRJ"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/nl-extractions": {
+      "get": {
+        "description": "최근 것부터. 요약 필드만 — 추출 항목은 상세 조회로 본다.",
+        "operationId": "list_extractions_v1_projects__projectId__nl_extractions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "페이지 크기. 기본 20 · 최대 100",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "페이지 크기. 기본 20 · 최대 100",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "이전 응답의 `meta.next_cursor`. 첫 페이지는 비운다",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "이전 응답의 `meta.next_cursor`. 첫 페이지는 비운다",
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "analyzing",
+                    "completed",
+                    "failed"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "target_character_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Target Character Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtractionSummaryPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "자연어 추출 이력",
+        "tags": [
+          "NLCD"
+        ]
+      },
+      "post": {
+        "description": "비동기다. 응답의 `status` 는 `analyzing` — 상세 조회로 폴링한다.\n\n`target_character_id` 는 기존 캐릭터에 덧붙여 입력할 때 준다(이 프로젝트의 확정 캐릭터가\n아니면 `TARGET_CHARACTER_NOT_FOUND`). 같은 문장을 전에 넣었으면 `duplicate_of` 와\n`meta.notice` 가 온다 — 추출은 막지 않는다.",
+        "operationId": "submit_v1_projects__projectId__nl_extractions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExtractionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtractionResponseEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "TARGET_CHARACTER_NOT_FOUND": {
+                    "summary": "target_character_id 로 지정한 캐릭터가 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "TARGET_CHARACTER_NOT_FOUND",
+                        "details": {},
+                        "message": "target_character_id 로 지정한 캐릭터가 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다\n- `TARGET_CHARACTER_NOT_FOUND` — target_character_id 로 지정한 캐릭터가 없습니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "자연어 서술을 제출하고 추출을 요청한다",
+        "tags": [
+          "NLCD"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/nl-extractions/{extractionId}": {
+      "get": {
+        "description": "`status = analyzing` 인 동안 폴링한다.\n\n- `completed`: 네 목록(성격 태그 · 핵심 가치 · 영향 관계 · 감정 키워드)에 항목과 근거가 온다.\n  해당 내용이 없는 목록은 빈 배열이다(오류가 아니다). `meta.removed_evidence_count` 는 근거가\n  원문에 없어 버린 항목 수다.\n- `failed`: 200 에 `data` 와 함께 `error` 가 온다\n  (`AI_EXTRACTION_FAILED` · `AI_EXTRACTION_TIMEOUT` 등).",
+        "operationId": "get_extraction_v1_projects__projectId__nl_extractions__extractionId__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "extractionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Extractionid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtractionEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "EXTRACTION_NOT_FOUND": {
+                    "summary": "해당 추출 작업을 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "EXTRACTION_NOT_FOUND",
+                        "details": {},
+                        "message": "해당 추출 작업을 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `EXTRACTION_NOT_FOUND` — 해당 추출 작업을 찾을 수 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "추출 결과를 조회한다 (폴링)",
+        "tags": [
+          "NLCD"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/nl-extractions/{extractionId}/forward": {
+      "post": {
+        "description": "ASS 초안을 만든다(`source_job_id` = 이 추출, 항목은 전부 `ai_extracted` + 근거).\n\n- `completed` 가 아니면 `EXTRACTION_NOT_READY`, 이미 전달했으면 `ALREADY_FORWARDED`\n  (`details.forwarded_draft_id`).\n- `target_character_id` 가 있는 추출은 초안 이름을 그 캐릭터 이름으로 채운다 — 확정하면 같은\n  이름이라 `DUPLICATE_CHARACTER_CANDIDATE` 가 나고, 사용자가 병합을 고른다.\n- 없으면 이름이 비어 있다. 추출은 이름을 뽑지 않는다 — 확정 전에 이름을 넣어야 한다.",
+        "operationId": "forward_v1_projects__projectId__nl_extractions__extractionId__forward_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "extractionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Extractionid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForwardResponseEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "EXTRACTION_NOT_FOUND": {
+                    "summary": "해당 추출 작업을 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "EXTRACTION_NOT_FOUND",
+                        "details": {},
+                        "message": "해당 추출 작업을 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `EXTRACTION_NOT_FOUND` — 해당 추출 작업을 찾을 수 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ALREADY_FORWARDED": {
+                    "summary": "이미 구조화 시스템으로 전달된 추출 결과입니다",
+                    "value": {
+                      "error": {
+                        "code": "ALREADY_FORWARDED",
+                        "details": {},
+                        "message": "이미 구조화 시스템으로 전달된 추출 결과입니다"
+                      }
+                    }
+                  },
+                  "EXTRACTION_NOT_READY": {
+                    "summary": "추출이 아직 완료되지 않았습니다",
+                    "value": {
+                      "error": {
+                        "code": "EXTRACTION_NOT_READY",
+                        "details": {},
+                        "message": "추출이 아직 완료되지 않았습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `ALREADY_FORWARDED` — 이미 구조화 시스템으로 전달된 추출 결과입니다\n- `EXTRACTION_NOT_READY` — 추출이 아직 완료되지 않았습니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "추출 결과로 캐릭터 초안을 만든다",
+        "tags": [
+          "NLCD"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/nl-extractions/{extractionId}/retry": {
+      "post": {
+        "description": "`failed` 에서만 된다(아니면 `EXTRACTION_NOT_READY`). 자동 재시도를 다 쓴 추출도 된다.",
+        "operationId": "retry_v1_projects__projectId__nl_extractions__extractionId__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "extractionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Extractionid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtractionResponseEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "EXTRACTION_NOT_FOUND": {
+                    "summary": "해당 추출 작업을 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "EXTRACTION_NOT_FOUND",
+                        "details": {},
+                        "message": "해당 추출 작업을 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `EXTRACTION_NOT_FOUND` — 해당 추출 작업을 찾을 수 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "EXTRACTION_NOT_READY": {
+                    "summary": "추출이 아직 완료되지 않았습니다",
+                    "value": {
+                      "error": {
+                        "code": "EXTRACTION_NOT_READY",
+                        "details": {},
+                        "message": "추출이 아직 완료되지 않았습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `EXTRACTION_NOT_READY` — 추출이 아직 완료되지 않았습니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "추출을 다시 시도한다",
+        "tags": [
+          "NLCD"
         ]
       }
     },
