@@ -87,7 +87,7 @@ Phase 0에서 **쓰는** 테이블은 12개(platform)뿐이지만, 나머지 26�
    같은 큐에 붙이면 notifier 가 잡 메시지를 받아 무시하고 삭제해 버린다. extractor 는 굶는다.
 3. **NOTI** — 릴레이가 보낸 이벤트를 받아 `notifications` INSERT.
    `channels_sent`는 설정값이 아니라 **실제 발송 결과**다 (메일 실패 시 `{in_app}`만)
-4. `manuscript_versions` 디바운스 — **§12-3 미결.** 정하지 말고 물어라
+4. `manuscript_versions` 디바운스 — **결정됨(2026-09-30).** 5분 창 · 길이 변화 1,000자 · 창 안은 덮어쓰기, 업로드는 항상 새 스냅샷. `app/content/manuscripts/versions.py`
 
 ⚠️ **순서 충돌 발견**: §13은 "텍스트 추출 잡"을 Phase 1에, "jobs 인프라"를 Phase 2에 둔다.
 추출 잡을 만들려면 `jobs` 최소 코어(생성 · 상태 전이 · 폴링 응답 + `meta.retry_after_ms`)가 먼저 필요하다.
@@ -219,7 +219,7 @@ CLAUDE.md §12 원본 4건은 그대로 남아 있다. 손대지 않았다.
 
 1. `suppression_key`의 `normalize()` 범위 (공백·조사·대소문자) — Phase 4에서 필요
 2. SSM 재분석 시 `is_user_edited = true` 노드의 병합 정책 — Phase 3에서 필요
-3. `manuscript_versions` 디바운스 기준 — **Phase 1에서 필요. 가장 먼저 물어야 한다**
+3. ~~`manuscript_versions` 디바운스 기준~~ — 결정됨(위 4번)
 4. AIQ `scope=selection`의 오프셋 무효화 (`selected_text` 스냅샷 여부) — 컬럼은 미리 만들어 뒀다
 
 여기에 P2(멤버 표시 데이터)를 5번으로 추가할 것을 권한다.

@@ -81,3 +81,18 @@ class ChapterResponse(BaseModel):
     chapter_no: int
     title: str | None
     content: str
+
+
+class ManuscriptVersionResponse(BaseModel):
+    """명세 §4.10 "자동저장 스냅샷". 화면 32 가 고른 스냅샷의 본문을 보여주므로 본문을 담는다."""
+
+    version_id: UUID
+    manuscript_id: UUID
+    version_no: int
+    # editor(편집기 저장 — 5분 창으로 묶인다) | upload(파일 추출 결과)
+    source: Literal["editor", "upload"]
+    char_count: int
+    content: str
+    created_by: UUID | None
+    created_at: datetime
+    updated_at: datetime = Field(description="같은 5분 창의 저장이 덮어쓴 마지막 시각")

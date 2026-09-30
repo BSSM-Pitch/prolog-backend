@@ -19,6 +19,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.content.manuscripts import repository as repo
+from app.content.manuscripts import versions
 from app.content.manuscripts.extraction import Extractor, UnsupportedFormat
 from app.content.manuscripts.service import EXTRACTION_JOB_TYPE
 from app.content.manuscripts.storage import Storage
@@ -58,6 +59,7 @@ async def handle(
             return "skipped"
         await session.commit()
         attempt, project_id, target_id = job.attempt, job.project_id, job.target_id
+        uploader = job.created_by
         key, file_format = str(job.input["file_key"]), str(job.input["file_format"])
 
     try:
@@ -77,7 +79,7 @@ async def handle(
         )
 
     async with sessions() as session:
-        manuscript = await repo.get_manuscript(session, project_id, UUID(str(target_id)))
+        manuscript = await repo.get_manuscript(session, project_id, UUID(str(target_id)), lock=True)
         if manuscript is None:
             await session.rollback()
             error = {"code": FAILED, "message": "원고가 없습니다"}
@@ -90,6 +92,7 @@ async def handle(
             return "lost"
         manuscript.content = text
         manuscript.status = "ready"
+        await versions.snapshot(session, manuscript, "upload", uploader)  # "N차 원고 불러옴"
         await session.commit()
     return "completed"
 

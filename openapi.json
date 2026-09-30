@@ -1525,6 +1525,97 @@
         "title": "ManuscriptUpdate",
         "type": "object"
       },
+      "ManuscriptVersionResponse": {
+        "description": "명세 §4.10 \"자동저장 스냅샷\". 화면 32 가 고른 스냅샷의 본문을 보여주므로 본문을 담는다.",
+        "properties": {
+          "char_count": {
+            "title": "Char Count",
+            "type": "integer"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
+          },
+          "manuscript_id": {
+            "format": "uuid",
+            "title": "Manuscript Id",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "editor",
+              "upload"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "updated_at": {
+            "description": "같은 5분 창의 저장이 덮어쓴 마지막 시각",
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version_id": {
+            "format": "uuid",
+            "title": "Version Id",
+            "type": "string"
+          },
+          "version_no": {
+            "title": "Version No",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version_id",
+          "manuscript_id",
+          "version_no",
+          "source",
+          "char_count",
+          "content",
+          "created_by",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ManuscriptVersionResponse",
+        "type": "object"
+      },
+      "ManuscriptVersionResponsePage": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/ManuscriptVersionResponse"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PageMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ManuscriptVersionResponsePage",
+        "type": "object"
+      },
       "Marker": {
         "properties": {
           "chapter": {
@@ -11922,7 +12013,7 @@
         ]
       },
       "patch": {
-        "description": "프로젝트의 editor 이상. 보낸 필드만 바뀐다.\n\n`source_type` 을 다른 값으로 보내면 `SOURCE_TYPE_IMMUTABLE` 이다.",
+        "description": "프로젝트의 editor 이상. 보낸 필드만 바뀐다.\n\n`source_type` 을 다른 값으로 보내면 `SOURCE_TYPE_IMMUTABLE` 이다. 본문이 바뀌면 편집 이력에\n남는다 — 같은 5분 창 안의 작은 저장(길이 변화 1,000자 미만)은 한 스냅샷으로 묶인다.",
         "operationId": "update_manuscript_v1_projects__projectId__manuscripts__manuscriptId__patch",
         "parameters": [
           {
@@ -12408,6 +12499,185 @@
           }
         ],
         "summary": "파일 업로드를 마쳤다고 알린다",
+        "tags": [
+          "MSU"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/manuscripts/{manuscriptId}/versions": {
+      "get": {
+        "description": "최신 스냅샷부터. 커서 페이지네이션이다. 스냅샷마다 본문 전문이 들어 있다.\n\n`source`: `upload` 는 파일 추출 결과(항상 새 스냅샷), `editor` 는 편집기 저장이다.\n편집기 저장은 마지막 편집기 스냅샷으로부터 5분이 지났거나 길이가 1,000자 이상 바뀌면 새\n스냅샷이 되고, 아니면 마지막 스냅샷을 덮어쓴다(`updated_at` 이 바뀐다).",
+        "operationId": "list_versions_v1_projects__projectId__manuscripts__manuscriptId__versions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "manuscriptId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Manuscriptid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "페이지 크기. 기본 20 · 최대 100",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "페이지 크기. 기본 20 · 최대 100",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "이전 응답의 `meta.next_cursor`. 첫 페이지는 비운다",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "이전 응답의 `meta.next_cursor`. 첫 페이지는 비운다",
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManuscriptVersionResponsePage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "MANUSCRIPT_NOT_FOUND": {
+                    "summary": "원고를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "MANUSCRIPT_NOT_FOUND",
+                        "details": {},
+                        "message": "원고를 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `MANUSCRIPT_NOT_FOUND` — 원고를 찾을 수 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "원고 편집 이력",
         "tags": [
           "MSU"
         ]

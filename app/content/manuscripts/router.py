@@ -11,6 +11,7 @@ from app.content.manuscripts.schemas import (
     ManuscriptCreate,
     ManuscriptResponse,
     ManuscriptUpdate,
+    ManuscriptVersionResponse,
     UploadRequest,
     UploadResponse,
 )
@@ -104,7 +105,6 @@ async def get_manuscript(
 
 @router.patch(
     "/{projectId}/manuscripts/{manuscriptId}",
-    dependencies=[Editor],
     summary="원고의 제목이나 본문을 수정한다",
     response_model=Envelope[ManuscriptResponse],
     responses=raises(errors.ManuscriptNotFound, errors.SourceTypeImmutable),
@@ -114,12 +114,41 @@ async def update_manuscript(
     manuscript_id: ManuscriptId,
     body: ManuscriptUpdate,
     session: Session,
+    ctx: EditorCtx,
 ) -> dict[str, Any]:
     """프로젝트의 editor 이상. 보낸 필드만 바뀐다.
 
-    `source_type` 을 다른 값으로 보내면 `SOURCE_TYPE_IMMUTABLE` 이다.
+    `source_type` 을 다른 값으로 보내면 `SOURCE_TYPE_IMMUTABLE` 이다. 본문이 바뀌면 편집 이력에
+    남는다 — 같은 5분 창 안의 작은 저장(길이 변화 1,000자 미만)은 한 스냅샷으로 묶인다.
     """
-    return ok(await service.update(session, project_id, manuscript_id, body))
+    return ok(await service.update(session, project_id, manuscript_id, body, ctx.user.id))
+
+
+@router.get(
+    "/{projectId}/manuscripts/{manuscriptId}/versions",
+    dependencies=[Viewer],
+    summary="원고 편집 이력",
+    response_model=Page[ManuscriptVersionResponse],
+    responses=ManuscriptMissing,
+)
+async def list_versions(
+    project_id: ProjectId,
+    manuscript_id: ManuscriptId,
+    session: Session,
+    limit: Limit = DEFAULT_LIMIT,
+    cursor: Cursor = None,
+) -> dict[str, Any]:
+    """최신 스냅샷부터. 커서 페이지네이션이다. 스냅샷마다 본문 전문이 들어 있다.
+
+    `source`: `upload` 는 파일 추출 결과(항상 새 스냅샷), `editor` 는 편집기 저장이다.
+    편집기 저장은 마지막 편집기 스냅샷으로부터 5분이 지났거나 길이가 1,000자 이상 바뀌면 새
+    스냅샷이 되고, 아니면 마지막 스냅샷을 덮어쓴다(`updated_at` 이 바뀐다).
+    """
+    rows = await service.list_versions(
+        session, project_id, manuscript_id, limit, decode_int_cursor(cursor) if cursor else None
+    )
+    page, meta = next_cursor(rows, limit, key=lambda v: (v.version_no, v.id))
+    return ok(service.to_version_responses(page), meta)
 
 
 @router.delete(

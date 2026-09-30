@@ -45,3 +45,4 @@ class ManuscriptVersion(Base, Timestamps):
     content: Mapped[str] = mapped_column(Text)
     char_count: Mapped[int] = mapped_column(Integer, default=0)
     created_by: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True))
+    source: Mapped[str] = mapped_column(String(10))  # editor | upload (0008)

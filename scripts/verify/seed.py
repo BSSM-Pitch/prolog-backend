@@ -2,7 +2,7 @@
 
 사용자 1 · 팀 1 · 프로젝트 2(개인 · 팀) · 원고 1 · 챕터 3 · 확정 캐릭터 2 · 검토 대기 초안 1 ·
 세계관 규칙 2 · 복선 2 ·
-알림 설정 1(멘션 이메일 끔 — 화면 31) 을 넣는다. 이미 있으면 아무것도
+알림 설정 1(멘션 이메일 끔 — 화면 31) · 원고 스냅샷 2(화면 32) 를 넣는다. 이미 있으면 아무것도
 하지 않는다(여러 번 돌려도 쌓이지 않는다). 새로 시작하려면:
 
     uv run alembic downgrade base && uv run alembic upgrade head
@@ -176,9 +176,17 @@ async def main() -> None:
             session, shared.project_id, ManuscriptCreate(title="1부 초고", source_type="editor")
         )
         body = "\n\n".join(f"{title}\n{text}" for title, text in CHAPTERS)
-        await manuscripts.update(
-            session, shared.project_id, manuscript.manuscript_id, ManuscriptUpdate(content=body)
-        )
+        # 편집 이력(화면 32): 1장만 쓴 초안 → 세 장 + 메모. 두 번째 저장은 1,000자 넘게 늘어
+        # 5분 창에 묶이지 않고 새 스냅샷이 된다(versions.snapshot).
+        first = "\n\n".join(f"{t}\n{x}" for t, x in CHAPTERS[:1])
+        for text in (first, body + "\n\n" + "(작가 메모) " * 120):
+            await manuscripts.update(
+                session,
+                shared.project_id,
+                manuscript.manuscript_id,
+                ManuscriptUpdate(content=text),
+                user.id,
+            )
         chapter_ids = []
         for no, (title, text) in enumerate(CHAPTERS, start=1):
             chapter = await manuscripts.create_chapter(

@@ -159,6 +159,14 @@ def run(client: httpx.Client) -> None:
     done = call("원고 조회(추출 후)", client, "GET", ms_path, 200, b)["data"]
     if done["status"] != "ready":
         raise Blocked(f"추출 실패: status={done['status']}")
+    snaps = call("편집 이력(업로드 직후)", client, "GET", ms_path + "/versions", 200, b)["data"]
+    if [v["source"] for v in snaps] != ["upload"]:
+        raise Blocked("추출 완료가 업로드 스냅샷을 남기지 않았다")
+    edit = {"content": done["content"] + "\n덧붙인 문장."}
+    call("원고 본문 수정", client, "PATCH", ms_path, 200, b, json=edit)
+    snaps = call("편집 이력(수정 후)", client, "GET", ms_path + "/versions", 200, b)["data"]
+    if [v["source"] for v in snaps] != ["editor", "upload"]:
+        raise Blocked("편집기 저장이 새 스냅샷이 되지 않았다")
 
     call(
         "챕터 생성",

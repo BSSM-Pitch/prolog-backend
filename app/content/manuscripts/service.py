@@ -11,15 +11,16 @@
 import asyncio
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
-from typing import cast
+from typing import Literal, cast
 from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.content.manuscripts import repository as repo
+from app.content.manuscripts import versions
 from app.content.manuscripts.extraction import SUPPORTED_FORMATS
-from app.content.manuscripts.models import Chapter, Manuscript
+from app.content.manuscripts.models import Chapter, Manuscript, ManuscriptVersion
 from app.content.manuscripts.schemas import (
     ChapterCreate,
     ChapterResponse,
@@ -28,6 +29,7 @@ from app.content.manuscripts.schemas import (
     ManuscriptResponse,
     ManuscriptStatus,
     ManuscriptUpdate,
+    ManuscriptVersionResponse,
     UploadRequest,
     UploadResponse,
 )
@@ -106,17 +108,51 @@ async def list_manuscripts(
 
 
 async def update(
-    session: AsyncSession, project_id: UUID, manuscript_id: UUID, body: ManuscriptUpdate
+    session: AsyncSession,
+    project_id: UUID,
+    manuscript_id: UUID,
+    body: ManuscriptUpdate,
+    user_id: UUID | None = None,
 ) -> ManuscriptResponse:
-    manuscript = await _get(session, project_id, manuscript_id)
+    """본문이 바뀌면 편집 이력 스냅샷 정책을 탄다(`versions.snapshot`). 원고 행을 잠근다."""
+    manuscript = await _get(session, project_id, manuscript_id, lock=True)
     if body.source_type is not None and body.source_type != manuscript.source_type:
         raise errors.SourceTypeImmutable()
     if body.title is not None:
         manuscript.title = body.title
-    if body.content is not None:
+    if body.content is not None and body.content != manuscript.content:
         manuscript.content = body.content
+        await versions.snapshot(session, manuscript, "editor", user_id)
     await session.flush()
     return await _one(session, manuscript)
+
+
+async def list_versions(
+    session: AsyncSession,
+    project_id: UUID,
+    manuscript_id: UUID,
+    limit: int,
+    cursor: tuple[int, UUID] | None,
+) -> list[ManuscriptVersion]:
+    manuscript = await _get(session, project_id, manuscript_id)
+    return await versions.list_versions(session, manuscript.id, limit, cursor)
+
+
+def to_version_responses(rows: Sequence[ManuscriptVersion]) -> list[ManuscriptVersionResponse]:
+    return [
+        ManuscriptVersionResponse(
+            version_id=v.id,
+            manuscript_id=v.manuscript_id,
+            version_no=v.version_no,
+            source=cast(Literal["editor", "upload"], v.source),
+            char_count=v.char_count,
+            content=v.content,
+            created_by=v.created_by,
+            created_at=v.created_at,
+            updated_at=v.updated_at,
+        )
+        for v in rows
+    ]
 
 
 def _chapter_deleted(session: AsyncSession, chapter: Chapter) -> None:
