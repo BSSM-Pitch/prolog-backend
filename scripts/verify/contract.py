@@ -4,7 +4,8 @@
 
 1. 본문이 있는 성공 응답은 전부 타입(프로퍼티)이 있다 — 빈 object 가 없다.
 2. `app.core.errors` 의 도메인 에러 코드가 스펙에 전부 나온다(`UNREACHABLE` 제외).
-3. 422 · `HTTPValidationError` 가 없다 — 실제 검증 실패는 400 `INVALID_INPUT` 이다.
+3. 검증용 422(`HTTPValidationError`)가 없다 — 실제 검증 실패는 400 `INVALID_INPUT` 이다.
+   도메인 422(`MANUSCRIPT_TOO_SHORT`)는 명세대로 있다.
 4. 모든 오퍼레이션에 사람이 쓴 summary 와 description 이 있다(함수명 자동 생성 금지).
 5. 스키마 이름 규칙 — 프론트 생성 코드의 타입 이름이 되므로 한 번 정하면 못 바꾼다.
    PascalCase(`^[A-Z][A-Za-z0-9]*$`)만 허용한다. 모듈 경로(`app__platform___X`)·제네릭
@@ -79,7 +80,11 @@ def check_spec(spec: dict[str, Any]) -> None:
     for path, methods in spec["paths"].items():
         for method, op in methods.items():
             for status, res in op["responses"].items():
-                check(status != "422", f"422 선언: {method.upper()} {path}")
+                # 422 는 도메인 에러(MANUSCRIPT_TOO_SHORT)로만 — FastAPI 검증 422 는 400 으로 나간다
+                check(
+                    status != "422" or "HTTPValidationError" not in json.dumps(res),
+                    f"422 선언: {method.upper()} {path}",
+                )
                 if status.startswith("2") and status != "204":
                     ops += 1
                     schema = res.get("content", {}).get("application/json", {}).get("schema")

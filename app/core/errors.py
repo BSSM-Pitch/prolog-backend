@@ -107,6 +107,16 @@ ConflictNotFound = _err("CONFLICT_NOT_FOUND", 404, "해당 충돌 항목을 찾�
 RuleEngineError = _err("RULE_ENGINE_ERROR", 500, "룰 기반 필터링 처리 중 서버 오류")
 # CHARACTER_NOT_FOUND · INVALID_STATUS_TRANSITION 은 ASS · 잡과 같은 코드다.
 
+# --- SSM (§1.4) ---------------------------------------------------------
+StructureAnalysisNotFound = _err(
+    "STRUCTURE_ANALYSIS_NOT_FOUND", 404, "분석 작업을 찾을 수 없습니다"
+)
+StructureMapNotFound = _err("STRUCTURE_MAP_NOT_FOUND", 404, "확정된 구조 지도가 아직 없습니다")
+StructureNodeNotFound = _err("STRUCTURE_NODE_NOT_FOUND", 404, "노드를 찾을 수 없습니다")
+ManuscriptTooShort = _err(
+    "MANUSCRIPT_TOO_SHORT", 422, "구조 분석을 수행하기에 원고 분량이 부족합니다"
+)
+
 # --- REX (§1.4) ---------------------------------------------------------
 WorldRuleNotFound = _err("WORLD_RULE_NOT_FOUND", 404, "규칙을 찾을 수 없습니다")
 RuleExtractionNotFound = _err("RULE_EXTRACTION_NOT_FOUND", 404, "추출 작업을 찾을 수 없습니다")

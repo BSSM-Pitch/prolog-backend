@@ -24,6 +24,7 @@ from app.events.consumer import consume
 from app.events.queue import AI_QUEUE, SqsQueue
 from app.insight.aiq import service as aiq
 from app.insight.scds import service as scds
+from app.insight.ssm import service as ssm
 
 log = logging.getLogger(__name__)
 
@@ -33,6 +34,7 @@ HANDLERS: dict[str, Handler] = {
     rex.JOB_TYPE: rex.handle,
     aiq.JOB_TYPE: aiq.handle,
     scds.JOB_TYPE: scds.handle,
+    ssm.JOB_TYPE: ssm.handle,
 }
 
 ai: AIClient = PrologAI()

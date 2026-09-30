@@ -16,7 +16,7 @@
 | 서비스 | StoryForge — AI 기반 스토리 구조 관리 IDE |
 | 레포 경로 | `~/dev/prolog` (2026-09-30 iCloud 동기화 밖으로 이동. 옛 경로 `~/Desktop/전공동`) |
 | 스택 | FastAPI · PostgreSQL · SQLAlchemy(asyncpg) · Alembic(psycopg) · uv |
-| 현재 단계 | **Phase 2b 진행 중** — `prolog-ai` 연동: AI 포트 · `ai` 워커 · NLCD · REX 추출 · AIQ · **SCDS 완료**. 다음은 SSM |
+| 현재 단계 | **Phase 2b 완료** — `prolog-ai` 6함수 전부 연동(NLCD · REX 추출 · AIQ · SCDS · SSM). 다음은 RCV · 화면 연결 |
 | git | `a6ea4e9` 첫 커밋(84파일) → `d00610a` CLAUDE.md 복원 → `f586427` AUTH v0.2 → `66b4f67` 감사 P0 → `3f0eca7` 감사 P1 → `87c9006` 조합 레이어 → `a382a5c` 감사 P2 → `8d20b20` 감사 P3 → `a381109` OpenAPI → `583e00a` PG16 → `ec649f0` Phase 1 인프라 → `205d0dd` manuscript_count → `73427d3` NOTI → `c10290d` OpenAPI → `a2d4471` MSU·챕터 → `5a2d79f` 업로드 콜백·s3mock·복합 FK → `62d5837` 추출 워커 → `a19dd01` OpenAPI 계약·목록 커서·팀 유래 멤버 → `cf65615` 검증 스크립트 → `56c197f` 스키마 이름·seed → `a9e979b` Phase 2a 잡 내구성 → ASS 수동 경로(이 문서와 같은 커밋) |
 
 ### 실행
@@ -134,7 +134,7 @@ Celery 는 쓰지 않는다 — 단순 루프 + SQS redrive 로 충분하다(2b 
 | `worker/notifier.py` | 도메인 이벤트 소비: 알림 INSERT · `chapter.deleted` → FTS 정리 (소비자별 inbox) | `notify` |
 | `worker/extractor.py` | `manuscript_extraction` 잡 → S3 읽기 → 본문 채우고 `ready` | `io` |
 | `worker/sweeper.py` | 주기 작업: 좀비 잡 회수 · 업로드 콜백 유실 회수 | (없음) |
-| `worker/ai_worker.py` | AI 잡 — `job_type` 별 핸들러(`HANDLERS`): `nl_extraction` · `rule_extraction` · `qa_answer` · `conflict_check` | `ai` |
+| `worker/ai_worker.py` | AI 잡 — `job_type` 별 핸들러(`HANDLERS`): `nl_extraction` · `rule_extraction` · `qa_answer` · `conflict_check` · `structure_analysis` | `ai` |
 
 **내구성 규칙 (2a).** 어기면 durability.py 가 다시 재현한다.
 - **메시지 하나가 워커를 죽이지 않는다.** 소비 루프는 `app/events/consumer.py` 하나다. 처리에
@@ -201,6 +201,11 @@ RESTRICT 면 MSU 가 FTS 를 알아야 하고, CASCADE 면 이벤트가 닿기 �
 `Depends(ai_client)` — 테스트는 `dependency_overrides`. 패키지의 `USE_FAKE_LLM=1` 은 빈 응답뿐이라
 테스트 시나리오에 쓰지 않는다. **자동 재시도는 `AI_*_TIMEOUT` 만**(`is_retryable` — 근거는 주석).
 패키지가 usage 를 주지 않아 비용 컬럼은 없다. ai 큐 visibility 15분 · io 60초(`queue_visibility_*`).
+
+**긴 AI 잡은 하트비트로 지킨다(0011).** 실행기가 호출 동안 `job_heartbeat_seconds`(60초)마다
+`jobs.heartbeat_at` 을 찍고, 스위퍼는 마지막 하트비트(없으면 `started_at`)로 좀비를 가른다 — 그래서
+ai 좀비 임계치는 잡 길이와 무관하게 5분이다. SSM 장편이 몇 시간이어도 살아 있으면 회수되지 않고,
+워커가 죽으면 5분 안에 줍는다. visibility 는 연장하지 않는다(정확성은 선점이 지킨다).
 
 **지원 파일 형식의 단일 출처는 `extraction.SUPPORTED_FORMATS` 다.** 발급 허용 목록과 추출 가능
 목록을 따로 두면 어긋난다 — 실제로 pdf 가 발급은 되는데 추출에서 반드시 실패한 적이 있다.
@@ -498,6 +503,8 @@ user 메시지 + pending assistant 메시지 + `qa_answer` 잡. 끝내 실패하
 사건은 SCDS 소유이고 룰 입력(챕터 · 확정 캐릭터 · 세계관 규칙)은 전부 아래 Ring 이라 직접 읽는다.
 억제는 백엔드가 거른다(`sha256(character:rule:정규화한 본문)`). AI 가 끝내 실패하면 룰 후보가 조언 없는
 충돌(`detected_by = rule`)로 남는다.
+**완료 (SSM):** 명세 6종 — 분석 요청 · 폴링 · 재시도 · 지도 · 노드 조회/수정. 지도는 원고마다 하나.
+다시 분석하면 AI 노드는 바뀌고 사용자가 고친 노드는 남는다(§12-2 결정). 하트비트(0011).
 **다음 (Phase 2b):** REX · `ai` 워커 · LLM 게이트웨이 · 핸들러 공통 계약 · `/retry` API ·
 `jobs.idempotency_key`. LLM 공급자 · 비용 컬럼(`model`·`token_in/out`, DDL 에 없음) 결정 필요.
 
@@ -612,6 +619,13 @@ user 메시지 + pending assistant 메시지 + `qa_answer` 잡. 끝내 실패하
    - [코드] 화면 05 의 "근거 A · 4장 / 근거 B · 19장"(두 근거 장면)은 패키지가 주지 않는다(`related_chapter_ref` TODO)
    - [코드] 패키지 룰 검출은 세계관 규칙 키워드만 본다(RULE-02). 캐릭터 가치관 판정(RULE-01)은 패키지 TODO
 
+   **SSM**
+   - [코드] 노드에 `is_user_edited` · 분석 응답에 `manuscript_id`·`updated_at` · 지도 `generated_at` 은 갱신 시각
+   - [코드] 재시도는 `failed` 에서만, 그 밖은 `INVALID_STATUS_TRANSITION` — SSM §1.4 에 없는 코드다(AIQ·SCDS 와 같게)
+   - [코드] 빈 원고는 요청 시점 `MANUSCRIPT_TOO_SHORT`(422, 패키지 기준 1자)
+   - [코드] 다시 분석할 때 사용자가 고친 노드를 남기고 AI 노드만 바꾼다 — 남긴 노드와 새 노드가 같은 사건일 수
+     있다(병합하지 않는다). 남긴 노드의 인과 간선은 사라진다
+
    **FTS**
    - [코드] 챕터를 번호가 아니라 **id 로 받는다**(원고가 여럿이면 번호가 겹친다): `setup_chapter_id` ·
      `payoff_chapter_id` · `chapter_id`, 경로 `/chapters/{chapterId}/foreshadowings` ·
@@ -638,7 +652,7 @@ user 메시지 + pending assistant 메시지 + `qa_answer` 잡. 끝내 실패하
 
 ## 10. 반드시 추가할 테스트
 
-현재 74 경로 · 108 오퍼레이션에 테스트 142개다 (`/v1/health` 제외).
+현재 79 경로 · 114 오퍼레이션에 테스트 147개다 (`/v1/health` 제외).
 **TEAM·PRJ 24개 오퍼레이션에 빠짐없이 테스트가 닿는다.**
 
 이 절의 목록은 비었다 — 5종 모두 들어갔다. 리프레시 토큰 재사용 거부 · 테넌트 격리 ·
@@ -688,6 +702,10 @@ user 메시지 + pending assistant 메시지 + `qa_answer` 잡. 끝내 실패하
   (기본 15분)가 지난 잡 없는 upload draft 를 훑어, S3 에 객체가 있으면 콜백과 같은 경로로 추출을
   건다. 객체가 없으면 건드리지 않는다(아직 안 올린 정상 draft). 원고 행을 잠가 콜백과 겹쳐도
   잡은 하나다. "발급 시각" 컬럼이 없어 `updated_at` 을 쓴다 — 제목을 고치면 그만큼 늦게 줍는다
+- **결정 — 구조 지도 재분석(§12-2).** 사용자가 고친 노드(`is_user_edited`)는 남기고 나머지를 새 결과로
+  바꾼다. AI 가 사용자 수정을 덮어쓰지 않는 것을 우선했다(ERD). 중복 노드는 사용자가 정리한다
+- **결정 — AIQ 선택 구간(§12-4).** 질문 때 `selected_text` 를 남기고, 답할 때 그 자리 문장이 다르면 현재
+  원고에서 다시 찾는다(가장 가까운 위치). 없으면 `INVALID_SELECTION_RANGE` — 다른 문장에 답하지 않는다
 - **결정 — 캐릭터 동명 허용** (`0005`). 화면 37 "새 인물로 만들기" 가 "같은 이름의 인물이 하나 더
   생겨요" 라고 알린 뒤 진행하므로 `characters_project_name_active_uq` 를 없앴다(ERD 의 "앱 레벨 경고로
   완화"). 중복 판정은 `ass.service._check_name` — resolution 없는 확정과 이름 변경만 409, `create_new` 는

@@ -18,6 +18,7 @@ from app.core.response import Envelope, ok
 from app.insight.aiq.router import router as aiq_router
 from app.insight.fts.router import router as fts_router
 from app.insight.scds.router import router as scds_router
+from app.insight.ssm.router import router as ssm_router
 from app.platform_.auth.router import router as auth_router
 from app.platform_.auth.router import users_router
 from app.platform_.notifications.router import router as notifications_router
@@ -99,6 +100,7 @@ for _router in (
     fts_router,
     aiq_router,
     scds_router,
+    ssm_router,
     api_router,
     nlcd_router,
     nlcd_forward_router,

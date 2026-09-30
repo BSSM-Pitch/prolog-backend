@@ -193,6 +193,7 @@ def run(client: httpx.Client) -> None:
     rule_extraction(client, b, project_id, ms["manuscript_id"])
     ask(client, b, project_id, ms["manuscript_id"])
     conflicts(client, b, project_id, ms["manuscript_id"])
+    structure(client, b, project_id, ms["manuscript_id"])
     settings = call("알림 설정", client, "GET", "/users/me/notification-settings", 200, b)
     if len(settings["data"]) != 5:
         raise Blocked("알림 설정이 유형 5개가 아니다")
@@ -464,6 +465,26 @@ def conflicts(client: httpx.Client, t: str, pid: str, ms: str) -> None:
     call("충돌 검사 결과", client, "GET", path, 200, t)
     call("충돌 목록", client, "GET", f"/projects/{pid}/conflicts", 200, t)
     call("충돌 이력", client, "GET", f"/projects/{pid}/conflicts/history", 200, t)
+
+
+def structure(client: httpx.Client, t: str, pid: str, ms: str) -> None:
+    """SSM — 분석 요청 → ai 워커(하트비트) → 폴링 → 구조 지도."""
+    base = f"/projects/{pid}/manuscripts/{ms}"
+    aid = call("구조 분석 요청", client, "POST", f"{base}/structure-analyses", 202, t)["data"][
+        "analysis_id"
+    ]
+    poll = f"{base}/structure-analyses/{aid}"
+
+    def done() -> Any:
+        res = client.get(BASE + poll, headers={"Authorization": f"Bearer {t}"})
+        return res.json() if res.json()["data"]["status"] in ("completed", "failed") else None
+
+    wait_for("구조 분석(ai 워커)", done, timeout=60)
+    got = call("구조 분석 결과", client, "GET", poll, 200, t)
+    if got["data"]["status"] != "completed":
+        raise Blocked(f"구조 분석 실패: {got.get('error')}")
+    call("구조 지도", client, "GET", f"{base}/structure-map", 200, t)
+    call("완료된 분석 재시도", client, "POST", f"{poll}/retry", 409, t)
 
 
 def main() -> None:

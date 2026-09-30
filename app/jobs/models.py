@@ -32,4 +32,6 @@ class Job(Base, Timestamps):
     idempotency_key: Mapped[str | None] = mapped_column(String(128))
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # AI 잡이 도는 동안 워커가 찍는다(0011). 좀비 판정은 이것(없으면 started_at) 기준이다.
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_by: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True))

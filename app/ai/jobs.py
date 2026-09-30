@@ -5,7 +5,8 @@ MSU 추출 핸들러와 같은 **두 트랜잭션**이다.
 1. 선점(`queued → running`)하고 `prepare` 로 AI 입력을 만든 뒤 **커밋**한다 — 스위퍼가 running 을
    봐야 좀비를 줍는다. `prepare` 가 도메인 에러를 던지면(원고가 사라짐 등) 재시도 없이
    실패로 끝낸다.
-2. 트랜잭션 **밖** 스레드에서 `call` 로 패키지를 부른다(동기 · 수십 초).
+2. 트랜잭션 **밖** 스레드에서 `call` 로 패키지를 부른다(동기 · 수십 초~수십 분). 도는 동안
+   `job_heartbeat_seconds` 마다 하트비트를 찍는다 — 스위퍼는 이것으로 좀비를 가른다(0011).
 3. 두 번째 트랜잭션에서 잡 전이와 **함께** `on_success`/`on_failure` 를 부른다 — 결과를 대상
    (AIQ 메시지 · 충돌 · 구조 지도)에 쓰는 일이다. 전이에 지면(스위퍼가 먼저 회수) 결과를 버린다.
 
@@ -22,6 +23,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.client import AIClient, Result, is_retryable
+from app.core.config import settings
 from app.core.errors import AppError
 from app.jobs import service as jobs
 from app.jobs.models import Job
@@ -34,6 +36,18 @@ Prepare = Callable[[AsyncSession, Job], Awaitable[Any]]
 Call = Callable[[AIClient, Any], Result]
 OnSuccess = Callable[[AsyncSession, Job, dict[str, Any]], Awaitable[None]]
 OnFailure = Callable[[AsyncSession, Job, dict[str, Any]], Awaitable[None]]
+
+
+async def _heartbeat(sessions: Sessions, job_id: UUID, attempt: int) -> None:
+    """AI 호출이 도는 동안 살아 있다고 알린다(0011). 한 번 실패해도 멈추지 않는다."""
+    while True:
+        await asyncio.sleep(settings.job_heartbeat_seconds)
+        try:
+            async with sessions() as session:
+                await jobs.heartbeat(session, job_id, attempt)
+                await session.commit()
+        except Exception:  # DB 가 잠깐 안 되면 다음 주기에 다시 — 끝내 안 되면 좀비로 회수된다
+            log.warning("잡 %s 하트비트 실패", job_id, exc_info=True)
 
 
 async def run(
@@ -67,7 +81,11 @@ async def run(
         await session.commit()
         attempt = job.attempt
 
-    result = await asyncio.to_thread(call, ai, args)
+    beat = asyncio.create_task(_heartbeat(sessions, job_id, attempt))
+    try:
+        result = await asyncio.to_thread(call, ai, args)
+    finally:
+        beat.cancel()
 
     async with sessions() as session:
         job = await jobs.get(session, job_id)

@@ -236,13 +236,27 @@ async def reap(session: AsyncSession) -> list[tuple[Job, Outcome]]:
     ).scalars()
     outcomes: list[tuple[Job, Outcome]] = []
     for job in list(rows):
-        if job.started_at is None or now - job.started_at < zombie_after(job.queue):
+        # 하트비트를 찍는 잡(ai)은 마지막 하트비트로, 아니면 선점 시각으로 판정한다(0011).
+        alive_at = max(t for t in (job.started_at, job.heartbeat_at) if t is not None)
+        if now - alive_at < zombie_after(job.queue):
             continue
         error = {"code": TIMEOUT, "message": f"running 상태로 {zombie_after(job.queue)} 초과"}
         outcome = await fail(session, job.id, job.attempt, error, retryable=True)
         if outcome is not None:
             outcomes.append((job, outcome))
     return outcomes
+
+
+async def heartbeat(session: AsyncSession, job_id: UUID, attempt: int) -> bool:
+    """이번 실행이 아직 주인일 때만 찍는다. 이미 회수됐으면 False — 워커는 그래도 끝까지 돈다
+    (결과는 `finish` 의 attempt 대조에서 버려진다)."""
+    stmt = (
+        update(Job)
+        .where(Job.id == job_id, Job.status == "running", Job.attempt == attempt)
+        .values(heartbeat_at=func.now())
+        .execution_options(synchronize_session=False)
+    )
+    return bool((await session.execute(stmt)).rowcount)  # type: ignore[attr-defined]
 
 
 async def get(session: AsyncSession, job_id: UUID) -> Job | None:

@@ -1,6 +1,34 @@
 {
   "components": {
     "schemas": {
+      "Act": {
+        "properties": {
+          "act_name": {
+            "title": "Act Name",
+            "type": "string"
+          },
+          "chapter_from": {
+            "title": "Chapter From",
+            "type": "integer"
+          },
+          "chapter_to": {
+            "title": "Chapter To",
+            "type": "integer"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "act_name",
+          "chapter_from",
+          "chapter_to",
+          "summary"
+        ],
+        "title": "Act",
+        "type": "object"
+      },
       "Advisory": {
         "properties": {
           "foreshadowing_id": {
@@ -66,6 +94,108 @@
           "data"
         ],
         "title": "AdvisoryListEnvelope",
+        "type": "object"
+      },
+      "AnalysisEnvelope": {
+        "description": "명세 §4.2 \"실패\" 는 200 에 `data`(status=failed) 와 `error` 를 함께 준다.",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AnalysisResponse"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "status=failed 일 때만 있다"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "AnalysisEnvelope",
+        "type": "object"
+      },
+      "AnalysisResponse": {
+        "properties": {
+          "analysis_id": {
+            "format": "uuid",
+            "title": "Analysis Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "manuscript_id": {
+            "format": "uuid",
+            "title": "Manuscript Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "analyzing",
+              "completed",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "structure_map_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "완료되면 구조 지도 경로(명세 §4.2)",
+            "title": "Structure Map Ref"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "analysis_id",
+          "manuscript_id",
+          "status",
+          "structure_map_ref",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "AnalysisResponse",
+        "type": "object"
+      },
+      "AnalysisResponseEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AnalysisResponse"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "AnalysisResponseEnvelope",
         "type": "object"
       },
       "AttributeResponse": {
@@ -1186,6 +1316,31 @@
           "character_name"
         ],
         "title": "DraftUpdate",
+        "type": "object"
+      },
+      "Edge": {
+        "properties": {
+          "from_node_id": {
+            "format": "uuid",
+            "title": "From Node Id",
+            "type": "string"
+          },
+          "relation": {
+            "title": "Relation",
+            "type": "string"
+          },
+          "to_node_id": {
+            "format": "uuid",
+            "title": "To Node Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from_node_id",
+          "to_node_id",
+          "relation"
+        ],
+        "title": "Edge",
         "type": "object"
       },
       "EditHistoryEntry": {
@@ -2812,6 +2967,121 @@
         "title": "MessageResponseListEnvelope",
         "type": "object"
       },
+      "NodeResponse": {
+        "properties": {
+          "chapter": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chapter"
+          },
+          "character_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Character Ids",
+            "type": "array"
+          },
+          "is_user_edited": {
+            "title": "Is User Edited",
+            "type": "boolean"
+          },
+          "node_id": {
+            "format": "uuid",
+            "title": "Node Id",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "event",
+              "turning_point",
+              "climax"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node_id",
+          "type",
+          "chapter",
+          "title",
+          "summary",
+          "character_ids",
+          "is_user_edited"
+        ],
+        "title": "NodeResponse",
+        "type": "object"
+      },
+      "NodeResponseEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/NodeResponse"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "NodeResponseEnvelope",
+        "type": "object"
+      },
+      "NodeUpdate": {
+        "properties": {
+          "summary": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "title": "NodeUpdate",
+        "type": "object"
+      },
       "NotificationPage": {
         "properties": {
           "data": {
@@ -4070,6 +4340,80 @@
           "orphaned"
         ],
         "title": "StatusCounts",
+        "type": "object"
+      },
+      "StructureMapResponse": {
+        "properties": {
+          "acts": {
+            "items": {
+              "$ref": "#/components/schemas/Act"
+            },
+            "title": "Acts",
+            "type": "array"
+          },
+          "analysis_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Analysis Id"
+          },
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/Edge"
+            },
+            "title": "Edges",
+            "type": "array"
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "manuscript_id": {
+            "format": "uuid",
+            "title": "Manuscript Id",
+            "type": "string"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/NodeResponse"
+            },
+            "title": "Nodes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "manuscript_id",
+          "analysis_id",
+          "acts",
+          "nodes",
+          "edges",
+          "generated_at"
+        ],
+        "title": "StructureMapResponse",
+        "type": "object"
+      },
+      "StructureMapResponseEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/StructureMapResponse"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "StructureMapResponseEnvelope",
         "type": "object"
       },
       "TeamCreate": {
@@ -17386,6 +17730,1000 @@
         "summary": "규칙 추출을 다시 시도한다",
         "tags": [
           "REX"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/manuscripts/{manuscriptId}/structure-analyses": {
+      "post": {
+        "description": "비동기다(`queued`). 챕터마다 AI 를 부르므로 장편은 수십 분 걸린다 — 조회로 폴링한다.\n\n원고가 비어 있으면 `MANUSCRIPT_TOO_SHORT`(422). 화면 03 의 \"다시 분석\" 도 이 요청이다.",
+        "operationId": "request_analysis_v1_projects__projectId__manuscripts__manuscriptId__structure_analyses_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "manuscriptId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Manuscriptid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisResponseEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "MANUSCRIPT_NOT_FOUND": {
+                    "summary": "원고를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "MANUSCRIPT_NOT_FOUND",
+                        "details": {},
+                        "message": "원고를 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `MANUSCRIPT_NOT_FOUND` — 원고를 찾을 수 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "MANUSCRIPT_TOO_SHORT": {
+                    "summary": "구조 분석을 수행하기에 원고 분량이 부족합니다",
+                    "value": {
+                      "error": {
+                        "code": "MANUSCRIPT_TOO_SHORT",
+                        "details": {},
+                        "message": "구조 분석을 수행하기에 원고 분량이 부족합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `MANUSCRIPT_TOO_SHORT` — 구조 분석을 수행하기에 원고 분량이 부족합니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "구조 분석을 요청한다",
+        "tags": [
+          "SSM"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/manuscripts/{manuscriptId}/structure-analyses/{analysisId}": {
+      "get": {
+        "description": "`queued` → `analyzing` → `completed`(`structure_map_ref`) | `failed`(200 에 `error`).\n\n실패한 챕터 위치는 `error.details.chunk_index`·`chunk_count` 에 있다.",
+        "operationId": "get_analysis_v1_projects__projectId__manuscripts__manuscriptId__structure_analyses__analysisId__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "manuscriptId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Manuscriptid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "analysisId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Analysisid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "STRUCTURE_ANALYSIS_NOT_FOUND": {
+                    "summary": "분석 작업을 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "STRUCTURE_ANALYSIS_NOT_FOUND",
+                        "details": {},
+                        "message": "분석 작업을 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다\n- `STRUCTURE_ANALYSIS_NOT_FOUND` — 분석 작업을 찾을 수 없습니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "구조 분석 상태 (폴링)",
+        "tags": [
+          "SSM"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/manuscripts/{manuscriptId}/structure-analyses/{analysisId}/retry": {
+      "post": {
+        "description": "`failed` 에서만(아니면 `INVALID_STATUS_TRANSITION`).",
+        "operationId": "retry_v1_projects__projectId__manuscripts__manuscriptId__structure_analyses__analysisId__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "manuscriptId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Manuscriptid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "analysisId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Analysisid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisResponseEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "STRUCTURE_ANALYSIS_NOT_FOUND": {
+                    "summary": "분석 작업을 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "STRUCTURE_ANALYSIS_NOT_FOUND",
+                        "details": {},
+                        "message": "분석 작업을 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다\n- `STRUCTURE_ANALYSIS_NOT_FOUND` — 분석 작업을 찾을 수 없습니다"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_STATUS_TRANSITION": {
+                    "summary": "허용되지 않는 상태 전이입니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_STATUS_TRANSITION",
+                        "details": {},
+                        "message": "허용되지 않는 상태 전이입니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_STATUS_TRANSITION` — 허용되지 않는 상태 전이입니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "구조 분석을 다시 시도한다",
+        "tags": [
+          "SSM"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/manuscripts/{manuscriptId}/structure-map": {
+      "get": {
+        "description": "막 · 노드(챕터 순) · 인과 간선. 분석이 끝난 적 없으면 `STRUCTURE_MAP_NOT_FOUND`.\n\n다시 분석하면 AI 노드는 바뀌고 사용자가 고친 노드(`is_user_edited`)는 남는다.",
+        "operationId": "get_map_v1_projects__projectId__manuscripts__manuscriptId__structure_map_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "manuscriptId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Manuscriptid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StructureMapResponseEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "STRUCTURE_MAP_NOT_FOUND": {
+                    "summary": "확정된 구조 지도가 아직 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "STRUCTURE_MAP_NOT_FOUND",
+                        "details": {},
+                        "message": "확정된 구조 지도가 아직 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다\n- `STRUCTURE_MAP_NOT_FOUND` — 확정된 구조 지도가 아직 없습니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "최신 구조 지도",
+        "tags": [
+          "SSM"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/manuscripts/{manuscriptId}/structure-map/nodes/{nodeId}": {
+      "get": {
+        "description": "사건 · 전환점 · 절정 하나.",
+        "operationId": "get_node_v1_projects__projectId__manuscripts__manuscriptId__structure_map_nodes__nodeId__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "manuscriptId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Manuscriptid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "nodeId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Nodeid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NodeResponseEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "STRUCTURE_MAP_NOT_FOUND": {
+                    "summary": "확정된 구조 지도가 아직 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "STRUCTURE_MAP_NOT_FOUND",
+                        "details": {},
+                        "message": "확정된 구조 지도가 아직 없습니다"
+                      }
+                    }
+                  },
+                  "STRUCTURE_NODE_NOT_FOUND": {
+                    "summary": "노드를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "STRUCTURE_NODE_NOT_FOUND",
+                        "details": {},
+                        "message": "노드를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다\n- `STRUCTURE_MAP_NOT_FOUND` — 확정된 구조 지도가 아직 없습니다\n- `STRUCTURE_NODE_NOT_FOUND` — 노드를 찾을 수 없습니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "구조 지도 노드를 조회한다",
+        "tags": [
+          "SSM"
+        ]
+      },
+      "patch": {
+        "description": "제목 · 요약. 바뀌면 `is_user_edited = true` — 다시 분석해도 덮어쓰지 않는다.",
+        "operationId": "update_node_v1_projects__projectId__manuscripts__manuscriptId__structure_map_nodes__nodeId__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "manuscriptId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Manuscriptid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "nodeId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Nodeid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NodeUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NodeResponseEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "STRUCTURE_MAP_NOT_FOUND": {
+                    "summary": "확정된 구조 지도가 아직 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "STRUCTURE_MAP_NOT_FOUND",
+                        "details": {},
+                        "message": "확정된 구조 지도가 아직 없습니다"
+                      }
+                    }
+                  },
+                  "STRUCTURE_NODE_NOT_FOUND": {
+                    "summary": "노드를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "STRUCTURE_NODE_NOT_FOUND",
+                        "details": {},
+                        "message": "노드를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다\n- `STRUCTURE_MAP_NOT_FOUND` — 확정된 구조 지도가 아직 없습니다\n- `STRUCTURE_NODE_NOT_FOUND` — 노드를 찾을 수 없습니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "구조 지도 노드를 고친다",
+        "tags": [
+          "SSM"
         ]
       }
     },

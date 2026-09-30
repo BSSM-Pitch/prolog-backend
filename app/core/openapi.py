@@ -82,7 +82,9 @@ def build(app: FastAPI) -> dict[str, Any]:
         for method in route.methods or ():
             op = spec["paths"][route.path_format][method.lower()]
             responses: dict[str, Any] = op["responses"]
-            responses.pop("422", None)
+            # 선언된 코드를 먼저 읽는다 — FastAPI 기본 422(HTTPValidationError)는 코드가 없어
+            # 빠지고, 도메인 422(SSM `MANUSCRIPT_TOO_SHORT`)는 남는다.
+            # 아래에서 4xx·5xx 를 전부 다시 만든다.
             errs = [known[c] for c in _declared_codes(responses)] + derived_errors(route)
             for status in [s for s in responses if s[0] in "45"]:
                 del responses[status]
