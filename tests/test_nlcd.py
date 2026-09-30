@@ -243,3 +243,17 @@ async def test_history_filters_and_cursor(client: AsyncClient) -> None:
     ).json()
     assert [e["extraction_id"] for e in page["data"] + rest["data"]] == ids[::-1]
     assert code(await client.get(f"{base}/{UUID(int=2)}", headers=h)) == "EXTRACTION_NOT_FOUND"
+
+
+async def test_name_from_screen_22_becomes_the_draft_name(client: AsyncClient) -> None:
+    user, pid = await _project(client, "nl10@example.com")
+    h = user["headers"]
+    submitted = await _submit(client, user, pid, name=" 윤서 ")
+    eid = submitted["data"]["extraction_id"]
+    assert submitted["data"]["name"] == "윤서"
+    await handle(SessionFactory, UUID(eid), FakeAI(EXTRACTED))
+    draft_id = (
+        await client.post(f"/projects/{pid}/nl-extractions/{eid}/forward", json={}, headers=h)
+    ).json()["data"]["forwarded_draft_id"]
+    draft = (await client.get(f"/projects/{pid}/character-drafts/{draft_id}", headers=h)).json()
+    assert draft["data"]["character_name"] == "윤서"

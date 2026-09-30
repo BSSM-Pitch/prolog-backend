@@ -55,7 +55,7 @@ async def submit(
         if await ass.character_name(session, project_id, body.target_character_id) is None:
             raise errors.TargetCharacterNotFound()
     job = await nlcd.submit(
-        session, project_id, body.source_text, body.target_character_id, ctx.user.id
+        session, project_id, body.source_text, body.target_character_id, ctx.user.id, body.name
     )
     data = nlcd.to_response(job)
     return ok(data, {"notice": DUPLICATE_NOTICE} if data.duplicate_of else {})
@@ -75,13 +75,15 @@ async def forward(
 
     - `completed` 가 아니면 `EXTRACTION_NOT_READY`, 이미 전달했으면 `ALREADY_FORWARDED`
       (`details.forwarded_draft_id`).
-    - `target_character_id` 가 있는 추출은 초안 이름을 그 캐릭터 이름으로 채운다 — 확정하면 같은
-      이름이라 `DUPLICATE_CHARACTER_CANDIDATE` 가 나고, 사용자가 병합을 고른다.
-    - 없으면 이름이 비어 있다. 추출은 이름을 뽑지 않는다 — 확정 전에 이름을 넣어야 한다.
+    - 초안 이름은 제출 때 받은 `name`(화면 22 "인물 이름")이다. 비었고 `target_character_id` 가
+      있으면 그 캐릭터 이름을 쓴다 — 확정하면 같은 이름이라 `DUPLICATE_CHARACTER_CANDIDATE` 가
+      나고, 사용자가 병합을 고른다. 둘 다 없으면 이름이 비어 있다(확정 전에 넣는다).
     """
     job = await nlcd.for_forward(session, project_id, extraction_id)
     target = job.input.get("target_character_id")
-    name = await ass.character_name(session, project_id, UUID(target)) if target else None
+    name = job.input.get("name")
+    if name is None and target:
+        name = await ass.character_name(session, project_id, UUID(target))
     draft = await ass.create_draft_from_extraction(
         session,
         project_id,

@@ -45,6 +45,7 @@ def _summary(job: Job) -> dict[str, Any]:
         "extraction_id": job.id,
         "project_id": job.project_id,
         "source_text": job.input["source_text"],
+        "name": job.input.get("name"),
         "target_character_id": UUID(target) if target else None,
         "status": status_of(job),
         "duplicate_of": UUID(duplicate) if duplicate else None,
@@ -93,6 +94,7 @@ async def submit(
     source_text: str,
     target_character_id: UUID | None,
     user_id: UUID,
+    name: str | None = None,
 ) -> Job:
     """잡을 만들고 ai 큐에 알린다. 같은 문장(공백·대소문자 무시)을 전에 넣었으면 `duplicate_of`.
 
@@ -120,6 +122,7 @@ async def submit(
         queue=QUEUE,
         input={
             "source_text": source_text,
+            "name": name,
             "normalized": normalized,
             "target_character_id": str(target_character_id) if target_character_id else None,
             "duplicate_of": str(earlier) if earlier else None,

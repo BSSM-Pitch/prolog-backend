@@ -15,8 +15,14 @@ Status = Literal["analyzing", "completed", "failed"]
 SourceText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=5000)]
 
 
+Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
+
+
 class ExtractionCreate(BaseModel):
     source_text: SourceText
+    # 화면 22 의 "인물 이름". 명세에 없다(제안 목록). 추출은 이름을 뽑지 않으므로 사용자가 친다.
+    # forward 때 초안 이름이 된다. 비우고 `target_character_id` 를 주면 그 캐릭터 이름을 쓴다.
+    name: Name | None = None
     target_character_id: UUID | None = None
 
 
@@ -37,6 +43,7 @@ class ExtractionSummary(BaseModel):
     extraction_id: UUID
     project_id: UUID
     source_text: str
+    name: str | None
     target_character_id: UUID | None
     status: Status
     duplicate_of: UUID | None

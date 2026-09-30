@@ -949,6 +949,19 @@
       },
       "ExtractionCreate": {
         "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
           "source_text": {
             "maxLength": 5000,
             "minLength": 1,
@@ -1064,6 +1077,17 @@
             "title": "Influence Relations",
             "type": "array"
           },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
           "personality_tags": {
             "default": [],
             "items": {
@@ -1112,6 +1136,7 @@
           "extraction_id",
           "project_id",
           "source_text",
+          "name",
           "target_character_id",
           "status",
           "duplicate_of",
@@ -1176,6 +1201,17 @@
             ],
             "title": "Forwarded Draft Id"
           },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
           "project_id": {
             "format": "uuid",
             "title": "Project Id",
@@ -1216,6 +1252,7 @@
           "extraction_id",
           "project_id",
           "source_text",
+          "name",
           "target_character_id",
           "status",
           "duplicate_of",
@@ -14105,7 +14142,7 @@
     },
     "/v1/projects/{projectId}/nl-extractions/{extractionId}/forward": {
       "post": {
-        "description": "ASS 초안을 만든다(`source_job_id` = 이 추출, 항목은 전부 `ai_extracted` + 근거).\n\n- `completed` 가 아니면 `EXTRACTION_NOT_READY`, 이미 전달했으면 `ALREADY_FORWARDED`\n  (`details.forwarded_draft_id`).\n- `target_character_id` 가 있는 추출은 초안 이름을 그 캐릭터 이름으로 채운다 — 확정하면 같은\n  이름이라 `DUPLICATE_CHARACTER_CANDIDATE` 가 나고, 사용자가 병합을 고른다.\n- 없으면 이름이 비어 있다. 추출은 이름을 뽑지 않는다 — 확정 전에 이름을 넣어야 한다.",
+        "description": "ASS 초안을 만든다(`source_job_id` = 이 추출, 항목은 전부 `ai_extracted` + 근거).\n\n- `completed` 가 아니면 `EXTRACTION_NOT_READY`, 이미 전달했으면 `ALREADY_FORWARDED`\n  (`details.forwarded_draft_id`).\n- 초안 이름은 제출 때 받은 `name`(화면 22 \"인물 이름\")이다. 비었고 `target_character_id` 가\n  있으면 그 캐릭터 이름을 쓴다 — 확정하면 같은 이름이라 `DUPLICATE_CHARACTER_CANDIDATE` 가\n  나고, 사용자가 병합을 고른다. 둘 다 없으면 이름이 비어 있다(확정 전에 넣는다).",
         "operationId": "forward_v1_projects__projectId__nl_extractions__extractionId__forward_post",
         "parameters": [
           {

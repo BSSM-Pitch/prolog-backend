@@ -542,7 +542,8 @@ AI 추출(`rule-extractions` 1~4)은 2b. seed 에 규칙 2(화면 21).
    - [코드] forward 는 `target_character_id` 가 있으면 초안 이름을 그 캐릭터 이름으로 채운다 — 확정하면
      `DUPLICATE_CHARACTER_CANDIDATE` 로 병합이 이어진다(명세 "병합 대상 정보를 함께 실어"의 구현).
      동명 캐릭터가 여럿이면 후보는 가장 먼저 만든 쪽이라 대상과 다를 수 있다
-   - [둘 다] 추출이 캐릭터 이름을 뽑지 않는다(패키지 TODO) — 대상 없는 forward 초안은 이름이 비어 있다
+   - [코드] 제출에 `name`(화면 22 "인물 이름") — 명세에 없다. forward 때 초안 이름이 되고, 비었으면
+     `target_character_id` 의 이름을 쓴다. 추출이 이름을 뽑을 필요가 없어졌다(패키지 TODO 해소)
    - [코드] 영향 관계의 `type` 은 추출 결과에는 있고 초안 항목에서는 버린다(ASS 항목은 `value` 하나)
    - [코드] 중복 감지는 공백·대소문자만 무시한 같은 문장이다(명세는 "동일/유사")
    - [코드] 에러 코드는 패키지와 명세 §1.4 가 같다(`INVALID_INPUT` · `AI_EXTRACTION_FAILED` ·
