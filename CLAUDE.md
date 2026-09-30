@@ -16,7 +16,7 @@
 | 서비스 | StoryForge — AI 기반 스토리 구조 관리 IDE |
 | 레포 경로 | `~/dev/prolog` (2026-09-30 iCloud 동기화 밖으로 이동. 옛 경로 `~/Desktop/전공동`) |
 | 스택 | FastAPI · PostgreSQL · SQLAlchemy(asyncpg) · Alembic(psycopg) · uv |
-| 현재 단계 | **Phase 2b 진행 중** — `prolog-ai` 연동: AI 포트 · `ai` 워커 · NLCD · **REX 추출 완료**. 다음은 AIQ · SCDS · SSM |
+| 현재 단계 | **Phase 2b 진행 중** — `prolog-ai` 연동: AI 포트 · `ai` 워커 · NLCD · REX 추출 · **AIQ 완료**. 다음은 SCDS · SSM |
 | git | `a6ea4e9` 첫 커밋(84파일) → `d00610a` CLAUDE.md 복원 → `f586427` AUTH v0.2 → `66b4f67` 감사 P0 → `3f0eca7` 감사 P1 → `87c9006` 조합 레이어 → `a382a5c` 감사 P2 → `8d20b20` 감사 P3 → `a381109` OpenAPI → `583e00a` PG16 → `ec649f0` Phase 1 인프라 → `205d0dd` manuscript_count → `73427d3` NOTI → `c10290d` OpenAPI → `a2d4471` MSU·챕터 → `5a2d79f` 업로드 콜백·s3mock·복합 FK → `62d5837` 추출 워커 → `a19dd01` OpenAPI 계약·목록 커서·팀 유래 멤버 → `cf65615` 검증 스크립트 → `56c197f` 스키마 이름·seed → `a9e979b` Phase 2a 잡 내구성 → ASS 수동 경로(이 문서와 같은 커밋) |
 
 ### 실행
@@ -134,7 +134,7 @@ Celery 는 쓰지 않는다 — 단순 루프 + SQS redrive 로 충분하다(2b 
 | `worker/notifier.py` | 도메인 이벤트 소비: 알림 INSERT · `chapter.deleted` → FTS 정리 (소비자별 inbox) | `notify` |
 | `worker/extractor.py` | `manuscript_extraction` 잡 → S3 읽기 → 본문 채우고 `ready` | `io` |
 | `worker/sweeper.py` | 주기 작업: 좀비 잡 회수 · 업로드 콜백 유실 회수 | (없음) |
-| `worker/ai_worker.py` | AI 잡 — `job_type` 별 핸들러(`HANDLERS`): `nl_extraction` · `rule_extraction` | `ai` |
+| `worker/ai_worker.py` | AI 잡 — `job_type` 별 핸들러(`HANDLERS`): `nl_extraction` · `rule_extraction` · `qa_answer` | `ai` |
 
 **내구성 규칙 (2a).** 어기면 durability.py 가 다시 재현한다.
 - **메시지 하나가 워커를 죽이지 않는다.** 소비 루프는 `app/events/consumer.py` 하나다. 처리에
@@ -490,6 +490,9 @@ AI 추출(`rule-extractions` 1~4)은 2b. seed 에 규칙 2(화면 21).
 만든다(`source_job_id`, 항목 전부 `ai_extracted` + 근거). 잡 행을 잠가 두 번 눌러도 초안은 하나다.
 **완료 (REX AI 추출):** 명세 §4.1~4.4 — 요청(원고 `ready` 만) · 폴링 · 재시도 · 확정. 후보는 잡 결과에
 남고 확정해야 `world_rules`(`ai_extracted`, `extraction_job_id`)가 된다. 후보별 검토 상태(`reviews`).
+**완료 (AIQ):** 명세 7종 — 스레드 목록·생성(+첫 질문)·상세·후속 질문·메시지 폴링·재시도·삭제. 질문 하나 =
+user 메시지 + pending assistant 메시지 + `qa_answer` 잡. 끝내 실패하면 메시지 `failed`(스위퍼 좀비 포함).
+`0009` scope `whole|chapter|selection`. 선택 구간은 `selected_text` 로 다시 찾는다(§12-4 결정).
 **다음 (Phase 2b):** REX · `ai` 워커 · LLM 게이트웨이 · 핸들러 공통 계약 · `/retry` API ·
 `jobs.idempotency_key`. LLM 공급자 · 비용 컬럼(`model`·`token_in/out`, DDL 에 없음) 결정 필요.
 
@@ -581,6 +584,17 @@ AI 추출(`rule-extractions` 1~4)은 2b. seed 에 규칙 2(화면 21).
      패키지가 준다 · `source_chapter` 는 패키지가 항상 null(원고 텍스트만 받아 챕터를 모른다) ·
      추출 목록 API 가 명세에 없다 — 화면 21 이 검토 대기 후보를 모으려면 필요하다
 
+   **AIQ**
+   - [코드] scope: 명세 `whole|selection` 을 API 와 DB 에 쓴다(0009 — DDL 은 `project|chapter|selection`
+     이었다). 패키지에는 `whole` → `project`. `chapter` 는 DB 에만 남기고 API 에 내지 않는다(화면에 없다)
+   - [코드] 메시지에 `error`(화면 36 실패 사유) · 스레드에 `selected_text`·`updated_at` · 목록에 `last_message`
+   - [코드] 선택 구간이 원고 수정으로 밀리면 `selected_text` 를 다시 찾고, 없으면 `INVALID_SELECTION_RANGE` 로
+     실패(§12-4 결정) · 본문 없는 원고는 `INVALID_INPUT` · 스레드 제목은 첫 질문 앞 50자
+   - [코드] 재시도: 명세대로 `failed` 가 아니면 `INVALID_STATUS_TRANSITION`(user 메시지 포함)
+   - [코드] 화면 36 "질문 수정" 에 대응하는 API 가 없다 — 새 질문으로 보낸다
+   - [코드] 화면 02 스레드의 "17장 · 22장"·답변의 "근거 · 17장" — 패키지 답변은 `content` 문자열 하나라
+     근거 장면이 없다(패키지 TODO)
+
    **FTS**
    - [코드] 챕터를 번호가 아니라 **id 로 받는다**(원고가 여럿이면 번호가 겹친다): `setup_chapter_id` ·
      `payoff_chapter_id` · `chapter_id`, 경로 `/chapters/{chapterId}/foreshadowings` ·
@@ -607,7 +621,7 @@ AI 추출(`rule-extractions` 1~4)은 2b. seed 에 규칙 2(화면 21).
 
 ## 10. 반드시 추가할 테스트
 
-현재 59 경로 · 90 오퍼레이션에 테스트 123개다 (`/v1/health` 제외).
+현재 68 경로 · 101 오퍼레이션에 테스트 137개다 (`/v1/health` 제외).
 **TEAM·PRJ 24개 오퍼레이션에 빠짐없이 테스트가 닿는다.**
 
 이 절의 목록은 비었다 — 5종 모두 들어갔다. 리프레시 토큰 재사용 거부 · 테넌트 격리 ·

@@ -23,7 +23,7 @@ from app.core.errors import AppError
 from app.main import app
 
 # 스펙에 없어도 되는 코드와 그 이유. 도달 불가능한 코드를 선언하면 그게 오히려 거짓말이다.
-UNREACHABLE = {"INVALID_STATUS_TRANSITION": "잡 상태 전이 — HTTP 로 노출되는 경로가 없다(Phase 2)"}
+UNREACHABLE: dict[str, str] = {}  # INVALID_STATUS_TRANSITION 은 AIQ 재시도가 낸다
 
 SCHEMA_NAME = re.compile(r"[A-Z][A-Za-z0-9]*")
 

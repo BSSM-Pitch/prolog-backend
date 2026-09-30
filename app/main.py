@@ -15,6 +15,7 @@ from app.content.manuscripts.router import router as manuscripts_router
 from app.core import openapi
 from app.core.errors import AppError
 from app.core.response import Envelope, ok
+from app.insight.aiq.router import router as aiq_router
 from app.insight.fts.router import router as fts_router
 from app.platform_.auth.router import router as auth_router
 from app.platform_.auth.router import users_router
@@ -95,6 +96,7 @@ for _router in (
     ass_router,
     rex_router,
     fts_router,
+    aiq_router,
     api_router,
     nlcd_router,
     nlcd_forward_router,

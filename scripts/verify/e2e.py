@@ -191,6 +191,7 @@ def run(client: httpx.Client) -> None:
     foreshadowings(client, b, project_id, ms["manuscript_id"])
     nl_extraction(client, b, project_id)
     rule_extraction(client, b, project_id, ms["manuscript_id"])
+    ask(client, b, project_id, ms["manuscript_id"])
     settings = call("알림 설정", client, "GET", "/users/me/notification-settings", 200, b)
     if len(settings["data"]) != 5:
         raise Blocked("알림 설정이 유형 5개가 아니다")
@@ -393,6 +394,27 @@ def rule_extraction(client: httpx.Client, t: str, pid: str, ms: str) -> None:
         raise Blocked(f"규칙 추출 실패: {got.get('error')}")
     picked = {"selected_indices": [c["index"] for c in got["data"]["extracted_rules"]][:1]}
     call("추출 규칙 확정", client, "POST", f"{base}/{eid}/confirm", 201, t, json=picked)
+
+
+def ask(client: httpx.Client, t: str, pid: str, ms: str) -> None:
+    """AIQ — 질문 → ai 워커 → 답변 폴링 → 후속 질문."""
+    base = f"/projects/{pid}/manuscripts/{ms}/qa-threads"
+    body = {"question": "비는 언제 그쳤나요?"}
+    made = call("질문 스레드 생성", client, "POST", base, 201, t, json=body)["data"]
+    tid, mid = made["thread"]["thread_id"], made["messages"][1]["message_id"]
+    poll = f"{base}/{tid}/messages/{mid}"
+
+    def answered() -> Any:
+        res = client.get(BASE + poll, headers={"Authorization": f"Bearer {t}"})
+        return res.json() if res.json()["data"]["status"] != "pending" else None
+
+    wait_for("답변(ai 워커)", answered, timeout=60)
+    got = call("답변 조회", client, "GET", poll, 200, t)
+    if got["data"]["status"] != "completed":
+        raise Blocked(f"답변 실패: {got['data']['error']}")
+    call("후속 질문", client, "POST", f"{base}/{tid}/messages", 201, t, json={"content": "왜요?"})
+    call("스레드 목록", client, "GET", base, 200, t)
+    call("완료된 답변 재시도", client, "POST", f"{poll}/retry", 409, t)
 
 
 def main() -> None:

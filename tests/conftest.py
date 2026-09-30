@@ -244,8 +244,15 @@ class FakeAI:
     def run_rex(self, manuscript_text: str) -> dict[str, Any]:
         return self._next("run_rex", manuscript_text)
 
-    def run_aiq(self, question: str, manuscript_text: str, *args: Any, **kw: Any) -> dict[str, Any]:
-        return self._next("run_aiq", question, manuscript_text)
+    def run_aiq(
+        self,
+        question: str,
+        manuscript_text: str,
+        scope: str = "project",
+        selection_range: Any = None,
+        messages: Any = None,
+    ) -> dict[str, Any]:
+        return self._next("run_aiq", question, manuscript_text, scope, selection_range, messages)
 
     def run_scds_rules(
         self, event: Any, world_rules: Any, characters: Any = None

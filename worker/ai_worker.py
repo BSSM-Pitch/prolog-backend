@@ -22,11 +22,16 @@ from app.authoring.rex import extraction as rex
 from app.db.session import SessionFactory
 from app.events.consumer import consume
 from app.events.queue import AI_QUEUE, SqsQueue
+from app.insight.aiq import service as aiq
 
 log = logging.getLogger(__name__)
 
 Handler = Callable[[Any, UUID, AIClient], Awaitable[str]]
-HANDLERS: dict[str, Handler] = {NLCD_JOB: nlcd.handle, rex.JOB_TYPE: rex.handle}
+HANDLERS: dict[str, Handler] = {
+    NLCD_JOB: nlcd.handle,
+    rex.JOB_TYPE: rex.handle,
+    aiq.JOB_TYPE: aiq.handle,
+}
 
 ai: AIClient = PrologAI()
 

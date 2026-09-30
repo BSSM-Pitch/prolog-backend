@@ -17,7 +17,7 @@ class QaThread(Base, Timestamps):
     project_id: Mapped[UUID] = fk_uuid()
     manuscript_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True))
     chapter_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True))
-    scope: Mapped[str] = mapped_column(String(20))  # project | chapter | selection
+    scope: Mapped[str] = mapped_column(String(20))  # whole | chapter | selection (0009)
     selection_start: Mapped[int | None] = mapped_column(Integer)
     selection_end: Mapped[int | None] = mapped_column(Integer)
     # TODO(§12-4): scope=selection 오프셋 무효화 정책 미결. 스냅샷 컬럼은 미리 두었다.

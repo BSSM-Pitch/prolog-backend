@@ -95,6 +95,11 @@ TargetCharacterNotFound = _err(
 ExtractionNotReady = _err("EXTRACTION_NOT_READY", 409, "추출이 아직 완료되지 않았습니다")
 AlreadyForwarded = _err("ALREADY_FORWARDED", 409, "이미 구조화 시스템으로 전달된 추출 결과입니다")
 
+# --- AIQ (§1.4) ---------------------------------------------------------
+QaThreadNotFound = _err("QA_THREAD_NOT_FOUND", 404, "질문 스레드를 찾을 수 없습니다")
+QaMessageNotFound = _err("QA_MESSAGE_NOT_FOUND", 404, "메시지를 찾을 수 없습니다")
+InvalidSelectionRange = _err("INVALID_SELECTION_RANGE", 400, "선택 범위가 원고 길이를 벗어났습니다")
+
 # --- REX (§1.4) ---------------------------------------------------------
 WorldRuleNotFound = _err("WORLD_RULE_NOT_FOUND", 404, "규칙을 찾을 수 없습니다")
 RuleExtractionNotFound = _err("RULE_EXTRACTION_NOT_FOUND", 404, "추출 작업을 찾을 수 없습니다")

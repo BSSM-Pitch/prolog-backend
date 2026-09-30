@@ -23,6 +23,7 @@ from app.content.manuscripts import service as manuscripts
 from app.content.manuscripts.storage import S3Storage, Storage
 from app.core.config import settings
 from app.db.session import SessionFactory
+from app.insight.aiq import service as aiq
 from app.jobs import service as jobs
 from app.jobs.models import Job
 
@@ -32,6 +33,7 @@ log = logging.getLogger(__name__)
 # Phase 2b 의 ai 잡들도 여기에 한 줄씩 붙는다.
 ON_FAILED: dict[str, Callable[[AsyncSession, Job], Awaitable[None]]] = {
     manuscripts.EXTRACTION_JOB_TYPE: extraction.mark_failed,
+    aiq.JOB_TYPE: aiq.mark_failed,  # 좀비로 끝난 답변은 failed — 화면 36 의 "다시 시도" 가 보인다
 }
 
 
