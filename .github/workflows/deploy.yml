@@ -53,7 +53,7 @@ jobs:
               "docker compose -p prolog -f compose.prod.yml build api",
               "docker compose -p prolog -f compose.prod.yml run --rm migrate",
               "docker compose -p prolog -f compose.prod.yml up -d --no-build --no-deps --force-recreate api outbox-worker notifier-worker extractor-worker ai-worker sweeper-worker caddy",
-              "curl --fail --silent --show-error --retry 30 --retry-delay 2 --retry-connrefused http://127.0.0.1/v1/health",
+              "curl --fail --silent --show-error --retry 30 --retry-delay 2 --retry-all-errors http://127.0.0.1/v1/health",
               "docker compose -p prolog -f compose.prod.yml ps",
               "docker image prune --force"
             ]}')"
