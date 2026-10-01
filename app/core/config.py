@@ -9,7 +9,7 @@ class Settings(BaseSettings):
 
     jwt_secret: str = "dev-secret-change-me-with-at-least-32-bytes"
     jwt_algorithm: str = "HS256"
-    access_token_ttl_seconds: int = 60 * 30
+    access_token_ttl_seconds: int = 60 * 60 * 24 * 5
     refresh_token_ttl_seconds: int = 60 * 60 * 24 * 14
     # 2단계 가입 티켓. TTL 10분, 전용 aud (AUTH 계약 v0.2 §4.2).
     signup_ticket_ttl_seconds: int = 60 * 10
