@@ -1,0 +1,87 @@
+x-app: &app
+  image: prolog-backend:prod
+  build:
+    context: .
+  env_file:
+    - .env.production
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  migrate:
+    <<: *app
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+
+  api:
+    <<: *app
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/v1/health', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  outbox-worker:
+    <<: *app
+    command: ["python", "-m", "worker.outbox_relay"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  notifier-worker:
+    <<: *app
+    command: ["python", "-m", "worker.notifier"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  extractor-worker:
+    <<: *app
+    command: ["python", "-m", "worker.extractor"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  ai-worker:
+    <<: *app
+    command: ["python", "-m", "worker.ai_worker"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  sweeper-worker:
+    <<: *app
+    command: ["python", "-m", "worker.sweeper"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "80:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./frontend-dist:/srv/frontend:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
