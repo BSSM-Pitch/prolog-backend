@@ -24,6 +24,8 @@ TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
 CERTS_URL = "https://www.googleapis.com/oauth2/v3/certs"
 ISSUERS = ("https://accounts.google.com", "accounts.google.com")
 _TIMEOUT_SECONDS = 5
+# 서버 시계가 Google 보다 느리면 갓 발급된 토큰의 iat 가 미래로 보여 거부된다. 시계 오차만큼 봐준다.
+_CLOCK_LEEWAY_SECONDS = 60
 
 
 @dataclass(frozen=True)
@@ -85,6 +87,7 @@ class GoogleOAuthClient:
                 key,
                 algorithms=["RS256"],
                 audience=settings.google_client_id,
+                leeway=_CLOCK_LEEWAY_SECONDS,
                 options={"require": ["exp", "aud", "iss", "sub"]},
             )
         except (jwt.PyJWTError, urllib.error.URLError, OSError) as exc:
