@@ -24,9 +24,10 @@ class Settings(BaseSettings):
     # SQS 호환 큐. compose 는 elasticmq 다. AWS 로 옮길 때 endpoint 만 비우면 된다.
     sqs_endpoint_url: str = "http://localhost:9324"
     sqs_region: str = "elasticmq"
-    # elasticmq 는 서명을 검증하지 않지만 boto3 가 자격증명을 요구한다.
-    aws_access_key_id: str = "local"
-    aws_secret_access_key: str = "local"
+    # 로컬 .env 는 elasticmq/s3mock 용 가짜 키를 넣는다. 운영에서는 값을 비워 boto3 가
+    # EC2 instance profile 같은 표준 credential provider chain 을 사용하게 한다.
+    aws_access_key_id: str | None = None
+    aws_secret_access_key: str | None = None
     outbox_relay_batch: int = 100
     outbox_relay_idle_seconds: float = 1.0
     # 잡 폴링 간격 힌트. meta.retry_after_ms 로 내보낸다 (ROADMAP Phase 1).

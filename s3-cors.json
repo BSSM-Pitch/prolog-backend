@@ -1,0 +1,24 @@
+{
+  "CORSRules": [
+    {
+      "AllowedOrigins": [
+        "http://3.35.229.82",
+        "https://prolog.kr",
+        "https://www.prolog.kr"
+      ],
+      "AllowedMethods": [
+        "GET",
+        "PUT",
+        "POST",
+        "HEAD"
+      ],
+      "AllowedHeaders": [
+        "*"
+      ],
+      "ExposeHeaders": [
+        "ETag"
+      ],
+      "MaxAgeSeconds": 3600
+    }
+  ]
+}
