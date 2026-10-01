@@ -1,4 +1,4 @@
-:80 {
+prolog.kr {
     @backend path /v1/* /docs /docs/* /redoc /redoc/* /openapi.json
 
     handle @backend {
