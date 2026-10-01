@@ -10,7 +10,7 @@
       "Condition": {
         "StringEquals": {
           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-          "token.actions.githubusercontent.com:sub": "repo:BSSM-Pitch/prolog-frontend:ref:refs/heads/main"
+          "token.actions.githubusercontent.com:sub": "repo:BSSM-Pitch@270888810/prolog-frontend@1390907643:ref:refs/heads/main"
         }
       }
     }
