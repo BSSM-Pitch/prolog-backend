@@ -48,7 +48,7 @@ _STALE = text(
     """
 SELECT c.id, c.project_id, md5(c.content) AS source_hash
 FROM content.chapters c
-WHERE btrim(c.content) <> ''
+WHERE c.content ~ '[^[:space:]]'
   AND c.updated_at < now() - make_interval(secs => :quiet)
   AND NOT EXISTS (
       SELECT 1 FROM content.passages p
@@ -102,7 +102,7 @@ async def coverage(session: AsyncSession, manuscript_id: UUID) -> tuple[int, int
     total = await session.scalar(
         select(func.count())
         .select_from(Chapter)
-        .where(Chapter.manuscript_id == manuscript_id, func.btrim(Chapter.content) != "")
+        .where(Chapter.manuscript_id == manuscript_id, Chapter.content.op("~")("[^[:space:]]"))
     )
     ready = await session.scalar(
         _fresh(select(func.count(func.distinct(Passage.chapter_id)))).where(

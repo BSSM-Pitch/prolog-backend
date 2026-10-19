@@ -167,7 +167,12 @@ async def test_blank_chapter_is_not_indexed_and_not_counted(client: AsyncClient)
     blank = (
         await client.post(
             f"/projects/{c['pid']}/chapters",
-            json={"manuscript_id": str(c["mid"]), "chapter_no": 2, "title": "빈", "content": "   "},
+            json={
+                "manuscript_id": str(c["mid"]),
+                "chapter_no": 2,
+                "title": "빈",
+                "content": "\n\t \n",
+            },
             headers=c["h"],
         )
     ).json()["data"]["chapter_id"]
