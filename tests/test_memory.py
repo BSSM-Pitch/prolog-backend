@@ -131,6 +131,9 @@ async def test_embed_failure_leaves_chapter_stale_without_new_job(client: AsyncC
     failure = {"error": {"code": "AI_EMBEDDING_FAILED", "message": "x", "details": {}}}
     ai = FakeAI(failure)
     assert await handle(SessionFactory, await _job_for(c["cid"]), ai) == "failed"
+    async with SessionFactory() as s:
+        job = await s.get(Job, await _job_for(c["cid"]))
+        assert job is not None and job.status == "failed"
     assert await _sweep() == []  # 같은 본문으로 실패한 잡은 다시 만들지 않는다
 
 
@@ -157,3 +160,20 @@ async def test_search_orders_by_similarity_and_skips_stale(client: AsyncClient) 
         hits = await memory.search(s, c["mid"], unit(1), k=5)
     assert [h.text for h in hits] == ["나", "가"]  # 낡은 "다"는 빠진다
     assert hits[0].chapter_no == 1
+
+
+async def test_blank_chapter_is_not_indexed_and_not_counted(client: AsyncClient) -> None:
+    c = await _chapter(client, "mem5@example.com")
+    blank = (
+        await client.post(
+            f"/projects/{c['pid']}/chapters",
+            json={"manuscript_id": str(c["mid"]), "chapter_no": 2, "title": "빈", "content": "   "},
+            headers=c["h"],
+        )
+    ).json()["data"]["chapter_id"]
+    await _age(c["cid"])
+    await _age(UUID(blank))
+    assert await _sweep() == [c["cid"]]  # 빈 챕터에는 잡을 만들지 않는다
+    assert await handle(SessionFactory, await _job_for(c["cid"]), FakeAI()) == "completed"
+    async with SessionFactory() as s:
+        assert await memory.coverage(s, c["mid"]) == (1, 1)

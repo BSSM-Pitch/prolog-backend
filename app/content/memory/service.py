@@ -42,11 +42,14 @@ def idempotency_key(chapter_id: UUID, source_hash: str) -> str:
     return f"{JOB_TYPE}:{chapter_id}:{source_hash}"
 
 
+# ponytail: md5(content) 를 스윕마다(_STALE)·검색 행마다(_fresh) 다시 계산한다. 챕터에
+# content_md5 컬럼을 저장해 두면 없어진다 — 느려질 때.
 _STALE = text(
     """
 SELECT c.id, c.project_id, md5(c.content) AS source_hash
 FROM content.chapters c
-WHERE c.updated_at < now() - make_interval(secs => :quiet)
+WHERE btrim(c.content) <> ''
+  AND c.updated_at < now() - make_interval(secs => :quiet)
   AND NOT EXISTS (
       SELECT 1 FROM content.passages p
       WHERE p.chapter_id = c.id AND p.source_hash = md5(c.content))
@@ -97,7 +100,9 @@ _HIT_COLUMNS = (
 
 async def coverage(session: AsyncSession, manuscript_id: UUID) -> tuple[int, int]:
     total = await session.scalar(
-        select(func.count()).select_from(Chapter).where(Chapter.manuscript_id == manuscript_id)
+        select(func.count())
+        .select_from(Chapter)
+        .where(Chapter.manuscript_id == manuscript_id, func.btrim(Chapter.content) != "")
     )
     ready = await session.scalar(
         _fresh(select(func.count(func.distinct(Passage.chapter_id)))).where(
