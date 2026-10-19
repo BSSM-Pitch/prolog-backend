@@ -1,12 +1,14 @@
 """주기 작업 워커 — `python -m worker.sweeper`.
 
-`sweeper_interval_seconds` 마다 두 가지를 한다. 대상이 겹치지 않는다.
+`sweeper_interval_seconds` 마다 세 가지를 한다. 대상이 겹치지 않는다.
 
 1. **좀비 회수** — `running` 인데 큐별 임계치(`job_zombie_seconds_io|ai`)를 넘긴 잡을
    `failed(JOB_TIMEOUT)` 로 내리고, 시도가 남았으면 다시 `queued` 로(app.jobs.service.reap).
    끝까지 실패한 잡은 그 잡을 만든 모듈의 훅으로 대상을 실패 처리한다.
 2. **업로드 콜백 유실** — 잡이 **아예 없는** 원고. 객체가 있으면 콜백 대신 추출을 건다
    (app.content.manuscripts.service.sweep_lost_uploads).
+
+3. **원고 기억** — 조용해진 챕터의 조각을 다시 색인한다(app.content.memory.service.sweep_stale).
 
 한 번의 실패가 루프를 끝내지 않는다.
 """
@@ -21,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.content.manuscripts import job_handler as extraction
 from app.content.manuscripts import service as manuscripts
 from app.content.manuscripts.storage import S3Storage, Storage
+from app.content.memory import service as memory
 from app.core.config import settings
 from app.db.session import SessionFactory
 from app.insight.aiq import service as aiq
@@ -56,6 +59,11 @@ async def sweep_once(storage: Storage) -> None:
         after = timedelta(seconds=settings.upload_sweep_after_seconds)
         if started := await manuscripts.sweep_lost_uploads(session, storage, after):
             log.warning("콜백 유실 원고 %d건 추출 시작: %s", len(started), started)
+        await session.commit()
+    async with SessionFactory() as session:
+        quiet = timedelta(seconds=settings.memory_quiet_seconds)
+        if indexed := await memory.sweep_stale(session, quiet):
+            log.info("조각 색인 잡 %d건", len(indexed))
         await session.commit()
 
 

@@ -260,8 +260,31 @@ class FakeAI:
         scope: str = "project",
         selection_range: Any = None,
         messages: Any = None,
+        passages: Any = None,
     ) -> dict[str, Any]:
-        return self._next("run_aiq", question, manuscript_text, scope, selection_range, messages)
+        extra = () if passages is None else (passages,)
+        return self._next(
+            "run_aiq", question, manuscript_text, scope, selection_range, messages, *extra
+        )
+
+    def split_passages(self, text: str) -> dict[str, Any]:
+        """조각 나누기는 LLM 이 없는 순수 함수다 — 늘 실제 패키지로 돌린다.
+
+        넣어 둔 결과를 쓰지 않는다. 그래야 `FakeAI(실패)` 가 embed 에 닿는다.
+        """
+        from prolog_ai import split_passages
+
+        self.calls.append(("split_passages", (text,)))
+        return split_passages(text)
+
+    def embed(self, texts: list[str]) -> dict[str, Any]:
+        """결과를 넣지 않았으면 패키지의 결정적 가짜 벡터를 준다(같은 글 = 같은 벡터)."""
+        if self.results:
+            return self._next("embed", texts)
+        from prolog_ai.core.embeddings import fake_vector
+
+        self.calls.append(("embed", (texts,)))
+        return {"data": {"vectors": [fake_vector(t) for t in texts]}, "meta": {}}
 
     def run_scds_rules(
         self, event: Any, world_rules: Any, characters: Any = None

@@ -31,7 +31,12 @@ class AIClient(Protocol):
         scope: str = "project",
         selection_range: dict[str, int] | None = None,
         messages: list[dict[str, Any]] | None = None,
+        passages: list[dict[str, Any]] | None = None,
     ) -> Result: ...
+
+    def split_passages(self, text: str) -> Result: ...
+
+    def embed(self, texts: list[str]) -> Result: ...
 
     def run_scds_rules(
         self,
@@ -91,10 +96,21 @@ class PrologAI:
         scope: str = "project",
         selection_range: dict[str, int] | None = None,
         messages: list[dict[str, Any]] | None = None,
+        passages: list[dict[str, Any]] | None = None,
     ) -> Result:
         from prolog_ai import run_aiq
 
-        return run_aiq(question, manuscript_text, scope, selection_range, messages)
+        return run_aiq(question, manuscript_text, scope, selection_range, messages, passages)
+
+    def split_passages(self, text: str) -> Result:
+        from prolog_ai import split_passages
+
+        return split_passages(text)
+
+    def embed(self, texts: list[str]) -> Result:
+        from prolog_ai import embed
+
+        return embed(texts)
 
     def run_scds_rules(
         self,

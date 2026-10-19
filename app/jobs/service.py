@@ -73,6 +73,7 @@ async def create(
     target_id: UUID | None = None,
     input: dict[str, Any] | None = None,
     created_by: UUID | None = None,
+    idempotency_key: str | None = None,
 ) -> Job:
     return await repo.add_job(
         session,
@@ -85,6 +86,7 @@ async def create(
             status="queued",
             input=input or {},
             created_by=created_by,
+            idempotency_key=idempotency_key,
         ),
     )
 

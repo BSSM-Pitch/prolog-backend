@@ -19,6 +19,8 @@ from app.ai.client import AIClient, PrologAI
 from app.authoring.nlcd import job_handler as nlcd
 from app.authoring.nlcd.service import JOB_TYPE as NLCD_JOB
 from app.authoring.rex import extraction as rex
+from app.content.memory import job_handler as memory_jobs
+from app.content.memory import service as memory
 from app.core.config import settings
 from app.db.session import SessionFactory
 from app.events.consumer import consume
@@ -36,6 +38,7 @@ HANDLERS: dict[str, Handler] = {
     aiq.JOB_TYPE: aiq.handle,
     scds.JOB_TYPE: scds.handle,
     ssm.JOB_TYPE: ssm.handle,
+    memory.JOB_TYPE: memory_jobs.handle,
 }
 
 ai: AIClient = PrologAI()
