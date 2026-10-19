@@ -6,7 +6,7 @@ name: prolog
 
 services:
   postgres:
-    image: postgres:16
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: prolog
       POSTGRES_PASSWORD: prolog

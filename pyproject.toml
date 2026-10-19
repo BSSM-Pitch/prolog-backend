@@ -15,6 +15,7 @@ dependencies = [
     "psycopg[binary]>=3.2",
     "boto3>=1.43.103",
     "prolog-ai",
+    "pgvector>=0.3",
 ]
 
 [dependency-groups]
@@ -52,4 +53,4 @@ testpaths = ["tests"]
 include = ["app*", "worker*"]
 
 [tool.uv.sources]
-prolog-ai = { git = "https://github.com/BSSM-Pitch/prolog-ai.git" }
+prolog-ai = { path = "../prolog-ai", editable = true }

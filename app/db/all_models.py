@@ -8,6 +8,7 @@ from app.authoring.ass import models as ass_models
 from app.authoring.nlcd import models as nlcd_models
 from app.authoring.rex import models as rex_models
 from app.content.manuscripts import models as manuscript_models
+from app.content.memory import models as memory_models
 from app.db.base import Base
 from app.events import models as outbox_models
 from app.insight.aiq import models as aiq_models
@@ -29,6 +30,7 @@ _MODULES = (
     project_models,
     notification_models,
     manuscript_models,
+    memory_models,
     nlcd_models,
     ass_models,
     rex_models,
