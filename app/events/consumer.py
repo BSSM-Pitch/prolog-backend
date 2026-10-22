@@ -38,14 +38,37 @@ async def process_one(queue: Queue, queue_name: str, message: Message, handle: H
     return True
 
 
-async def consume(queue: Queue, queue_name: str, handle: Handler) -> None:
-    """영원히 돈다. 받기 실패도, 처리 실패도 루프를 끝내지 않는다."""
-    while True:
-        try:
-            messages = await asyncio.to_thread(queue.receive, queue_name, 10, 5)
-        except Exception:
-            log.exception("큐 수신 실패 (%s) — %.0f초 뒤 다시", queue_name, RECEIVE_BACKOFF_SECONDS)
-            await asyncio.sleep(RECEIVE_BACKOFF_SECONDS)
-            continue
-        for message in messages:
-            await process_one(queue, queue_name, message, handle)
+async def consume(queue: Queue, queue_name: str, handle: Handler, concurrency: int = 1) -> None:
+    """영원히 돈다. 받기 실패도, 처리 실패도 루프를 끝내지 않는다.
+
+    메시지를 `concurrency` 개까지 동시에 처리한다. 긴 메시지(SSM 장편 분석) 하나가 큐 전체를
+    막지 않게 하기 위해서다. 빈 자리만큼만 받는다 — 받아 두고 줄 세우면 기다리는 동안
+    visibility 가 지나 메시지가 다시 나간다. 루프가 끝날 때(테스트)는 도는 처리를 기다리고,
+    취소될 때(종료)는 같이 취소한다 — 지우지 않은 메시지는 재수신되고 잡은 스위퍼가 줍는다.
+    """
+    running: set[asyncio.Task[bool]] = set()
+    try:
+        while True:
+            free = concurrency - len(running)
+            if free <= 0:
+                await asyncio.wait(running, return_when=asyncio.FIRST_COMPLETED)
+                continue
+            try:
+                messages = await asyncio.to_thread(queue.receive, queue_name, min(free, 10), 5)
+            except Exception:
+                log.exception(
+                    "큐 수신 실패 (%s) — %.0f초 뒤 다시", queue_name, RECEIVE_BACKOFF_SECONDS
+                )
+                await asyncio.sleep(RECEIVE_BACKOFF_SECONDS)
+                continue
+            for message in messages:
+                task = asyncio.create_task(process_one(queue, queue_name, message, handle))
+                running.add(task)
+                task.add_done_callback(running.discard)
+    except asyncio.CancelledError:
+        for task in running:
+            task.cancel()
+        raise
+    finally:
+        if running:
+            await asyncio.wait(running)

@@ -19,6 +19,7 @@ from app.ai.client import AIClient, PrologAI
 from app.authoring.nlcd import job_handler as nlcd
 from app.authoring.nlcd.service import JOB_TYPE as NLCD_JOB
 from app.authoring.rex import extraction as rex
+from app.core.config import settings
 from app.db.session import SessionFactory
 from app.events.consumer import consume
 from app.events.queue import AI_QUEUE, SqsQueue
@@ -61,7 +62,7 @@ async def handle(body: dict[str, Any]) -> None:
 
 async def main() -> None:
     log.info("ai 워커 시작")
-    await consume(SqsQueue(), AI_QUEUE, handle)
+    await consume(SqsQueue(), AI_QUEUE, handle, settings.ai_worker_concurrency)
 
 
 if __name__ == "__main__":

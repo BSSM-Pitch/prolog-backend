@@ -4,6 +4,7 @@
 그 외에 선점 경합, 좀비 회수와 늦게 돌아온 워커의 경합, 재시도·시도 소진, 업로드 콜백 유실.
 """
 
+import asyncio
 from datetime import timedelta
 from uuid import UUID, uuid4
 
@@ -102,6 +103,29 @@ async def test_poison_message_does_not_kill_the_loop(
         select(ProcessedEvent.event_id).where(ProcessedEvent.consumer == "notifier")
     )
     assert [r[0] for r in claimed] == [UUID(good["event_id"])]
+
+
+async def test_slow_message_does_not_block_the_next() -> None:
+    """동시 처리. 긴 잡(SSM 장편)이 도는 동안 뒤 메시지도 처리된다 — 순차였다면 slow 가
+    fast 를 기다리며 영원히 막힌다."""
+    fast_done = asyncio.Event()
+    order: list[str] = []
+
+    async def handle(body: dict) -> None:
+        if body["name"] == "slow":
+            await fast_done.wait()
+        else:
+            fast_done.set()
+        order.append(body["name"])
+
+    queue = FakeQueue(
+        [[Message("r-slow", {"name": "slow"})], [Message("r-fast", {"name": "fast"})]]
+    )
+    with pytest.raises(StopConsuming):
+        await asyncio.wait_for(consumer.consume(queue, "ai", handle, concurrency=2), timeout=5)
+
+    assert order == ["fast", "slow"]
+    assert sorted(queue.deleted) == ["r-fast", "r-slow"]
 
 
 # --- 선점 · 좀비 · 재시도 -----------------------------------------------------------
