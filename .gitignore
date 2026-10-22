@@ -9,3 +9,7 @@ frontend-dist/
 .ruff_cache/
 .DS_Store
 .import_linter_cache/
+
+# 개인 작업 노트 — 저장소에 올리지 않는다
+CLAUDE.md
+ROADMAP.md

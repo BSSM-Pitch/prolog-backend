@@ -2,8 +2,7 @@
 
 AI 기반 스토리 구조 관리 IDE 의 백엔드. FastAPI · PostgreSQL 16 · SQLAlchemy(asyncpg) · uv.
 
-계약과 설계 결정은 [CLAUDE.md](CLAUDE.md) 에, 단계별 계획은 [ROADMAP.md](ROADMAP.md) 에 있다.
-이 파일은 **실행 방법**만 적는다.
+이 파일은 **실행 방법**만 적는다. API 계약은 `openapi.json` 이다.
 
 ## 필요한 것
 
