@@ -1,4 +1,8 @@
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# 예전 기본값이자 .env.example 에 공개됐던 값. 이 값을 복사해 쓴 env 도 기동을 막는다.
+_PUBLIC_JWT_SECRET = "dev-secret-change-me-with-at-least-32-bytes"
 
 
 class Settings(BaseSettings):
@@ -7,7 +11,9 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://prolog:prolog@localhost:5432/prolog"
     sql_echo: bool = False
 
-    jwt_secret: str = "dev-secret-change-me-with-at-least-32-bytes"
+    # 기본값을 두지 않는다 — 운영 env 에서 빠지면 공개된 값으로 서명해 누구나 토큰을 위조한다.
+    # 없거나 짧으면 기동이 실패한다. 생성 명령은 .env.example 에 있다.
+    jwt_secret: str = Field(min_length=32)
     jwt_algorithm: str = "HS256"
     access_token_ttl_seconds: int = 60 * 60 * 24 * 5
     refresh_token_ttl_seconds: int = 60 * 60 * 24 * 14
@@ -63,5 +69,12 @@ class Settings(BaseSettings):
     s3_region: str = "ap-northeast-2"
     presigned_ttl_seconds: int = 600
 
+    @field_validator("jwt_secret")
+    @classmethod
+    def _reject_public_secret(cls, value: str) -> str:
+        if value == _PUBLIC_JWT_SECRET:
+            raise ValueError("JWT_SECRET 이 공개된 예시 값이다. 새로 생성해 넣는다")
+        return value
 
-settings = Settings()
+
+settings = Settings()  # type: ignore[call-arg]  # jwt_secret 은 env 에서 채운다

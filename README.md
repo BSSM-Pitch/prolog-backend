@@ -18,7 +18,8 @@ cd prolog-backend
 
 docker compose up -d          # postgres · redis · elasticmq(SQS) · s3mock(S3)
 uv sync
-cp .env.example .env
+cp .env.example .env          # JWT_SECRET 을 채운다 (아래 명령 출력)
+python -c "import secrets; print(secrets.token_urlsafe(48))"
 uv run alembic upgrade head
 uv run uvicorn app.main:app --reload
 ```
