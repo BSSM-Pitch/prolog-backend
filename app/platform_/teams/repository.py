@@ -102,3 +102,19 @@ async def list_invitations(
             < tuple_(literal(cursor[0]), literal(cursor[1]))
         )
     return list((await session.execute(stmt)).scalars())
+
+
+async def received_invitations(
+    session: AsyncSession, email: str
+) -> list[tuple[TeamInvitation, str]]:
+    stmt = (
+        select(TeamInvitation, Team.name)
+        .join(Team, Team.id == TeamInvitation.team_id)
+        .where(
+            func.lower(TeamInvitation.invited_email) == email.lower(),
+            TeamInvitation.status == "pending",
+            TeamInvitation.expires_at > func.now(),
+        )
+        .order_by(TeamInvitation.created_at.desc(), TeamInvitation.id.desc())
+    )
+    return [(i, name) for i, name in (await session.execute(stmt)).all()]

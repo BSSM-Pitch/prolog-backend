@@ -77,3 +77,19 @@ async def add_member(
 
 async def get_invitation(session: AsyncSession, invitation_id: UUID) -> ProjectInvitation | None:
     return await session.get(ProjectInvitation, invitation_id)
+
+
+async def received_invitations(
+    session: AsyncSession, email: str
+) -> list[tuple[ProjectInvitation, str]]:
+    stmt = (
+        select(ProjectInvitation, Project.title)
+        .join(Project, Project.id == ProjectInvitation.project_id)
+        .where(
+            func.lower(ProjectInvitation.invited_email) == email.lower(),
+            ProjectInvitation.status == "pending",
+            ProjectInvitation.expires_at > func.now(),
+        )
+        .order_by(ProjectInvitation.created_at.desc(), ProjectInvitation.id.desc())
+    )
+    return [(i, name) for i, name in (await session.execute(stmt)).all()]

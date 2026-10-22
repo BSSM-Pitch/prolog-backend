@@ -210,7 +210,7 @@ async def revoke_invitation(session: AsyncSession, team_id: UUID, invitation_id:
 
 
 async def _claim(
-    session: AsyncSession, team_id: UUID, invitation_id: UUID, token: str
+    session: AsyncSession, team_id: UUID, invitation_id: UUID, user: CurrentUser, token: str | None
 ) -> TeamInvitation:
     invitation = await repo.get_invitation(session, invitation_id)
     if invitation is None or invitation.team_id != team_id:
@@ -218,7 +218,11 @@ async def _claim(
     # 토큰 소지가 곧 권한이다. 초대받은 주소와 로그인 주소가 달라도 된다 (CLAUDE.md §6.4).
     # **토큰을 상태보다 먼저 본다.** 순서가 반대면 토큰 없이도 "이미 처리됨"(409) 과
     # "없음"(404) 을 구분해 초대의 상태를 알아낼 수 있다. 틀린 토큰은 상태와 무관하게 404 다.
-    if not compare_digest(sha256(token), invitation.token_hash):
+    if token is not None:
+        if not compare_digest(sha256(token), invitation.token_hash):
+            raise errors.TeamInvitationNotFound()
+    # 토큰이 없으면 이메일이 권한이다. Google 이 확인한 주소라 본인이다. 틀린 경우도 404 로 같게.
+    elif user.email is None or invitation.invited_email.lower() != user.email.lower():
         raise errors.TeamInvitationNotFound()
     if invitation.status != "pending":
         raise errors.InvitationNotPending()
@@ -228,10 +232,10 @@ async def _claim(
 
 
 async def accept_invitation(
-    session: AsyncSession, team_id: UUID, invitation_id: UUID, user: CurrentUser, token: str
+    session: AsyncSession, team_id: UUID, invitation_id: UUID, user: CurrentUser, token: str | None
 ) -> TeamMemberResponse:
     """명세 §4.9: 응답은 생성된 TeamMember 다."""
-    invitation = await _claim(session, team_id, invitation_id, token)
+    invitation = await _claim(session, team_id, invitation_id, user, token)
     if await repo.get_member(session, team_id, user.id) is not None:
         raise errors.AlreadyTeamMember()
     invitation.status = "accepted"
@@ -256,3 +260,10 @@ async def accept_invitation(
 
 async def is_member(session: AsyncSession, team_id: UUID, user_id: UUID) -> bool:
     return await repo.get_member(session, team_id, user_id) is not None
+
+
+async def received_invitations(
+    session: AsyncSession, email: str
+) -> list[tuple[TeamInvitation, str]]:
+    """이 주소로 온, 아직 수락할 수 있는 초대와 team 이름."""
+    return await repo.received_invitations(session, email)

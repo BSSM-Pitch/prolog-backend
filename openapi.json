@@ -3489,17 +3489,21 @@
         "type": "object"
       },
       "ProjectInvitationAccept": {
-        "description": "수락 권한은 이메일 일치가 아니라 **토큰 소지**로 판정한다 (CLAUDE.md §6.4).",
+        "description": "링크로 받은 초대는 **토큰 소지**로 수락한다 — 초대받은 주소와 로그인 주소가 달라도 된다\n(CLAUDE.md §6.4). 토큰을 빼면 초대받은 이메일이 로그인 이메일과 같아야 한다\n(`GET /users/me/invitations` 에서 수락).",
         "properties": {
           "token": {
-            "minLength": 1,
-            "title": "Token",
-            "type": "string"
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token"
           }
         },
-        "required": [
-          "token"
-        ],
         "title": "ProjectInvitationAccept",
         "type": "object"
       },
@@ -3914,6 +3918,79 @@
           "data"
         ],
         "title": "ReadAllResponseEnvelope",
+        "type": "object"
+      },
+      "ReceivedInvitation": {
+        "description": "내게 온 초대. 팀·프로젝트 초대를 한 목록에 담는다.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "invitation_id": {
+            "format": "uuid",
+            "title": "Invitation Id",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "target_id": {
+            "format": "uuid",
+            "title": "Target Id",
+            "type": "string"
+          },
+          "target_name": {
+            "title": "Target Name",
+            "type": "string"
+          },
+          "target_type": {
+            "enum": [
+              "team",
+              "project"
+            ],
+            "title": "Target Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "invitation_id",
+          "target_type",
+          "target_id",
+          "target_name",
+          "role",
+          "expires_at",
+          "created_at"
+        ],
+        "title": "ReceivedInvitation",
+        "type": "object"
+      },
+      "ReceivedInvitationListEnvelope": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/ReceivedInvitation"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "ReceivedInvitationListEnvelope",
         "type": "object"
       },
       "RefreshRequest": {
@@ -4443,17 +4520,21 @@
         "type": "object"
       },
       "TeamInvitationAccept": {
-        "description": "수락 권한은 이메일 일치가 아니라 **토큰 소지**로 판정한다 (CLAUDE.md §6.4).",
+        "description": "링크로 받은 초대는 **토큰 소지**로 수락한다 — 초대받은 주소와 로그인 주소가 달라도 된다\n(CLAUDE.md §6.4). 토큰을 빼면 초대받은 이메일이 로그인 이메일과 같아야 한다\n(`GET /users/me/invitations` 에서 수락).",
         "properties": {
           "token": {
-            "minLength": 1,
-            "title": "Token",
-            "type": "string"
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token"
           }
         },
-        "required": [
-          "token"
-        ],
         "title": "TeamInvitationAccept",
         "type": "object"
       },
@@ -14621,7 +14702,7 @@
     },
     "/v1/projects/{projectId}/invitations/{invitationId}/accept": {
       "post": {
-        "description": "초대 링크의 토큰을 본문에 넣는다. 수락 권한은 **토큰 소지**다 — 초대받은 이메일과\n로그인한 계정의 이메일이 달라도 된다.\n\n토큰이 틀리면 초대 상태와 무관하게 `INVITATION_NOT_FOUND` 다. 응답은 새로 생긴 멤버다.",
+        "description": "초대 링크로 받았으면 토큰을 본문에 넣는다. 수락 권한은 **토큰 소지**다 — 초대받은 이메일과\n로그인한 계정의 이메일이 달라도 된다. `GET /users/me/invitations` 에서 고른 초대는 토큰을\n빼고 보낸다 — 이때는 초대받은 이메일이 로그인 이메일과 같아야 한다.\n\n토큰이 틀리거나 이메일이 다르면 초대 상태와 무관하게 `INVITATION_NOT_FOUND` 다.\n응답은 새로 생긴 멤버다.",
         "operationId": "accept_invitation_v1_projects__projectId__invitations__invitationId__accept_post",
         "parameters": [
           {
@@ -21905,7 +21986,7 @@
     },
     "/v1/teams/{teamId}/invitations/{invitationId}/accept": {
       "post": {
-        "description": "초대 링크의 토큰을 본문에 넣는다. 수락 권한은 **토큰 소지**다 — 초대받은 이메일과\n로그인한 계정의 이메일이 달라도 된다.\n\n토큰이 틀리면 초대 상태와 무관하게 `TEAM_INVITATION_NOT_FOUND` 다. 응답은 새로 생긴 팀원이다.",
+        "description": "초대 링크로 받았으면 토큰을 본문에 넣는다. 수락 권한은 **토큰 소지**다 — 초대받은 이메일과\n로그인한 계정의 이메일이 달라도 된다. `GET /users/me/invitations` 에서 고른 초대는 토큰을\n빼고 보낸다 — 이때는 초대받은 이메일이 로그인 이메일과 같아야 한다.\n\n토큰이 틀리거나 이메일이 다르면 초대 상태와 무관하게 `TEAM_INVITATION_NOT_FOUND` 다.\n응답은 새로 생긴 팀원이다.",
         "operationId": "accept_invitation_v1_teams__teamId__invitations__invitationId__accept_post",
         "parameters": [
           {
@@ -22963,6 +23044,55 @@
           }
         ],
         "summary": "내 역할을 바꾼다",
+        "tags": [
+          "AUTH"
+        ]
+      }
+    },
+    "/v1/users/me/invitations": {
+      "get": {
+        "description": "로그인 이메일로 온, 아직 수락할 수 있는(대기 중 · 만료 전) 팀·프로젝트 초대. 최근 순.\n\n수락은 각 `.../accept` 에 **토큰 없이** 보낸다. 다른 주소로 온 초대는 여기 없다 — 링크로 받는다.",
+        "operationId": "list_received_invitations_v1_users_me_invitations_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceivedInvitationListEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "내게 온 초대 목록",
         "tags": [
           "AUTH"
         ]

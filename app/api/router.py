@@ -12,7 +12,7 @@ from typing import Annotated, Any, Literal, cast
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Path, Query, status
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from app.content.manuscripts import service as manuscripts
 from app.core import errors
@@ -161,6 +161,58 @@ async def list_project_members(
 
 def _member_key(member: ProjectMemberResponse) -> tuple[datetime, UUID]:
     return member.joined_at, member.user_id
+
+
+class ReceivedInvitation(BaseModel):
+    """내게 온 초대. 팀·프로젝트 초대를 한 목록에 담는다."""
+
+    invitation_id: UUID
+    target_type: Literal["team", "project"]
+    target_id: UUID
+    target_name: str
+    role: str
+    expires_at: datetime
+    created_at: datetime
+
+
+@router.get(
+    "/users/me/invitations",
+    tags=["AUTH"],
+    summary="내게 온 초대 목록",
+    response_model=Envelope[list[ReceivedInvitation]],
+)
+async def list_received_invitations(session: Session, user: User) -> dict[str, Any]:
+    """로그인 이메일로 온, 아직 수락할 수 있는(대기 중 · 만료 전) 팀·프로젝트 초대. 최근 순.
+
+    수락은 각 `.../accept` 에 **토큰 없이** 보낸다. 다른 주소로 온 초대는 여기 없다 — 링크로 받는다.
+    """
+    # ASSUMPTION: 명세에 없는 API 다(ROADMAP P3). 대기 중 초대는 몇 건뿐이라 페이지를 두지 않는다.
+    if user.email is None:
+        return ok([])
+    rows = [
+        ReceivedInvitation(
+            invitation_id=i.id,
+            target_type="team",
+            target_id=i.team_id,
+            target_name=name,
+            role=i.role,
+            expires_at=i.expires_at,
+            created_at=i.created_at,
+        )
+        for i, name in await teams.received_invitations(session, user.email)
+    ] + [
+        ReceivedInvitation(
+            invitation_id=i.id,
+            target_type="project",
+            target_id=i.project_id,
+            target_name=name,
+            role=i.role,
+            expires_at=i.expires_at,
+            created_at=i.created_at,
+        )
+        for i, name in await projects.received_invitations(session, user.email)
+    ]
+    return ok(sorted(rows, key=lambda r: r.created_at, reverse=True))
 
 
 @router.post(

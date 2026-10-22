@@ -182,9 +182,11 @@ async def accept_invitation(
     session: Session,
     user: User,
 ) -> dict[str, Any]:
-    """초대 링크의 토큰을 본문에 넣는다. 수락 권한은 **토큰 소지**다 — 초대받은 이메일과
-    로그인한 계정의 이메일이 달라도 된다.
+    """초대 링크로 받았으면 토큰을 본문에 넣는다. 수락 권한은 **토큰 소지**다 — 초대받은 이메일과
+    로그인한 계정의 이메일이 달라도 된다. `GET /users/me/invitations` 에서 고른 초대는 토큰을
+    빼고 보낸다 — 이때는 초대받은 이메일이 로그인 이메일과 같아야 한다.
 
-    토큰이 틀리면 초대 상태와 무관하게 `TEAM_INVITATION_NOT_FOUND` 다. 응답은 새로 생긴 팀원이다.
+    토큰이 틀리거나 이메일이 다르면 초대 상태와 무관하게 `TEAM_INVITATION_NOT_FOUND` 다.
+    응답은 새로 생긴 팀원이다.
     """
     return ok(await service.accept_invitation(session, team_id, invitation_id, user, body.token))

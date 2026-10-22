@@ -76,6 +76,8 @@ class ProjectInvitationCreatedResponse(ProjectInvitationResponse):
 
 
 class ProjectInvitationAccept(BaseModel):
-    """수락 권한은 이메일 일치가 아니라 **토큰 소지**로 판정한다 (CLAUDE.md §6.4)."""
+    """링크로 받은 초대는 **토큰 소지**로 수락한다 — 초대받은 주소와 로그인 주소가 달라도 된다
+    (CLAUDE.md §6.4). 토큰을 빼면 초대받은 이메일이 로그인 이메일과 같아야 한다
+    (`GET /users/me/invitations` 에서 수락)."""
 
-    token: str = Field(min_length=1)
+    token: str | None = Field(default=None, min_length=1)
