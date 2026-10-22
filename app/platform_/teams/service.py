@@ -188,8 +188,10 @@ async def invite(
     return TeamInvitationCreatedResponse(**_invitation(invitation).model_dump(), token=token)
 
 
-async def list_invitations(session: AsyncSession, team_id: UUID) -> list[TeamInvitationResponse]:
-    return [_invitation(i) for i in await repo.list_invitations(session, team_id)]
+async def list_invitations(
+    session: AsyncSession, team_id: UUID, limit: int, cursor: tuple[datetime, UUID] | None
+) -> list[TeamInvitationResponse]:
+    return [_invitation(i) for i in await repo.list_invitations(session, team_id, limit, cursor)]
 
 
 async def _pending(session: AsyncSession, team_id: UUID, invitation_id: UUID) -> TeamInvitation:

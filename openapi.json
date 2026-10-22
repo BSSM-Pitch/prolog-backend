@@ -4605,7 +4605,7 @@
         "title": "TeamInvitationResponse",
         "type": "object"
       },
-      "TeamInvitationResponseListEnvelope": {
+      "TeamInvitationResponsePage": {
         "properties": {
           "data": {
             "items": {
@@ -4615,15 +4615,14 @@
             "type": "array"
           },
           "meta": {
-            "additionalProperties": true,
-            "title": "Meta",
-            "type": "object"
+            "$ref": "#/components/schemas/PageMeta"
           }
         },
         "required": [
-          "data"
+          "data",
+          "meta"
         ],
-        "title": "TeamInvitationResponseListEnvelope",
+        "title": "TeamInvitationResponsePage",
         "type": "object"
       },
       "TeamMemberResponse": {
@@ -21418,7 +21417,7 @@
     },
     "/v1/teams/{teamId}/invitations": {
       "get": {
-        "description": "owner · admin 만. 모든 상태(pending · accepted · revoked)를 최근 순으로 준다.\n\n원문 토큰은 들어 있지 않다 — 토큰은 초대 생성 응답에서 한 번만 받을 수 있다.",
+        "description": "owner · admin 만. 모든 상태(pending · accepted · revoked)를 최근 순으로, 커서 페이지로 준다.\n\n원문 토큰은 들어 있지 않다 — 토큰은 초대 생성 응답에서 한 번만 받을 수 있다.",
         "operationId": "list_invitations_v1_teams__teamId__invitations_get",
         "parameters": [
           {
@@ -21430,6 +21429,38 @@
               "title": "Teamid",
               "type": "string"
             }
+          },
+          {
+            "description": "페이지 크기. 기본 20 · 최대 100",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "페이지 크기. 기본 20 · 최대 100",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "이전 응답의 `meta.next_cursor`. 첫 페이지는 비운다",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "이전 응답의 `meta.next_cursor`. 첫 페이지는 비운다",
+              "title": "Cursor"
+            }
           }
         ],
         "responses": {
@@ -21437,7 +21468,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TeamInvitationResponseListEnvelope"
+                  "$ref": "#/components/schemas/TeamInvitationResponsePage"
                 }
               }
             },

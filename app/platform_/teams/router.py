@@ -128,14 +128,20 @@ async def remove_member(
     "/{teamId}/invitations",
     dependencies=[Admin],
     summary="팀 초대 목록",
-    response_model=Envelope[list[TeamInvitationResponse]],
+    response_model=Page[TeamInvitationResponse],
 )
-async def list_invitations(team_id: TeamId, session: Session) -> dict[str, Any]:
-    """owner · admin 만. 모든 상태(pending · accepted · revoked)를 최근 순으로 준다.
+async def list_invitations(
+    team_id: TeamId, session: Session, limit: Limit = DEFAULT_LIMIT, cursor: Cursor = None
+) -> dict[str, Any]:
+    """owner · admin 만. 모든 상태(pending · accepted · revoked)를 최근 순으로, 커서 페이지로 준다.
 
     원문 토큰은 들어 있지 않다 — 토큰은 초대 생성 응답에서 한 번만 받을 수 있다.
     """
-    return ok(await service.list_invitations(session, team_id))
+    rows = await service.list_invitations(
+        session, team_id, limit, decode_cursor(cursor) if cursor else None
+    )
+    page, meta = next_cursor(rows, limit, key=lambda i: (i.created_at, i.invitation_id))
+    return ok(page, meta)
 
 
 @router.delete(

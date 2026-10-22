@@ -504,6 +504,27 @@ async def test_list_invitations(client: AsyncClient) -> None:
     rows = listed.json()["data"]
     assert [r["invitation_id"] for r in rows] == [invitation["invitation_id"]]
     assert "token" not in rows[0]
+    assert listed.json()["meta"] == {"next_cursor": None}
+
+    # 커서 페이지 (CLAUDE.md §6.6): 최근 순으로 중복·누락 없이 이어진다
+    for i in range(2):
+        await client.post(
+            f"/teams/{team_id}/invitations",
+            json={"invited_email": f"li{i}@example.com", "role": "member"},
+            headers=owner["headers"],
+        )
+    first = (
+        await client.get(f"/teams/{team_id}/invitations?limit=2", headers=owner["headers"])
+    ).json()
+    second = (
+        await client.get(
+            f"/teams/{team_id}/invitations?limit=2&cursor={first['meta']['next_cursor']}",
+            headers=owner["headers"],
+        )
+    ).json()
+    emails = [r["invited_email"] for r in first["data"] + second["data"]]
+    assert emails == ["li1@example.com", "li0@example.com", guest["email"]]
+    assert second["meta"]["next_cursor"] is None
 
     # 멤버가 아닌 사용자는 팀 경로 자체가 막힌다
     assert (

@@ -87,10 +87,18 @@ async def get_invitation(session: AsyncSession, invitation_id: UUID) -> TeamInvi
     return await session.get(TeamInvitation, invitation_id)
 
 
-async def list_invitations(session: AsyncSession, team_id: UUID) -> list[TeamInvitation]:
+async def list_invitations(
+    session: AsyncSession, team_id: UUID, limit: int, cursor: tuple[datetime, UUID] | None
+) -> list[TeamInvitation]:
     stmt = (
         select(TeamInvitation)
         .where(TeamInvitation.team_id == team_id)
-        .order_by(TeamInvitation.created_at.desc())
+        .order_by(TeamInvitation.created_at.desc(), TeamInvitation.id.desc())
+        .limit(limit + 1)
     )
+    if cursor is not None:
+        stmt = stmt.where(
+            tuple_(TeamInvitation.created_at, TeamInvitation.id)
+            < tuple_(literal(cursor[0]), literal(cursor[1]))
+        )
     return list((await session.execute(stmt)).scalars())
