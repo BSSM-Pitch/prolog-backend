@@ -291,7 +291,7 @@ async def update_character(
     status_code=status.HTTP_204_NO_CONTENT,
     dependencies=[Editor],
     summary="캐릭터를 삭제한다",
-    responses=raises(errors.CharacterNotFound),
+    responses=raises(errors.CharacterNotFound, errors.CharacterHasDependentRelationships),
 )
 async def delete_character(
     project_id: ProjectId, character_id: CharacterId, session: Session

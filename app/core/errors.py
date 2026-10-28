@@ -131,6 +131,18 @@ InvalidPayoffChapter = _err(
 )
 PayoffNotSet = _err("PAYOFF_NOT_SET", 409, "회수되지 않은 복선입니다")
 
+# --- RCV ---------------------------------------------------------------
+RelationshipNotFound = _err("RELATIONSHIP_NOT_FOUND", 404, "해당 관계를 찾을 수 없습니다")
+RelationshipHistoryNotFound = _err("HISTORY_ENTRY_NOT_FOUND", 404, "해당 장의 기록이 없습니다")
+DuplicateChapterRecord = _err("DUPLICATE_CHAPTER_RECORD", 409, "이 장에 이미 관계 기록이 있습니다")
+# ASSUMPTION: 같은 원고의 인물 쌍 중복은 새 관계를 만들지 않고 기존 관계를 안내한다.
+DuplicateRelationship = _err(
+    "DUPLICATE_RELATIONSHIP", 409, "이미 관계가 있습니다. 기존 관계에서 기록해 주세요"
+)
+CharacterHasDependentRelationships = _err(
+    "CHARACTER_HAS_DEPENDENT_RELATIONSHIPS", 409, "연결된 관계를 먼저 삭제해 주세요"
+)
+
 # --- 잡 파이프라인 (Phase 2 에서 사용) ----------------------------------
 InvalidStatusTransition = _err("INVALID_STATUS_TRANSITION", 409, "허용되지 않는 상태 전이입니다")
 
