@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import DateTime, String
+from sqlalchemy import DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, Timestamps, fk_uuid, pk
@@ -40,3 +40,19 @@ class RefreshToken(Base, Timestamps):
     token_hash: Mapped[str] = mapped_column(String(64))
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class EmailVerification(Base, Timestamps):
+    """일반 가입·비밀번호 재설정 인증 코드 (0013). 원문 코드는 저장하지 않는다."""
+
+    __tablename__ = "email_verifications"
+    __table_args__ = {"schema": "platform"}
+
+    id: Mapped[UUID] = pk()
+    email: Mapped[str] = mapped_column(String(255))
+    # signup | password_reset
+    purpose: Mapped[str] = mapped_column(String(20))
+    code_hash: Mapped[str] = mapped_column(String(64))
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
