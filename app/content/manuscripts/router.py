@@ -1,8 +1,10 @@
 from typing import Annotated, Any
+from urllib.parse import quote
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Path, Query, status
+from fastapi import APIRouter, Depends, Path, Query, Response, status
 
+from app.content.manuscripts import export as export_file
 from app.content.manuscripts import service
 from app.content.manuscripts.schemas import (
     ChapterCreate,
@@ -149,6 +151,44 @@ async def list_versions(
     )
     page, meta = next_cursor(rows, limit, key=lambda v: (v.version_no, v.id))
     return ok(service.to_version_responses(page), meta)
+
+
+@router.get(
+    "/{projectId}/manuscripts/{manuscriptId}/export",
+    dependencies=[Viewer],
+    summary="원고를 파일로 내보낸다",
+    response_class=Response,
+    responses={
+        200: {
+            "description": "파일 바이너리(공통 응답 봉투를 쓰지 않는다)",
+            "content": {
+                ctype.split(";")[0]: {"schema": {"type": "string", "format": "binary"}}
+                for ctype in export_file.CONTENT_TYPES.values()
+            },
+        },
+        **raises(
+            errors.ManuscriptNotFound, errors.UnsupportedFileFormat, errors.ManuscriptNotReady
+        ),
+    },
+)
+async def export_manuscript(
+    project_id: ProjectId,
+    manuscript_id: ManuscriptId,
+    session: Session,
+    file_format: Annotated[str, Query(alias="format", description="`txt` | `docx`")] = "txt",
+) -> Response:
+    """프로젝트의 viewer 이상. 브라우저는 응답을 그대로 내려받는다(`attachment`).
+
+    챕터가 있으면 화 번호 순으로 "N장 제목" 줄 + 본문을 잇고, 없으면 원고 본문을 그대로 쓴다.
+    docx 는 장 제목 줄이 제목 1 스타일이다. 원고가 `ready` 가 아니면 `MANUSCRIPT_NOT_READY` 다.
+    """
+    title, data = await service.export(session, project_id, manuscript_id, file_format)
+    filename = quote(f"{title}.{file_format}")
+    return Response(
+        content=data,
+        media_type=export_file.CONTENT_TYPES[file_format],
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{filename}"},
+    )
 
 
 @router.delete(

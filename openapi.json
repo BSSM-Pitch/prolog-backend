@@ -15635,6 +15635,204 @@
         ]
       }
     },
+    "/v1/projects/{projectId}/manuscripts/{manuscriptId}/export": {
+      "get": {
+        "description": "프로젝트의 viewer 이상. 브라우저는 응답을 그대로 내려받는다(`attachment`).\n\n챕터가 있으면 화 번호 순으로 \"N장 제목\" 줄 + 본문을 잇고, 없으면 원고 본문을 그대로 쓴다.\ndocx 는 장 제목 줄이 제목 1 스타일이다. 원고가 `ready` 가 아니면 `MANUSCRIPT_NOT_READY` 다.",
+        "operationId": "export_manuscript_v1_projects__projectId__manuscripts__manuscriptId__export_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "manuscriptId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Manuscriptid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "`txt` | `docx`",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "txt",
+              "description": "`txt` | `docx`",
+              "title": "Format",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "파일 바이너리(공통 응답 봉투를 쓰지 않는다)"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  },
+                  "UNSUPPORTED_FILE_FORMAT": {
+                    "summary": "지원하지 않는 파일 형식입니다",
+                    "value": {
+                      "error": {
+                        "code": "UNSUPPORTED_FILE_FORMAT",
+                        "details": {},
+                        "message": "지원하지 않는 파일 형식입니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다\n- `UNSUPPORTED_FILE_FORMAT` — 지원하지 않는 파일 형식입니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "MANUSCRIPT_NOT_FOUND": {
+                    "summary": "원고를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "MANUSCRIPT_NOT_FOUND",
+                        "details": {},
+                        "message": "원고를 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `MANUSCRIPT_NOT_FOUND` — 원고를 찾을 수 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "MANUSCRIPT_NOT_READY": {
+                    "summary": "원고 본문이 아직 준비되지 않았습니다",
+                    "value": {
+                      "error": {
+                        "code": "MANUSCRIPT_NOT_READY",
+                        "details": {},
+                        "message": "원고 본문이 아직 준비되지 않았습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `MANUSCRIPT_NOT_READY` — 원고 본문이 아직 준비되지 않았습니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "원고를 파일로 내보낸다",
+        "tags": [
+          "MSU"
+        ]
+      }
+    },
     "/v1/projects/{projectId}/manuscripts/{manuscriptId}/file": {
       "post": {
         "description": "프로젝트의 editor 이상. `source_type = upload` 원고만 된다(아니면 `INVALID_INPUT`).\n\n파일은 서버를 거치지 않는다. 응답의 `upload_url` 로 **클라이언트가 S3 에 직접 PUT** 한다\n(`expires_in` 초 안에, `Content-Type` 은 형식에 맞게). 업로드를 마치면\n`POST .../file/complete` 를 불러야 추출이 시작된다. 지원 형식이 아니면\n`UNSUPPORTED_FILE_FORMAT` 이고 `details.supported` 에 지원 목록이 온다.",

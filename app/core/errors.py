@@ -73,6 +73,7 @@ ManuscriptNotFound = _err("MANUSCRIPT_NOT_FOUND", 404, "원고를 찾을 수 없
 ChapterNotFound = _err("CHAPTER_NOT_FOUND", 404, "챕터를 찾을 수 없습니다")
 UnsupportedFileFormat = _err("UNSUPPORTED_FILE_FORMAT", 400, "지원하지 않는 파일 형식입니다")
 SourceTypeImmutable = _err("SOURCE_TYPE_IMMUTABLE", 409, "source_type 은 생성 후 바꿀 수 없습니다")
+ManuscriptNotReady = _err("MANUSCRIPT_NOT_READY", 409, "원고 본문이 아직 준비되지 않았습니다")
 
 # --- NOTI ---------------------------------------------------------------
 NotificationNotFound = _err("NOTIFICATION_NOT_FOUND", 404, "알림을 찾을 수 없습니다")

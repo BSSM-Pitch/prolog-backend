@@ -341,3 +341,70 @@ async def test_chapters_are_cursor_paginated_by_chapter_no(client: AsyncClient) 
     )
     assert [c["chapter_no"] for c in only.json()["data"]] == [1]
     assert only.json()["meta"]["next_cursor"] is not None
+
+
+async def test_export_joins_chapters_in_order_as_txt_and_docx(client: AsyncClient) -> None:
+    """MSU §4.11. 챕터가 있으면 화 번호 순으로 "N장 제목" + 본문, 없으면 원고 본문."""
+    import zipfile
+    from io import BytesIO
+
+    user, pid = await _project(client, "ex1@example.com")
+    ms = await _manuscript(client, user, pid, title="거미줄 너머")
+    mid = ms["manuscript_id"]
+    url = f"/projects/{pid}/manuscripts/{mid}/export"
+
+    await client.patch(
+        f"/projects/{pid}/manuscripts/{mid}", json={"content": "통짜 본문"}, headers=user["headers"]
+    )
+    plain = await client.get(url, headers=user["headers"])
+    assert plain.status_code == 200
+    assert plain.headers["content-type"] == "text/plain; charset=utf-8"
+    assert "filename*=UTF-8''%EA%B1%B0" in plain.headers["content-disposition"]
+    assert plain.text == "통짜 본문"
+
+    for no, title, body in [(2, "재회", "둘째 <본문>"), (1, None, "첫째 본문")]:
+        res = await client.post(
+            f"/projects/{pid}/chapters",
+            json={"manuscript_id": mid, "chapter_no": no, "title": title, "content": body},
+            headers=user["headers"],
+        )
+        assert res.status_code == 201, res.text
+
+    txt = await client.get(url, params={"format": "txt"}, headers=user["headers"])
+    assert txt.text == "1장\n\n첫째 본문\n\n2장 재회\n\n둘째 <본문>"
+
+    docx = await client.get(url, params={"format": "docx"}, headers=user["headers"])
+    assert docx.status_code == 200
+    with zipfile.ZipFile(BytesIO(docx.content)) as archive:
+        document = archive.read("word/document.xml").decode()
+    assert '<w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t xml:space="preserve">2장 재회' in document
+    assert "둘째 &lt;본문&gt;" in document
+    # 우리가 만든 docx 를 업로드 추출기가 그대로 읽는다.
+    from app.content.manuscripts.extraction import FileExtractor
+
+    assert FileExtractor().extract("docx", docx.content).split("\n") == [
+        "1장",
+        "첫째 본문",
+        "2장 재회",
+        "둘째 <본문>",
+    ]
+
+
+async def test_export_rejects_bad_format_and_unready_manuscript(client: AsyncClient) -> None:
+    user, pid = await _project(client, "ex2@example.com")
+    ms = await _manuscript(client, user, pid, source_type="upload")
+    url = f"/projects/{pid}/manuscripts/{ms['manuscript_id']}/export"
+
+    bad = await client.get(url, params={"format": "pdf"}, headers=user["headers"])
+    assert bad.status_code == 400
+    assert code(bad) == "UNSUPPORTED_FILE_FORMAT"
+
+    draft = await client.get(url, headers=user["headers"])
+    assert draft.status_code == 409
+    assert code(draft) == "MANUSCRIPT_NOT_READY"
+
+    missing = await client.get(
+        f"/projects/{pid}/manuscripts/00000000-0000-0000-0000-000000000000/export",
+        headers=user["headers"],
+    )
+    assert code(missing) == "MANUSCRIPT_NOT_FOUND"
