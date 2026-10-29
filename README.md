@@ -37,9 +37,23 @@ uv run uvicorn app.main:app --reload
 uv run python -m worker.outbox_relay   # outbox → 큐 (io · ai · notify 로 라우팅)
 uv run python -m worker.notifier       # 도메인 이벤트 → 알림
 uv run python -m worker.extractor      # 업로드된 원고에서 텍스트 추출
-uv run python -m worker.sweeper        # 주기 작업: 좀비 잡 회수 · 업로드 콜백 유실 회수
+uv run python -m worker.sweeper        # 주기 작업: 좀비 잡 회수 · 업로드 콜백 유실 회수 · 원고 기억 색인
 uv run python -m worker.ai_worker      # AI 잡(자연어 추출 등). API 키 없이 돌리려면 USE_FAKE_LLM=1
 ```
+
+### 원고 기억 (pgvector)
+
+dev DB 이미지는 `pgvector/pgvector:pg16` 이다. 스위퍼가 3분(`MEMORY_QUIET_SECONDS`) 동안 수정이 없는
+챕터를 임베딩 조각(`content.passages`)으로 색인하고(`passage_index` 잡 → ai 워커), AIQ 는 원고의 본문 있는
+챕터가 전부 색인됐을 때만 검색 조각으로 답한다(`citations` 포함). 아니면 지금처럼 원고 전체로 답한다.
+
+색인 잡이 실패하면(`AI_EMBEDDING_FAILED`) 같은 본문으로는 다시 만들지 않는다. 키를 고친 뒤 되살리려면:
+
+```sql
+DELETE FROM ops.jobs WHERE job_type = 'passage_index' AND status = 'failed';
+```
+
+운영 DB 에는 마이그레이션 전에 관리자가 `CREATE EXTENSION vector;` 를 한 번 실행해야 한다(0012).
 
 ## 테스트
 
