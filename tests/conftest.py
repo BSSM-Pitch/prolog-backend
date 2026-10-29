@@ -21,6 +21,7 @@ from app.core.errors import AppError
 from app.db.session import SessionFactory, engine
 from app.main import app
 from app.platform_.auth.google import GoogleIdentity, google_oauth
+from app.platform_.auth.naver import naver_oauth
 
 SYNC_URL = settings.database_url.replace("+asyncpg", "")
 SCHEMAS = ("platform", "content", "authoring", "insight", "ops")
@@ -213,6 +214,14 @@ class FakeGoogle:
         return GoogleIdentity(sub=sub, email=email or None)
 
 
+class FakeNaver:
+    """네이버 포트의 테스트 구현. ``oauth_code`` 를 ``"{id}|{email}"`` 로 읽는다."""
+
+    async def exchange(self, oauth_code: str, state: str | None) -> GoogleIdentity:
+        sub, _, email = oauth_code.partition("|")
+        return GoogleIdentity(sub=sub, email=email or None)
+
+
 class FakeAI:
     """AI 포트(`app.ai.client.AIClient`)의 테스트 구현.
 
@@ -275,6 +284,7 @@ class FakeAI:
 
 
 app.dependency_overrides[google_oauth] = FakeGoogle
+app.dependency_overrides[naver_oauth] = FakeNaver
 
 
 def fake_ai() -> FakeAI:

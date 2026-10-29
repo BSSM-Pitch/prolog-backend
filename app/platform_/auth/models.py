@@ -9,6 +9,7 @@ from app.db.base import Base, Timestamps, fk_uuid, pk
 # IntegrityError 는 제약 **이름**으로 분기한다. 메시지 파싱은 PG 마이너 버전에 깨진다(CLAUDE.md §5).
 USERNAME_UQ = "users_username_uq"
 PROVIDER_UQ = "users_provider_uq"
+EMAIL_UQ = "users_email_lower_uq"
 
 
 class User(Base, Timestamps):
@@ -17,10 +18,12 @@ class User(Base, Timestamps):
 
     id: Mapped[UUID] = pk()
     email: Mapped[str | None] = mapped_column(String(255))
-    # v0.2: Google 단일. 비밀번호 컬럼은 존재하지 않는다 (CLAUDE.md §2 규칙 4).
+    # google | naver | local. local 만 password_hash 를 갖는다(0012 CHECK).
     auth_provider: Mapped[str] = mapped_column(String(20), default="google")
-    # Google `sub`. 이메일이 아니다 — 이메일은 바뀌고 sub 는 불변이다 (AUTH 명세 §2.1).
+    # Google 은 `sub`(이메일이 아니다 — 이메일은 바뀌고 sub 는 불변이다), naver 는 프로필 id,
+    # local 은 username.
     provider_user_id: Mapped[str] = mapped_column(String(255))
+    password_hash: Mapped[str | None] = mapped_column(String(255))
     username: Mapped[str] = mapped_column(String(30))
     # users.role 은 자기 분류다. 인가와 무관하다 (CLAUDE.md §3).
     role: Mapped[str] = mapped_column(String(20))

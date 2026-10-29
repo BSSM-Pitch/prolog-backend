@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
 from app.core.response import Envelope
 
@@ -14,11 +14,28 @@ class OAuthGoogleRequest(BaseModel):
     oauth_code: str = Field(min_length=1)
 
 
+class OAuthNaverRequest(BaseModel):
+    oauth_code: str = Field(min_length=1)
+    # 네이버 인가 요청 때 보낸 state. 토큰 교환에 그대로 넘긴다.
+    state: str | None = None
+
+
 class SignupRequest(BaseModel):
-    signup_ticket: str = Field(min_length=1)
+    """소셜 가입은 `signup_ticket`, 일반 가입은 `email` + `password`. 둘 중 하나만 보낸다."""
+
+    signup_ticket: str | None = Field(default=None, min_length=1)
+    email: EmailStr | None = None
+    # 규칙(영문·숫자 포함 8자 이상)은 서비스에서 INVALID_INPUT 으로 답한다. 상한은 해시 비용 제한.
+    password: str | None = Field(default=None, max_length=128)
     # 누락은 USERNAME_REQUIRED(400) 로 답해야 해서 스키마에서 막지 않는다 (AUTH 명세 §1.4).
     username: str | None = Field(default=None, max_length=USERNAME_MAX)
     role: UserRole
+
+
+class LoginRequest(BaseModel):
+    # 아이디 또는 이메일 (`@` 가 있으면 이메일로 찾는다).
+    login_id: str = Field(min_length=1, max_length=255)
+    password: str = Field(min_length=1, max_length=128)
 
 
 class RefreshRequest(BaseModel):
@@ -75,3 +92,7 @@ class OAuthGoogleResponse(Envelope[SessionResponse | SignupTicketResponse]):
     """기존 사용자는 세션, 신규 사용자는 가입 티켓. `meta.is_new_user` 로 가른다."""
 
     meta: OAuthMeta  # type: ignore[assignment]
+
+
+class OAuthNaverResponse(OAuthGoogleResponse):
+    """네이버도 구글과 같다 — 기존 사용자는 세션, 신규 사용자는 가입 티켓."""
