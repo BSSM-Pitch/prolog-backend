@@ -28,6 +28,16 @@ class MessageCreate(BaseModel):
     content: Question
 
 
+class Citation(BaseModel):
+    """답의 근거 원문 위치(원고 기억 1단계). start·end 는 챕터 본문 기준이다."""
+
+    chapter_id: UUID
+    chapter_no: int
+    start: int
+    end: int
+    quote: str = Field(description="조각 앞 120자")
+
+
 class MessageResponse(BaseModel):
     message_id: UUID
     thread_id: UUID
@@ -36,6 +46,7 @@ class MessageResponse(BaseModel):
     status: MessageStatus
     # 화면 36 "응답 시간이 너무 길어져 중단됐어요" — 실패 사유. 명세에 없다(제안 목록).
     error: ErrorBody | None
+    citations: list[Citation] = Field(description="색인 전 원고(전체를 읽고 답함)는 빈 배열")
     created_at: datetime
 
 

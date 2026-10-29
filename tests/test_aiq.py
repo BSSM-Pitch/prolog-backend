@@ -250,3 +250,75 @@ async def test_zombie_answer_ends_failed(client: AsyncClient) -> None:
         await s.commit()
         status = (await s.execute(select(QaMessage.status).where(QaMessage.id == mid))).scalar_one()
     assert status == "failed"
+
+
+async def test_indexed_manuscript_answers_from_passages_with_citations(client: AsyncClient) -> None:
+    from datetime import timedelta
+
+    from sqlalchemy import text
+
+    from app.content.memory import service as memory
+    from app.content.memory.job_handler import handle as index
+
+    chapter = "윤서는 규칙 17을 처음 읽었다.\n그날 밤 문이 열렸다."
+    # 원고 본문이 비면 질문 자체가 INVALID_INPUT 이다 — 프론트처럼 장 본문을 원고에도 둔다
+    m = await _manuscript(client, "aq-mem@example.com", content=f"3장\n{chapter}")
+    pid, mid = m["ms"].split("/")[2], m["ms"].split("/")[4]
+    await client.post(
+        f"/projects/{pid}/chapters",
+        json={"manuscript_id": mid, "chapter_no": 3, "content": chapter},
+        headers=m["h"],
+    )
+    async with SessionFactory() as s:
+        await s.execute(text("ALTER TABLE content.chapters DISABLE TRIGGER touch_updated_at"))
+        await s.execute(text("UPDATE content.chapters SET updated_at = now() - interval '1 hour'"))
+        await s.execute(text("ALTER TABLE content.chapters ENABLE TRIGGER touch_updated_at"))
+        [cid] = await memory.sweep_stale(s, timedelta(seconds=180))
+        await s.commit()
+        from sqlalchemy import select
+
+        from app.jobs.models import Job
+
+        job_id = (await s.execute(select(Job.id).where(Job.target_id == cid))).scalar_one()
+    assert await index(SessionFactory, job_id, FakeAI()) == "completed"
+
+    created = await _ask(client, m)
+    async with SessionFactory() as s:
+        [hit] = await memory.search(s, UUID(mid), [0.0] * 1536, k=1)
+    ai = FakeAI(
+        {"data": {"vectors": [[0.0] * 1536]}, "meta": {}},  # 질문 임베딩
+        {
+            "data": {"content": "3장에서 처음 읽었습니다.", "citations": [str(hit.passage_id)]},
+            "meta": {},
+        },
+    )
+    assert await _run(_job_of(created), ai) == "completed"
+    name, args = ai.calls[-1]
+    assert name == "run_aiq"
+    assert args[1] == ""  # 원고 전체를 넘기지 않는다
+    assert args[5] == [{"passage_id": str(hit.passage_id), "chapter_no": 3, "text": hit.text}]
+
+    tid, aid = created["thread"]["thread_id"], created["messages"][1]["message_id"]
+    polled = (await client.get(f"{m['base']}/{tid}/messages/{aid}", headers=m["h"])).json()["data"]
+    assert polled["citations"] == [
+        {
+            "chapter_id": str(cid),
+            "chapter_no": 3,
+            "start": hit.start,
+            "end": hit.end,
+            "quote": hit.text[:120],
+        }
+    ]
+
+
+async def test_unindexed_manuscript_keeps_full_text_and_empty_citations(
+    client: AsyncClient,
+) -> None:
+    m = await _manuscript(client, "aq-mem2@example.com")
+    created = await _ask(client, m)
+    ai = FakeAI(answer("1장에서 처음 읽습니다."))
+    assert await _run(_job_of(created), ai) == "completed"
+    assert ai.calls[0][1][1] == BODY and len(ai.calls[0][1]) == 5  # passages 없음
+    tid, aid = created["thread"]["thread_id"], created["messages"][1]["message_id"]
+    polled = (await client.get(f"{m['base']}/{tid}/messages/{aid}", headers=m["h"])).json()["data"]
+    assert polled["citations"] == []

@@ -9,6 +9,8 @@
 못 찾으면 재시도 없이 `INVALID_SELECTION_RANGE` 로 실패한다 — 다른 문장에 답하지 않는다.
 """
 
+import asyncio
+import logging
 from collections.abc import Sequence
 from datetime import datetime
 from typing import Any, cast
@@ -20,10 +22,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.ai import jobs as ai_jobs
 from app.ai.client import AIClient, Result
 from app.content.manuscripts import service as manuscripts
+from app.content.memory import service as memory
 from app.core import errors
+from app.core.config import settings
 from app.core.response import ErrorBody
 from app.insight.aiq.models import QaMessage, QaThread
 from app.insight.aiq.schemas import (
+    Citation,
     MessageResponse,
     SelectionRange,
     ThreadCreate,
@@ -33,6 +38,8 @@ from app.insight.aiq.schemas import (
 )
 from app.jobs import service as jobs
 from app.jobs.models import Job
+
+log = logging.getLogger(__name__)
 
 JOB_TYPE = "qa_answer"  # 0001 jobs_job_type_chk 의 이름
 QUEUE = "ai"
@@ -73,6 +80,10 @@ async def to_messages(session: AsyncSession, rows: Sequence[QaMessage]) -> list[
                     else None
                 ),
                 created_at=m.created_at,
+                citations=[
+                    Citation(**{k: v for k, v in c.items() if k != "passage_id"})
+                    for c in m.citations or []
+                ],
             )
         )
     return out
@@ -338,7 +349,7 @@ async def _answer_of(session: AsyncSession, job: Job) -> QaMessage:
     return message
 
 
-async def _prepare(session: AsyncSession, job: Job) -> dict[str, Any]:
+async def _prepare(session: AsyncSession, job: Job, ai: AIClient) -> dict[str, Any]:
     answer = await _answer_of(session, job)
     thread = await session.get(QaThread, answer.thread_id)
     assert thread is not None and thread.manuscript_id is not None
@@ -364,9 +375,32 @@ async def _prepare(session: AsyncSession, job: Job) -> dict[str, Any]:
                 "원고가 바뀌어 선택한 문장을 찾을 수 없습니다", selected_text=thread.selected_text
             )
         selection = {"start": spot[0], "end": spot[1]}
+    passages = None
+    ready, total = await memory.coverage(session, manuscript.manuscript_id)
+    # ponytail: 챕터가 전부 색인됐을 때만 검색한다. 일부만 됐으면 원고 전체(지금까지의 방식)로
+    # 답한다 — 반쯤 색인된 원고에서 검색하면 없는 화를 "확인되지 않습니다"로 답한다. 장편에서
+    # 색인이 늦으면 그동안은 길이 한도 실패가 날 수 있다(스펙 §6 "기억이 덜 만들어졌을 때"를
+    # 2단계에서 채운다).
+    if total and ready == total:
+        embedded = await asyncio.to_thread(ai.embed, [question.content])
+        if "data" in embedded:
+            hits = await memory.search(
+                session,
+                manuscript.manuscript_id,
+                embedded["data"]["vectors"][0],
+                settings.aiq_passage_count,
+            )
+            # 검색 결과가 없으면 [] 가 아니라 None — 원고 전체 경로로 답한다
+            passages = [
+                {"passage_id": str(h.passage_id), "chapter_no": h.chapter_no, "text": h.text}
+                for h in hits
+            ] or None
+        else:
+            log.warning("질문 임베딩 실패 — 원고 전체로 답한다: %s", embedded["error"])
     return {
         "question": question.content,
-        "manuscript_text": text,
+        "passages": passages,
+        "manuscript_text": "" if passages is not None and selection is None else text,
         "scope": PACKAGE_SCOPE.get(thread.scope, "project"),
         "selection_range": selection,
         "messages": history,
@@ -374,19 +408,43 @@ async def _prepare(session: AsyncSession, job: Job) -> dict[str, Any]:
 
 
 def _call(ai: AIClient, args: Any) -> Result:
+    if args["passages"] is None:
+        return ai.run_aiq(
+            args["question"],
+            args["manuscript_text"],
+            args["scope"],
+            args["selection_range"],
+            args["messages"],
+        )
     return ai.run_aiq(
         args["question"],
         args["manuscript_text"],
         args["scope"],
         args["selection_range"],
         args["messages"],
+        args["passages"],
     )
 
 
 async def _answered(session: AsyncSession, job: Job, data: dict[str, Any]) -> None:
     answer = await session.get(QaMessage, cast(UUID, job.target_id))
-    if answer is not None:
-        answer.content, answer.status = str(data["content"]), "completed"
+    if answer is None:
+        return
+    answer.content, answer.status = str(data["content"]), "completed"
+    cited = [UUID(i) for i in data.get("citations") or []]
+    hits = {h.passage_id: h for h in await memory.by_ids(session, cited)}
+    answer.citations = [
+        {
+            "passage_id": str(h.passage_id),
+            "chapter_id": str(h.chapter_id),
+            "chapter_no": h.chapter_no,
+            "start": h.start,
+            "end": h.end,
+            "quote": h.text[:120],
+        }
+        for i in cited
+        if (h := hits.get(i)) is not None
+    ]
 
 
 async def mark_failed(session: AsyncSession, job: Job, error: dict[str, Any] | None = None) -> None:
@@ -402,7 +460,7 @@ async def handle(sessions: Any, job_id: UUID, ai: AIClient) -> ai_jobs.Outcome:
         job_id,
         JOB_TYPE,
         ai,
-        prepare=_prepare,
+        prepare=lambda session, job: _prepare(session, job, ai),
         call=_call,
         on_success=_answered,
         on_failure=mark_failed,

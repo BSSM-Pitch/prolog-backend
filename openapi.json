@@ -725,6 +725,42 @@
         "title": "CharacterUpdate",
         "type": "object"
       },
+      "Citation": {
+        "description": "답의 근거 원문 위치(원고 기억 1단계). start·end 는 챕터 본문 기준이다.",
+        "properties": {
+          "chapter_id": {
+            "format": "uuid",
+            "title": "Chapter Id",
+            "type": "string"
+          },
+          "chapter_no": {
+            "title": "Chapter No",
+            "type": "integer"
+          },
+          "end": {
+            "title": "End",
+            "type": "integer"
+          },
+          "quote": {
+            "description": "조각 앞 120자",
+            "title": "Quote",
+            "type": "string"
+          },
+          "start": {
+            "title": "Start",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "chapter_id",
+          "chapter_no",
+          "start",
+          "end",
+          "quote"
+        ],
+        "title": "Citation",
+        "type": "object"
+      },
       "ConfirmRequest": {
         "properties": {
           "merge_target_character_id": {
@@ -2884,6 +2920,14 @@
       },
       "MessageResponse": {
         "properties": {
+          "citations": {
+            "description": "색인 전 원고(전체를 읽고 답함)는 빈 배열",
+            "items": {
+              "$ref": "#/components/schemas/Citation"
+            },
+            "title": "Citations",
+            "type": "array"
+          },
           "content": {
             "anyOf": [
               {
@@ -2946,6 +2990,7 @@
           "content",
           "status",
           "error",
+          "citations",
           "created_at"
         ],
         "title": "MessageResponse",
