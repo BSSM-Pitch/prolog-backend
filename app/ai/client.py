@@ -74,8 +74,14 @@ class PrologAI:
     """실제 구현. 패키지는 첫 호출 때 import 한다(테스트·API 프로세스가 openai 를 끌어오지 않게)."""
 
     def __init__(self) -> None:
-        if settings.openrouter_api_key:
-            os.environ.setdefault("OPENROUTER_API_KEY", settings.openrouter_api_key)
+        for name, value in (
+            ("OPENROUTER_API_KEY", settings.openrouter_api_key),
+            ("OPENAI_API_KEY", settings.openai_api_key),
+            ("OPENAI_ORG_ID", settings.openai_org_id),
+            ("OPENAI_PROJECT_ID", settings.openai_project_id),
+        ):
+            if value:
+                os.environ.setdefault(name, value)
         if settings.prolog_ai_model:
             os.environ.setdefault("PROLOG_AI_MODEL", settings.prolog_ai_model)
 
