@@ -8,10 +8,14 @@ from app.core.response import Envelope, ok, raises
 from app.db.session import Session
 from app.platform_.auth import service
 from app.platform_.auth.google import GoogleOAuth, google_oauth
+from app.platform_.auth.naver import NaverOAuth, naver_oauth
 from app.platform_.auth.schemas import (
     USERNAME_MAX,
+    LoginRequest,
     OAuthGoogleRequest,
     OAuthGoogleResponse,
+    OAuthNaverRequest,
+    OAuthNaverResponse,
     RefreshRequest,
     SessionResponse,
     SignupRequest,
@@ -26,6 +30,7 @@ router = APIRouter(prefix="/auth", tags=["AUTH"])
 users_router = APIRouter(prefix="/users", tags=["AUTH"])
 
 Google = Annotated[GoogleOAuth, Depends(google_oauth)]
+Naver = Annotated[NaverOAuth, Depends(naver_oauth)]
 
 
 @router.post(
@@ -43,7 +48,25 @@ async def oauth_google(
     - 처음 온 사용자: 계정을 만들지 않고 `data` 에 `signup_ticket`(10분 유효)과 이메일을 준다.
       `meta.is_new_user = true`. 아이디·역할을 받아 `POST /auth/signup` 으로 가입을 마친다.
     """
-    data, is_new_user = await service.oauth_google(session, google, body.oauth_code)
+    identity = await google.exchange(body.oauth_code)
+    data, is_new_user = await service.oauth_login(session, service.PROVIDER, identity)
+    return ok(data, {"is_new_user": is_new_user})
+
+
+@router.post(
+    "/oauth/naver",
+    summary="네이버로 로그인하거나 가입을 시작한다",
+    response_model=OAuthNaverResponse,
+    responses=raises(errors.OAuthProviderError),
+)
+async def oauth_naver(body: OAuthNaverRequest, session: Session, naver: Naver) -> dict[str, Any]:
+    """네이버가 준 authorization code 와 인가 요청 때 보낸 `state` 를 넘긴다.
+
+    응답은 `POST /auth/oauth/google` 과 같다 — 신규면 `signup_ticket` 을 받아
+    `POST /auth/signup` 으로 가입을 마친다.
+    """
+    identity = await naver.exchange(body.oauth_code, body.state)
+    data, is_new_user = await service.oauth_login(session, service.NAVER, identity)
     return ok(data, {"is_new_user": is_new_user})
 
 
@@ -52,14 +75,37 @@ async def oauth_google(
     status_code=status.HTTP_201_CREATED,
     summary="가입을 마친다",
     response_model=Envelope[SessionResponse],
-    responses=raises(errors.UsernameRequired, errors.UsernameTaken, errors.SignupTicketInvalid),
+    responses=raises(
+        errors.InvalidInput,
+        errors.UsernameRequired,
+        errors.UsernameTaken,
+        errors.EmailTaken,
+        errors.SignupTicketInvalid,
+    ),
 )
 async def signup(body: SignupRequest, session: Session) -> dict[str, Any]:
-    """`POST /auth/oauth/google` 이 준 `signup_ticket` 에 아이디와 역할을 붙여 계정을 만든다.
+    """두 가지 가입을 받는다.
 
-    성공하면 바로 로그인된 상태(토큰 포함)를 돌려준다. 티켓은 한 번만 쓸 수 있다.
+    - **소셜:** `POST /auth/oauth/google` 이 준 `signup_ticket` + 아이디·역할.
+      티켓은 한 번만 쓸 수 있다.
+    - **일반:** `email` + `password`(영문·숫자 포함 8자 이상) + 아이디·역할.
+
+    성공하면 바로 로그인된 상태(토큰 포함)를 돌려준다.
     """
     return ok(await service.signup(session, body))
+
+
+@router.post(
+    "/login",
+    summary="아이디·비밀번호로 로그인한다",
+    response_model=Envelope[SessionResponse],
+    responses=raises(errors.InvalidCredentials),
+)
+async def login(body: LoginRequest, session: Session) -> dict[str, Any]:
+    """`login_id` 는 아이디 또는 이메일. Google 로 가입한 계정은 이 경로로 로그인할 수 없다
+    (`INVALID_CREDENTIALS`) — 아이디가 없는지 비밀번호가 틀렸는지 구분하지 않는다.
+    """
+    return ok(await service.login(session, body.login_id, body.password))
 
 
 @router.post(

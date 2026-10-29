@@ -87,8 +87,13 @@ def check_spec(spec: dict[str, Any]) -> None:
                 )
                 if status.startswith("2") and status != "204":
                     ops += 1
-                    schema = res.get("content", {}).get("application/json", {}).get("schema")
-                    if resolve(spec, schema).get("properties"):
+                    content = res.get("content", {})
+                    schema = content.get("application/json", {}).get("schema")
+                    # 파일 응답(MSU 내보내기)은 봉투가 없다 — 모든 미디어 타입이 binary 면 타입 있음
+                    binary = bool(content) and all(
+                        m.get("schema", {}).get("format") == "binary" for m in content.values()
+                    )
+                    if binary or resolve(spec, schema).get("properties"):
                         typed += 1
                     else:
                         check(False, f"빈 성공 스키마: {method.upper()} {path} {status}")

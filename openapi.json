@@ -2526,6 +2526,28 @@
         "title": "LinkBody",
         "type": "object"
       },
+      "LoginRequest": {
+        "properties": {
+          "login_id": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Login Id",
+            "type": "string"
+          },
+          "password": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "login_id",
+          "password"
+        ],
+        "title": "LoginRequest",
+        "type": "object"
+      },
       "ManuscriptCreate": {
         "properties": {
           "source_type": {
@@ -3404,6 +3426,56 @@
           "is_new_user"
         ],
         "title": "OAuthMeta",
+        "type": "object"
+      },
+      "OAuthNaverRequest": {
+        "properties": {
+          "oauth_code": {
+            "minLength": 1,
+            "title": "Oauth Code",
+            "type": "string"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State"
+          }
+        },
+        "required": [
+          "oauth_code"
+        ],
+        "title": "OAuthNaverRequest",
+        "type": "object"
+      },
+      "OAuthNaverResponse": {
+        "description": "네이버도 구글과 같다 — 기존 사용자는 세션, 신규 사용자는 가입 티켓.",
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SessionResponse"
+              },
+              {
+                "$ref": "#/components/schemas/SignupTicketResponse"
+              }
+            ],
+            "title": "Data"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/OAuthMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "OAuthNaverResponse",
         "type": "object"
       },
       "PageMeta": {
@@ -4334,7 +4406,32 @@
         "type": "object"
       },
       "SignupRequest": {
+        "description": "소셜 가입은 `signup_ticket`, 일반 가입은 `email` + `password`. 둘 중 하나만 보낸다.",
         "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "format": "email",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          },
           "role": {
             "enum": [
               "writer",
@@ -4345,9 +4442,16 @@
             "type": "string"
           },
           "signup_ticket": {
-            "minLength": 1,
-            "title": "Signup Ticket",
-            "type": "string"
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signup Ticket"
           },
           "username": {
             "anyOf": [
@@ -4363,7 +4467,6 @@
           }
         },
         "required": [
-          "signup_ticket",
           "role"
         ],
         "title": "SignupRequest",
@@ -5842,6 +5945,82 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/v1/auth/login": {
+      "post": {
+        "description": "`login_id` 는 아이디 또는 이메일. Google 로 가입한 계정은 이 경로로 로그인할 수 없다\n(`INVALID_CREDENTIALS`) — 아이디가 없는지 비밀번호가 틀렸는지 구분하지 않는다.",
+        "operationId": "login_v1_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponseEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_CREDENTIALS": {
+                    "summary": "아이디 또는 비밀번호가 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_CREDENTIALS",
+                        "details": {},
+                        "message": "아이디 또는 비밀번호가 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_CREDENTIALS` — 아이디 또는 비밀번호가 올바르지 않습니다"
+          }
+        },
+        "summary": "아이디·비밀번호로 로그인한다",
+        "tags": [
+          "AUTH"
+        ]
+      }
+    },
     "/v1/auth/logout": {
       "post": {
         "description": "리프레시 토큰을 폐기한다. 이미 폐기됐거나 모르는 토큰이어도 204 다.\n\n액세스 토큰은 만료될 때까지 유효하므로 클라이언트에서 지운다.",
@@ -5965,9 +6144,85 @@
         ]
       }
     },
+    "/v1/auth/oauth/naver": {
+      "post": {
+        "description": "네이버가 준 authorization code 와 인가 요청 때 보낸 `state` 를 넘긴다.\n\n응답은 `POST /auth/oauth/google` 과 같다 — 신규면 `signup_ticket` 을 받아\n`POST /auth/signup` 으로 가입을 마친다.",
+        "operationId": "oauth_naver_v1_auth_oauth_naver_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OAuthNaverRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OAuthNaverResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "OAUTH_PROVIDER_ERROR": {
+                    "summary": "소셜 로그인 공급자 응답이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "OAUTH_PROVIDER_ERROR",
+                        "details": {},
+                        "message": "소셜 로그인 공급자 응답이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `OAUTH_PROVIDER_ERROR` — 소셜 로그인 공급자 응답이 올바르지 않습니다"
+          }
+        },
+        "summary": "네이버로 로그인하거나 가입을 시작한다",
+        "tags": [
+          "AUTH"
+        ]
+      }
+    },
     "/v1/auth/signup": {
       "post": {
-        "description": "`POST /auth/oauth/google` 이 준 `signup_ticket` 에 아이디와 역할을 붙여 계정을 만든다.\n\n성공하면 바로 로그인된 상태(토큰 포함)를 돌려준다. 티켓은 한 번만 쓸 수 있다.",
+        "description": "두 가지 가입을 받는다.\n\n- **소셜:** `POST /auth/oauth/google` 이 준 `signup_ticket` + 아이디·역할.\n  티켓은 한 번만 쓸 수 있다.\n- **일반:** `email` + `password`(영문·숫자 포함 8자 이상) + 아이디·역할.\n\n성공하면 바로 로그인된 상태(토큰 포함)를 돌려준다.",
         "operationId": "signup_v1_auth_signup_post",
         "requestBody": {
           "content": {
@@ -6048,6 +6303,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "EMAIL_TAKEN": {
+                    "summary": "이미 가입된 이메일입니다",
+                    "value": {
+                      "error": {
+                        "code": "EMAIL_TAKEN",
+                        "details": {},
+                        "message": "이미 가입된 이메일입니다"
+                      }
+                    }
+                  },
                   "USERNAME_TAKEN": {
                     "summary": "이미 사용 중인 아이디입니다",
                     "value": {
@@ -6064,7 +6329,7 @@
                 }
               }
             },
-            "description": "- `USERNAME_TAKEN` — 이미 사용 중인 아이디입니다"
+            "description": "- `EMAIL_TAKEN` — 이미 가입된 이메일입니다\n- `USERNAME_TAKEN` — 이미 사용 중인 아이디입니다"
           }
         },
         "summary": "가입을 마친다",
@@ -15630,6 +15895,204 @@
           }
         ],
         "summary": "원고의 제목이나 본문을 수정한다",
+        "tags": [
+          "MSU"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/manuscripts/{manuscriptId}/export": {
+      "get": {
+        "description": "프로젝트의 viewer 이상. 브라우저는 응답을 그대로 내려받는다(`attachment`).\n\n챕터가 있으면 화 번호 순으로 \"N장 제목\" 줄 + 본문을 잇고, 없으면 원고 본문을 그대로 쓴다.\ndocx 는 장 제목 줄이 제목 1 스타일이다. 원고가 `ready` 가 아니면 `MANUSCRIPT_NOT_READY` 다.",
+        "operationId": "export_manuscript_v1_projects__projectId__manuscripts__manuscriptId__export_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "manuscriptId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Manuscriptid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "`txt` | `docx`",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "txt",
+              "description": "`txt` | `docx`",
+              "title": "Format",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "파일 바이너리(공통 응답 봉투를 쓰지 않는다)"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  },
+                  "UNSUPPORTED_FILE_FORMAT": {
+                    "summary": "지원하지 않는 파일 형식입니다",
+                    "value": {
+                      "error": {
+                        "code": "UNSUPPORTED_FILE_FORMAT",
+                        "details": {},
+                        "message": "지원하지 않는 파일 형식입니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다\n- `UNSUPPORTED_FILE_FORMAT` — 지원하지 않는 파일 형식입니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "MANUSCRIPT_NOT_FOUND": {
+                    "summary": "원고를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "MANUSCRIPT_NOT_FOUND",
+                        "details": {},
+                        "message": "원고를 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `MANUSCRIPT_NOT_FOUND` — 원고를 찾을 수 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "MANUSCRIPT_NOT_READY": {
+                    "summary": "원고 본문이 아직 준비되지 않았습니다",
+                    "value": {
+                      "error": {
+                        "code": "MANUSCRIPT_NOT_READY",
+                        "details": {},
+                        "message": "원고 본문이 아직 준비되지 않았습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `MANUSCRIPT_NOT_READY` — 원고 본문이 아직 준비되지 않았습니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "원고를 파일로 내보낸다",
         "tags": [
           "MSU"
         ]

@@ -17,6 +17,7 @@ from uuid import UUID
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.content.manuscripts import export as export_file
 from app.content.manuscripts import repository as repo
 from app.content.manuscripts import versions
 from app.content.manuscripts.extraction import SUPPORTED_FORMATS
@@ -99,6 +100,19 @@ async def create(
 
 async def get(session: AsyncSession, project_id: UUID, manuscript_id: UUID) -> ManuscriptResponse:
     return await _one(session, await _get(session, project_id, manuscript_id))
+
+
+async def export(
+    session: AsyncSession, project_id: UUID, manuscript_id: UUID, file_format: str
+) -> tuple[str, bytes]:
+    """(파일 이름 줄기, 파일 바이트). 형식 검사를 먼저 한다 — 없는 원고라도 형식이 틀리면 400."""
+    if file_format not in export_file.EXPORT_FORMATS:
+        raise errors.UnsupportedFileFormat(supported=list(export_file.EXPORT_FORMATS))
+    manuscript = await _get(session, project_id, manuscript_id)
+    if manuscript.status != "ready":
+        raise errors.ManuscriptNotReady()
+    chapters = await repo.chapters_of(session, manuscript_id)
+    return manuscript.title, export_file.render(file_format, chapters, manuscript.content)
 
 
 async def list_manuscripts(

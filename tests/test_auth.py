@@ -156,3 +156,84 @@ async def test_logout_revokes_refresh_token(client: AsyncClient) -> None:
     assert res.status_code == 204
     dead = await client.post("/auth/token/refresh", json={"refresh_token": user["refresh_token"]})
     assert code(dead) == "REFRESH_TOKEN_INVALID"
+
+
+# --- 일반(아이디·비밀번호) 가입·로그인 ------------------------------------
+
+
+async def local_signup(client: AsyncClient, username: str = "local", **over: str):  # type: ignore[no-untyped-def]
+    body = {"username": username, "email": f"{username}@ex.com", "password": "abc12345"}
+    return await client.post("/auth/signup", json={**body, "role": "writer", **over})
+
+
+async def test_local_signup_then_login_by_username_and_email(client: AsyncClient) -> None:
+    res = await local_signup(client)
+    assert res.status_code == 201
+    assert res.json()["data"]["user"]["auth_provider"] == "local"
+    for login_id in ("local", "LOCAL@ex.com"):
+        res = await client.post("/auth/login", json={"login_id": login_id, "password": "abc12345"})
+        assert res.status_code == 200, login_id
+        tokens = res.json()["data"]["tokens"]
+        me = await client.get(
+            "/users/me", headers={"Authorization": f"Bearer {tokens['access_token']}"}
+        )
+        assert me.json()["data"]["username"] == "local"
+
+
+async def test_login_wrong_password_or_unknown_or_google_is_401(client: AsyncClient) -> None:
+    await local_signup(client)
+    await signup(client, "g@ex.com", username="googler")
+    for login_id, password in (("local", "wrong1234"), ("nobody", "abc12345"), ("googler", "x")):
+        res = await client.post("/auth/login", json={"login_id": login_id, "password": password})
+        assert res.status_code == 401
+        assert code(res) == "INVALID_CREDENTIALS"
+
+
+async def test_local_signup_rejects_weak_password_and_missing_fields(client: AsyncClient) -> None:
+    res = await local_signup(client, password="abcdefgh")
+    assert res.status_code == 400
+    assert code(res) == "INVALID_INPUT"
+    res = await client.post("/auth/signup", json={"username": "x", "role": "writer"})
+    assert res.status_code == 400
+    assert code(res) == "INVALID_INPUT"
+
+
+async def test_local_signup_duplicates_are_409(client: AsyncClient) -> None:
+    await local_signup(client)
+    res = await local_signup(client, email="other@ex.com")
+    assert code(res) == "USERNAME_TAKEN"
+    res = await local_signup(client, username="other", email="local@ex.com")
+    assert res.status_code == 409
+    assert code(res) == "EMAIL_TAKEN"
+
+
+# --- 네이버 ---------------------------------------------------------------
+
+
+async def test_naver_signup_then_login_is_separate_from_google(client: AsyncClient) -> None:
+    # 같은 식별자라도 공급자가 다르면 다른 계정이다 — (auth_provider, provider_user_id) 로 판별한다.
+    await signup(client, "g@ex.com", username="googler")
+    naver_code = oauth_code("n@ex.com")
+    res = await client.post("/auth/oauth/naver", json={"oauth_code": naver_code, "state": "s"})
+    assert res.json()["meta"]["is_new_user"] is True
+    ticket = res.json()["data"]["signup_ticket"]
+    res = await client.post(
+        "/auth/signup", json={"signup_ticket": ticket, "username": "naverer", "role": "reader"}
+    )
+    assert res.status_code == 201
+    assert res.json()["data"]["user"]["auth_provider"] == "naver"
+
+    res = await client.post("/auth/oauth/naver", json={"oauth_code": naver_code})
+    assert res.json()["meta"]["is_new_user"] is False
+    assert res.json()["data"]["user"]["username"] == "naverer"
+
+
+async def test_naver_signup_with_email_already_used_is_409(client: AsyncClient) -> None:
+    await signup(client, "same@ex.com", username="googler")
+    res = await client.post("/auth/oauth/naver", json={"oauth_code": "nid-1|same@ex.com"})
+    ticket = res.json()["data"]["signup_ticket"]
+    res = await client.post(
+        "/auth/signup", json={"signup_ticket": ticket, "username": "naverer", "role": "reader"}
+    )
+    assert res.status_code == 409
+    assert code(res) == "EMAIL_TAKEN"

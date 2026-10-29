@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     google_client_secret: str = ""
     # ASSUMPTION: Google 토큰 엔드포인트가 code 교환 시 redirect_uri 를 요구한다. 명세에 값이 없다.
     google_redirect_uri: str = "http://localhost:3000/auth/callback"
+    naver_client_id: str = ""
+    naver_client_secret: str = ""
     # ASSUMPTION: 명세에 초대 만료가 없다. 7일로 둔다.
     invitation_ttl_seconds: int = 60 * 60 * 24 * 7
 

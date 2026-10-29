@@ -34,7 +34,7 @@ Unauthorized = _err("UNAUTHORIZED", 401, "인증이 필요합니다")
 # AUTH 에는 FORBIDDEN 이 없다. TEAM·PRJ 공통 코드다.
 Forbidden = _err("FORBIDDEN", 403, "권한이 없습니다")
 
-# --- AUTH (v0.2, Google 단일) -------------------------------------------
+# --- AUTH (Google · 일반) -------------------------------------------------
 UsernameRequired = _err("USERNAME_REQUIRED", 400, "아이디가 필요합니다")
 UsernameTaken = _err("USERNAME_TAKEN", 409, "이미 사용 중인 아이디입니다")
 SignupTicketInvalid = _err(
@@ -45,6 +45,9 @@ OAuthProviderError = _err(
     "OAUTH_PROVIDER_ERROR", 502, "소셜 로그인 공급자 응답이 올바르지 않습니다"
 )
 UserNotFound = _err("USER_NOT_FOUND", 404, "사용자를 찾을 수 없습니다")
+# 일반 로그인. 아이디가 없는지 비밀번호가 틀렸는지 구분하지 않는다.
+InvalidCredentials = _err("INVALID_CREDENTIALS", 401, "아이디 또는 비밀번호가 올바르지 않습니다")
+EmailTaken = _err("EMAIL_TAKEN", 409, "이미 가입된 이메일입니다")
 
 # --- TEAM ---------------------------------------------------------------
 # 멤버·초대 관련 코드는 PRJ 와 이름이 다르다. 공통 처리로 뭉개지 않는다 (CLAUDE.md §5.1).
@@ -73,6 +76,7 @@ ManuscriptNotFound = _err("MANUSCRIPT_NOT_FOUND", 404, "원고를 찾을 수 없
 ChapterNotFound = _err("CHAPTER_NOT_FOUND", 404, "챕터를 찾을 수 없습니다")
 UnsupportedFileFormat = _err("UNSUPPORTED_FILE_FORMAT", 400, "지원하지 않는 파일 형식입니다")
 SourceTypeImmutable = _err("SOURCE_TYPE_IMMUTABLE", 409, "source_type 은 생성 후 바꿀 수 없습니다")
+ManuscriptNotReady = _err("MANUSCRIPT_NOT_READY", 409, "원고 본문이 아직 준비되지 않았습니다")
 
 # --- NOTI ---------------------------------------------------------------
 NotificationNotFound = _err("NOTIFICATION_NOT_FOUND", 404, "알림을 찾을 수 없습니다")

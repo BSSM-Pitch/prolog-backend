@@ -18,6 +18,16 @@ async def get_user_by_provider(
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
+async def get_local_user(session: AsyncSession, login_id: str) -> User | None:
+    """일반 로그인 대상. Google 계정은 찾지 않는다(비밀번호가 없다)."""
+    if "@" in login_id:
+        match = func.lower(User.email) == login_id.lower()
+    else:
+        match = User.username == login_id
+    stmt = select(User).where(User.auth_provider == "local", match)
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
 async def get_user(session: AsyncSession, user_id: UUID) -> User | None:
     return await session.get(User, user_id)
 

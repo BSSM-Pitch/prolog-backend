@@ -1,9 +1,11 @@
-"""AUTH v0.2 — Google 단일, 2단계 가입.
+"""AUTH — Google 2단계 가입 + 일반(아이디·비밀번호) 가입·로그인.
 
 Google authorization code 는 1회용이다. 신규 사용자에게 400 을 던지고 같은 code 로
 재요청하게 하면 Google 이 거부하므로, 인증(=티켓 발급)과 가입 완료를 두 호출로 나눈다.
+일반 가입은 티켓 없이 `/auth/signup` 에 email·password 를 직접 보낸다.
 """
 
+import re
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
@@ -17,12 +19,14 @@ from app.core.security import (
     create_access_token,
     create_signup_ticket,
     decode_signup_ticket,
+    hash_password,
     new_opaque_token,
     sha256,
+    verify_password,
 )
 from app.platform_.auth import repository as repo
-from app.platform_.auth.google import GoogleOAuth
-from app.platform_.auth.models import PROVIDER_UQ, USERNAME_UQ, User
+from app.platform_.auth.google import GoogleIdentity as OAuthIdentity
+from app.platform_.auth.models import EMAIL_UQ, PROVIDER_UQ, USERNAME_UQ, User
 from app.platform_.auth.schemas import (
     SessionResponse,
     SignupRequest,
@@ -33,6 +37,10 @@ from app.platform_.auth.schemas import (
 )
 
 PROVIDER = "google"
+NAVER = "naver"
+LOCAL = "local"
+# 프론트 validation.ts 의 PASSWORD_RULE 과 같다.
+PASSWORD_RULE = re.compile(r"^(?=.*[A-Za-z])(?=.*\d).{8,}$")
 
 
 def _user_response(user: User) -> UserResponse:
@@ -58,43 +66,69 @@ async def _issue(session: AsyncSession, user: User) -> TokenResponse:
     )
 
 
-async def oauth_google(
-    session: AsyncSession, google: GoogleOAuth, oauth_code: str
+async def oauth_login(
+    session: AsyncSession, provider: str, identity: OAuthIdentity
 ) -> tuple[SessionResponse | SignupTicketResponse, bool]:
-    """(응답, is_new_user). 신규면 계정을 만들지 않고 가입 티켓만 준다."""
-    identity = await google.exchange(oauth_code)
-    user = await repo.get_user_by_provider(session, PROVIDER, identity.sub)
+    """(응답, is_new_user). 신규면 계정을 만들지 않고 가입 티켓만 준다. 구글·네이버 공통."""
+    user = await repo.get_user_by_provider(session, provider, identity.sub)
     if user is not None:
         return SessionResponse(user=_user_response(user), tokens=await _issue(session, user)), False
-    ticket = create_signup_ticket(identity.sub, identity.email, PROVIDER)
+    ticket = create_signup_ticket(identity.sub, identity.email, provider)
     return SignupTicketResponse(signup_ticket=ticket, email=identity.email), True
 
 
 async def signup(session: AsyncSession, body: SignupRequest) -> SessionResponse:
-    claims = decode_signup_ticket(body.signup_ticket)
+    if body.signup_ticket:
+        claims = decode_signup_ticket(body.signup_ticket)
+    elif body.email is None or body.password is None:
+        raise errors.InvalidInput("signup_ticket 또는 email·password 가 필요합니다")
+    elif not PASSWORD_RULE.match(body.password):
+        raise errors.InvalidInput("비밀번호는 영문과 숫자를 포함해 8자 이상이어야 합니다")
     username = (body.username or "").strip()
     if not username:
         raise errors.UsernameRequired()
 
-    user = User(
-        email=claims.get("email"),
-        auth_provider=claims.get("provider", PROVIDER),
-        provider_user_id=claims["sub"],
-        username=username,
-        role=body.role,
-    )
+    if body.signup_ticket:
+        user = User(
+            email=claims.get("email"),
+            auth_provider=claims.get("provider", PROVIDER),
+            provider_user_id=claims["sub"],
+            username=username,
+            role=body.role,
+        )
+    else:
+        # ponytail: 이메일 소유 확인(인증 코드) 없이 가입한다.
+        # 메일 발송을 붙일 때 여기서 코드를 검증한다.
+        user = User(
+            email=body.email,
+            auth_provider=LOCAL,
+            provider_user_id=username,
+            password_hash=hash_password(body.password or ""),
+            username=username,
+            role=body.role,
+        )
     try:
         await repo.add_user(session, user)
     except IntegrityError as exc:
         constraint = errors.constraint_name(exc)
-        if constraint == USERNAME_UQ:
+        # local 의 provider_user_id 는 username 이라 같은 경합이 PROVIDER_UQ 로도 온다.
+        if constraint == USERNAME_UQ or (constraint == PROVIDER_UQ and user.auth_provider == LOCAL):
             # 사전 SELECT 로는 경합을 막을 수 없어 제약을 신뢰한다.
             raise errors.UsernameTaken() from exc
+        if constraint == EMAIL_UQ:
+            raise errors.EmailTaken() from exc
         if constraint == PROVIDER_UQ:
             # ASSUMPTION: 이미 가입이 끝난 티켓의 재사용. 명세에 전용 코드가 없어
             # 티켓 무효로 답한다.
             raise errors.SignupTicketInvalid("이미 가입이 완료된 티켓입니다") from exc
         raise
+    return SessionResponse(user=_user_response(user), tokens=await _issue(session, user))
+
+
+async def login(session: AsyncSession, login_id: str, password: str) -> SessionResponse:
+    user = await repo.get_local_user(session, login_id.strip())
+    if not verify_password(password, user.password_hash if user else None) or user is None:
+        raise errors.InvalidCredentials()
     return SessionResponse(user=_user_response(user), tokens=await _issue(session, user))
 
 
