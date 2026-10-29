@@ -29,6 +29,14 @@ jobs:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Refresh prolog-ai dependency
+        run: |
+          docker run --rm \
+            --volume "$PWD:/workspace" \
+            --workdir /workspace \
+            ghcr.io/astral-sh/uv:python3.12-bookworm-slim \
+            uv lock --upgrade-package prolog-ai
+
       - name: Validate production image
         run: docker build --tag prolog-backend:ci .
 
@@ -46,9 +54,12 @@ jobs:
             --arg sha "$GITHUB_SHA" \
             '{commands: [
               "set -eu",
+              "exec 9>/var/lock/prolog-deploy.lock",
+              "flock -w 1800 9",
               "cd /opt/prolog",
               ("git fetch --depth=1 origin " + $sha),
               ("git checkout --force " + $sha),
+              "docker run --rm --volume /opt/prolog:/workspace --workdir /workspace ghcr.io/astral-sh/uv:python3.12-bookworm-slim uv lock --upgrade-package prolog-ai",
               "docker compose -p prolog -f compose.prod.yml config --quiet",
               "docker compose -p prolog -f compose.prod.yml build api",
               "docker compose -p prolog -f compose.prod.yml run --rm migrate",

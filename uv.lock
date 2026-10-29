@@ -1151,8 +1151,8 @@ dev = [
 
 [[package]]
 name = "prolog-ai"
-version = "0.0.1"
-source = { git = "https://github.com/BSSM-Pitch/prolog-ai.git#e1f25420a69d5660e3e9fbb24f4b135345307891" }
+version = "0.1.0"
+source = { git = "https://github.com/BSSM-Pitch/prolog-ai.git#c7413ee9e2741fe68461f4616d766a46956760b2" }
 dependencies = [
     { name = "openai" },
     { name = "pydantic" },
