@@ -28,7 +28,8 @@ async def _prepare(session: AsyncSession, job: Job) -> dict[str, Any]:
     chapter = await session.get(Chapter, cast(UUID, job.target_id))
     if chapter is None:
         raise errors.ChapterNotFound()
-    # pgvector 는 numpy 배열을 준다. 잡 result(jsonb)로 흘러가므로 파이썬 float 로 바꾼다.
+    # pgvector 는 설치된 패키지에 따라 numpy 배열이나 list 를 준다.
+    # jsonb 로 흘러가므로 파이썬 float 로 통일한다.
     known = {
         text_hash: [float(x) for x in vector]
         for text_hash, vector in (
@@ -67,6 +68,9 @@ def _call(ai: AIClient, args: Any) -> Result:
 async def _store(session: AsyncSession, job: Job, data: dict[str, Any]) -> None:
     chapter = await session.get(Chapter, cast(UUID, job.target_id))
     if chapter is None:
+        return
+    # 낡은 잡이 더 새 본문으로 만든 조각을 덮으면 안 된다. 현재 본문은 스위퍼가 다시 색인한다.
+    if data["source_hash"] != md5(chapter.content):
         return
     await session.execute(delete(Passage).where(Passage.chapter_id == chapter.id))
     for piece in data["passages"]:

@@ -8,7 +8,11 @@ TRUNCATE 대상이 그대로다). 2단계에서 digest 테이블이 붙을 때 �
   테이블처럼 (id, project_id) 복합이다.
 - `source_hash` = md5(챕터 본문). 현재 본문의 md5 와 다르면 그 조각은 낡았다.
 - `text_hash` = md5(조각 본문). 다시 색인할 때 같은 조각의 임베딩을 재사용한다.
-- HNSW 코사인 인덱스. 검색은 항상 manuscript_id 로 거른 뒤 정렬한다.
+- 벡터 인덱스는 없다. 검색은 manuscript_id 로 거른 뒤 코사인 거리로 정렬한다(정확 검색).
+- ponytail: exact per-manuscript scan (filter by manuscript_id via btree, then sort by cosine
+  distance) — pgvector's HNSW applies the manuscript filter after the approximate scan and can
+  return fewer than k hits; add HNSW with `SET LOCAL hnsw.iterative_scan` when cross-manuscript
+  search or very large manuscripts arrive.
 
 Revision ID: 0012
 Revises: 0011
@@ -55,10 +59,6 @@ CREATE TABLE content.passages (
 """
     )
     op.execute("CREATE INDEX passages_manuscript_idx ON content.passages (manuscript_id)")
-    op.execute(
-        "CREATE INDEX passages_embedding_idx ON content.passages "
-        "USING hnsw (embedding vector_cosine_ops)"
-    )
     op.execute(
         "CREATE TRIGGER touch_updated_at BEFORE UPDATE ON content.passages "
         "FOR EACH ROW EXECUTE FUNCTION ops.touch_updated_at()"

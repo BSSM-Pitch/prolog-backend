@@ -397,6 +397,8 @@ async def _prepare(session: AsyncSession, job: Job, ai: AIClient) -> dict[str, A
             ] or None
         else:
             log.warning("질문 임베딩 실패 — 원고 전체로 답한다: %s", embedded["error"])
+    path = "검색" if passages is not None else "원고 전체"
+    log.info("AIQ 기억 %s/%s챕터 — %s", ready, total, path)
     return {
         "question": question.content,
         "passages": passages,

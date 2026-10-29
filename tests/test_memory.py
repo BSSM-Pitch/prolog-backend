@@ -1,10 +1,12 @@
 """원고 기억 1단계 — 낡은 챕터 색인(스위퍼 · passage_index 잡) · 검색."""
 
 import hashlib
+import os
 from datetime import timedelta
 from typing import Any
 from uuid import UUID
 
+import psycopg
 from httpx import AsyncClient
 from sqlalchemy import select, text
 
@@ -122,6 +124,31 @@ async def test_index_stores_fresh_passages_and_reuses_embeddings(client: AsyncCl
     assert await handle(SessionFactory, await _job_for(c["cid"]), ai2) == "completed"
     second_embed = [args for name, args in ai2.calls if name == "embed"]
     assert 0 < len(second_embed[0][0]) < len(rows)
+
+
+async def test_stale_index_job_does_not_overwrite_newer_content(client: AsyncClient) -> None:
+    c = await _chapter(client, "mem2b@example.com")
+    await _age(c["cid"])
+    await _sweep()
+    job_id = await _job_for(c["cid"])
+
+    class EditsDuringEmbed(FakeAI):
+        """임베딩(스레드) 도중 본문이 바뀐 상황 — 잡은 낡은 본문으로 조각을 만들었다."""
+
+        def embed(self, texts: Any) -> Any:
+            with psycopg.connect(os.environ["DATABASE_URL"].replace("+asyncpg", "")) as conn:
+                conn.execute(
+                    "UPDATE content.chapters SET content = content || 'x' WHERE id = %s",
+                    (c["cid"],),
+                )
+            return super().embed(texts)
+
+    assert await handle(SessionFactory, job_id, EditsDuringEmbed()) == "completed"
+    async with SessionFactory() as s:
+        rows = (await s.execute(select(Passage).where(Passage.chapter_id == c["cid"]))).all()
+        assert rows == []
+        job = await s.get(Job, job_id)
+        assert job is not None and job.status == "completed"
 
 
 async def test_embed_failure_leaves_chapter_stale_without_new_job(client: AsyncClient) -> None:
