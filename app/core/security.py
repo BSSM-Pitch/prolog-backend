@@ -1,13 +1,13 @@
 """토큰 발급·검증.
 
-비밀번호는 다루지 않는다. Google OAuth 단일이므로 해시 함수도 존재하지 않는다
-(CLAUDE.md §2 규칙 4).
+비밀번호는 stdlib scrypt 로 해시한다(local 계정만). 평문은 저장하지 않는다.
 
 액세스 토큰과 가입 티켓은 같은 키로 서명되므로 **`aud` 로 용도를 가른다.**
 가입 티켓을 ``Authorization: Bearer`` 로 제출하면 `aud` 불일치로 401 이 된다.
 """
 
 import hashlib
+import hmac
 import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -80,3 +80,23 @@ def new_opaque_token() -> tuple[str, str]:
 
 def sha256(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
+
+
+# n=2^14·r=8 → 해시 1회 16MB·수십 ms. 형식 `scrypt$salt$digest` — 파라미터를 바꾸면 접두어를 바꾼다.
+_SCRYPT = {"n": 2**14, "r": 8, "p": 1}
+
+
+def hash_password(password: str) -> str:
+    salt = secrets.token_bytes(16)
+    digest = hashlib.scrypt(password.encode(), salt=salt, **_SCRYPT)
+    return f"scrypt${salt.hex()}${digest.hex()}"
+
+
+_DUMMY_HASH = hash_password("")
+
+
+def verify_password(password: str, stored: str | None) -> bool:
+    """없는 계정(stored=None)도 해시를 한 번 돌린다 — 응답 시간으로 아이디 존재를 알 수 없게."""
+    _, salt, digest = (stored or _DUMMY_HASH).split("$")
+    actual = hashlib.scrypt(password.encode(), salt=bytes.fromhex(salt), **_SCRYPT)
+    return stored is not None and hmac.compare_digest(actual.hex(), digest)

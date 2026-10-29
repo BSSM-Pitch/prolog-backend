@@ -8,7 +8,7 @@ from sqlalchemy import text
 from app.db.all_models import Base
 from app.db.session import engine
 
-EXPECTED_TABLE_COUNT = 38  # 0003: ops.processed_events
+EXPECTED_TABLE_COUNT = 39  # 0003: ops.processed_events · 0013: platform.email_verifications
 SCHEMAS = ("platform", "content", "authoring", "insight", "ops")
 
 
