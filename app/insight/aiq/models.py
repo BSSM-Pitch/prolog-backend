@@ -39,6 +39,6 @@ class QaMessage(Base, Timestamps):
     content: Mapped[str | None] = mapped_column(Text)
     job_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True))
     status: Mapped[str | None] = mapped_column(String(20))
-    # [{passage_id, chapter_id, chapter_no, start, end, quote}] — 원고 기억 1단계(0012). 조각이 다시
+    # [{passage_id, chapter_id, chapter_no, start, end, quote}] — 원고 기억 1단계(0014). 조각이 다시
     # 색인돼 사라져도 인용이 남도록 위치와 인용문을 복사해 둔다.
     citations: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list)

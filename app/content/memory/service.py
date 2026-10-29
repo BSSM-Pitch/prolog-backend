@@ -22,7 +22,7 @@ from app.content.manuscripts.models import Chapter
 from app.content.memory.models import Passage
 from app.jobs import service as jobs
 
-JOB_TYPE = "passage_index"  # 0012 jobs_job_type_chk
+JOB_TYPE = "passage_index"  # 0014 jobs_job_type_chk
 
 
 class Hit(NamedTuple):

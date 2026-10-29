@@ -71,7 +71,7 @@ class Settings(BaseSettings):
     queue_visibility_seconds_ai: int = 15 * 60
     queue_visibility_seconds_io: int = 60
     sweeper_interval_seconds: float = 30.0
-    # 원고 기억(0012): 챕터가 이만큼 조용하면 조각을 다시 색인한다(자동저장마다 임베딩하지 않게).
+    # 원고 기억(0014): 챕터가 이만큼 조용하면 조각을 다시 색인한다(자동저장마다 임베딩하지 않게).
     memory_quiet_seconds: int = 180
     # AIQ 가 질문마다 넘기는 검색 조각 수. 패키지가 글자 예산으로 한 번 더 자른다.
     aiq_passage_count: int = 8

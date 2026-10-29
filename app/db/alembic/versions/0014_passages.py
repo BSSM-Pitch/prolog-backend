@@ -14,16 +14,16 @@ TRUNCATE 대상이 그대로다). 2단계에서 digest 테이블이 붙을 때 �
   return fewer than k hits; add HNSW with `SET LOCAL hnsw.iterative_scan` when cross-manuscript
   search or very large manuscripts arrive.
 
-Revision ID: 0012
-Revises: 0011
+Revision ID: 0014
+Revises: 0013
 """
 
 from collections.abc import Sequence
 
 from alembic import op
 
-revision: str = "0012"
-down_revision: str | None = "0011"
+revision: str = "0014"
+down_revision: str | None = "0013"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
