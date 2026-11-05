@@ -390,6 +390,42 @@ async def test_export_joins_chapters_in_order_as_txt_and_docx(client: AsyncClien
     ]
 
 
+async def test_export_single_chapter(client: AsyncClient) -> None:
+    import zipfile
+    from io import BytesIO
+
+    user, pid = await _project(client, "ex3@example.com")
+    mid = (await _manuscript(client, user, pid, title="거미줄 너머"))["manuscript_id"]
+    ids = {}
+    for no, title, body in [(1, None, "첫째 본문"), (2, "재회", "둘째 <본문>")]:
+        res = await client.post(
+            f"/projects/{pid}/chapters",
+            json={"manuscript_id": mid, "chapter_no": no, "title": title, "content": body},
+            headers=user["headers"],
+        )
+        ids[no] = res.json()["data"]["chapter_id"]
+
+    url = f"/projects/{pid}/chapters/{ids[2]}/export"
+    txt = await client.get(url, headers=user["headers"])
+    assert txt.status_code == 200
+    assert txt.text == "2장 재회\n\n둘째 <본문>"
+    # "거미줄 너머_2장.txt"
+    assert txt.headers["content-disposition"].endswith("_2%EC%9E%A5.txt")
+
+    docx = await client.get(url, params={"format": "docx"}, headers=user["headers"])
+    with zipfile.ZipFile(BytesIO(docx.content)) as archive:
+        document = archive.read("word/document.xml").decode()
+    assert "2장 재회" in document and "첫째" not in document
+
+    bad = await client.get(url, params={"format": "pdf"}, headers=user["headers"])
+    assert code(bad) == "UNSUPPORTED_FILE_FORMAT"
+    missing = await client.get(
+        f"/projects/{pid}/chapters/00000000-0000-0000-0000-000000000000/export",
+        headers=user["headers"],
+    )
+    assert code(missing) == "CHAPTER_NOT_FOUND"
+
+
 async def test_export_rejects_bad_format_and_unready_manuscript(client: AsyncClient) -> None:
     user, pid = await _project(client, "ex2@example.com")
     ms = await _manuscript(client, user, pid, source_type="upload")

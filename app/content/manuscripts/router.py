@@ -183,7 +183,11 @@ async def export_manuscript(
     docx 는 장 제목 줄이 제목 1 스타일이다. 원고가 `ready` 가 아니면 `MANUSCRIPT_NOT_READY` 다.
     """
     title, data = await service.export(session, project_id, manuscript_id, file_format)
-    filename = quote(f"{title}.{file_format}")
+    return _file(title, file_format, data)
+
+
+def _file(stem: str, file_format: str, data: bytes) -> Response:
+    filename = quote(f"{stem}.{file_format}")
     return Response(
         content=data,
         media_type=export_file.CONTENT_TYPES[file_format],
@@ -326,6 +330,41 @@ async def update_chapter(
 ) -> dict[str, Any]:
     """프로젝트의 editor 이상. 보낸 필드만 바뀐다. `chapter_no` 가 겹치면 `INVALID_INPUT` 이다."""
     return ok(await service.update_chapter(session, project_id, chapter_id, body))
+
+
+@router.get(
+    "/{projectId}/chapters/{chapterId}/export",
+    dependencies=[Viewer],
+    summary="챕터 하나를 파일로 내보낸다",
+    response_class=Response,
+    responses={
+        200: {
+            "description": "파일 바이너리(공통 응답 봉투를 쓰지 않는다)",
+            "content": {
+                ctype.split(";")[0]: {"schema": {"type": "string", "format": "binary"}}
+                for ctype in export_file.CONTENT_TYPES.values()
+            },
+        },
+        **raises(
+            errors.ChapterNotFound,
+            errors.ManuscriptNotFound,
+            errors.UnsupportedFileFormat,
+            errors.ManuscriptNotReady,
+        ),
+    },
+)
+async def export_chapter(
+    project_id: ProjectId,
+    chapter_id: ChapterId,
+    session: Session,
+    file_format: Annotated[str, Query(alias="format", description="`txt` | `docx`")] = "txt",
+) -> Response:
+    """프로젝트의 viewer 이상. 원고 내보내기와 같은 형식으로 "N장 제목" 줄 + 본문 하나다.
+
+    파일 이름은 `원고제목_N장.확장자`. 원고가 `ready` 가 아니면 `MANUSCRIPT_NOT_READY` 다.
+    """
+    stem, data = await service.export_chapter(session, project_id, chapter_id, file_format)
+    return _file(stem, file_format, data)
 
 
 @router.delete(

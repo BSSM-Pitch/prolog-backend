@@ -352,6 +352,20 @@ async def _get_chapter(session: AsyncSession, project_id: UUID, chapter_id: UUID
     return chapter
 
 
+async def export_chapter(
+    session: AsyncSession, project_id: UUID, chapter_id: UUID, file_format: str
+) -> tuple[str, bytes]:
+    """장 하나를 "N장 제목" + 본문 파일로. 원고 내보내기(`export`)와 같은 규칙이다."""
+    if file_format not in export_file.EXPORT_FORMATS:
+        raise errors.UnsupportedFileFormat(supported=list(export_file.EXPORT_FORMATS))
+    chapter = await _get_chapter(session, project_id, chapter_id)
+    manuscript = await _get(session, project_id, chapter.manuscript_id)
+    if manuscript.status != "ready":
+        raise errors.ManuscriptNotReady()
+    stem = f"{manuscript.title}_{chapter.chapter_no}장"
+    return stem, export_file.render(file_format, [chapter], None)
+
+
 async def get_chapter(session: AsyncSession, project_id: UUID, chapter_id: UUID) -> ChapterResponse:
     return _chapter(await _get_chapter(session, project_id, chapter_id))
 
