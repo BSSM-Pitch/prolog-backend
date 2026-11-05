@@ -250,3 +250,38 @@ async def test_zombie_answer_ends_failed(client: AsyncClient) -> None:
         await s.commit()
         status = (await s.execute(select(QaMessage.status).where(QaMessage.id == mid))).scalar_one()
     assert status == "failed"
+
+
+async def test_saved_rules_are_project_scoped_and_refreshed(client: AsyncClient) -> None:
+    m = await _manuscript(client, "rules-qa@example.com")
+    other = await _manuscript(client, "rules-other@example.com")
+    project = m["ms"].split("/manuscripts")[0]
+    other_project = other["ms"].split("/manuscripts")[0]
+    rule = {"title": "미래 로그", "description": "정확히 7시간 뒤의 메시지만 수신"}
+    created_rule = await client.post(f"{project}/world-rules", json=rule, headers=m["h"])
+    assert created_rule.status_code == 201
+    await client.post(
+        f"{other_project}/world-rules",
+        json={"title": "비밀", "description": "다른 프로젝트"},
+        headers=other["h"],
+    )
+    thread = await _ask(client, m)
+    ai = FakeAI(answer("저장된 규칙을 비교했습니다."))
+    assert await _run(_job_of(thread), ai) == "completed"
+    rules = ai.calls[0][1][5]
+    assert len(rules) == 1
+    assert rules[0]["description"] == rule["description"]
+    rid = created_rule.json()["data"]["rule_id"]
+    await client.patch(
+        f"{project}/world-rules/{rid}",
+        json={"description": "정확히 31시간 뒤의 메시지만 수신"},
+        headers=m["h"],
+    )
+    follow = await client.post(
+        f"{m['base']}/{thread['thread']['thread_id']}/messages",
+        json={"content": "수정된 규칙으로는?"},
+        headers=m["h"],
+    )
+    ai2 = FakeAI(answer("수정 규칙을 비교했습니다."))
+    assert await _run(UUID(follow.json()["data"][-1]["message_id"]), ai2) == "completed"
+    assert ai2.calls[0][1][5][0]["description"] == "정확히 31시간 뒤의 메시지만 수신"

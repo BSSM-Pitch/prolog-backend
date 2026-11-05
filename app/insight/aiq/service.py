@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai import jobs as ai_jobs
 from app.ai.client import AIClient, Result
+from app.authoring.rex.models import WorldRule
 from app.content.manuscripts import service as manuscripts
 from app.core import errors
 from app.core.response import ErrorBody
@@ -364,7 +365,28 @@ async def _prepare(session: AsyncSession, job: Job) -> dict[str, Any]:
                 "원고가 바뀌어 선택한 문장을 찾을 수 없습니다", selected_text=thread.selected_text
             )
         selection = {"start": spot[0], "end": spot[1]}
+    rules = (
+        (
+            await session.execute(
+                select(WorldRule)
+                .where(WorldRule.project_id == job.project_id)
+                .order_by(WorldRule.created_at, WorldRule.id)
+            )
+        )
+        .scalars()
+        .all()
+    )
     return {
+        "world_rules": [
+            {
+                "rule_id": str(r.id),
+                "title": r.title,
+                "description": r.description,
+                "origin": r.origin,
+                "evidence": r.evidence,
+            }
+            for r in rules
+        ],
         "question": question.content,
         "manuscript_text": text,
         "scope": PACKAGE_SCOPE.get(thread.scope, "project"),
@@ -380,6 +402,7 @@ def _call(ai: AIClient, args: Any) -> Result:
         args["scope"],
         args["selection_range"],
         args["messages"],
+        world_rules=args["world_rules"],
     )
 
 

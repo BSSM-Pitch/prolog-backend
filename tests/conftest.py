@@ -267,8 +267,11 @@ class FakeAI:
         scope: str = "project",
         selection_range: Any = None,
         messages: Any = None,
+        *,
+        world_rules: Any = None,
     ) -> dict[str, Any]:
-        return self._next("run_aiq", question, manuscript_text, scope, selection_range, messages)
+        args = (question, manuscript_text, scope, selection_range, messages)
+        return self._next("run_aiq", *args, *([world_rules] if world_rules else []))
 
     def run_scds_rules(
         self, event: Any, world_rules: Any, characters: Any = None

@@ -35,6 +35,8 @@ class AIClient(Protocol):
         scope: str = "project",
         selection_range: dict[str, int] | None = None,
         messages: list[dict[str, Any]] | None = None,
+        *,
+        world_rules: list[dict[str, Any]] | None = None,
     ) -> Result: ...
 
     def run_scds_rules(
@@ -139,10 +141,14 @@ class PrologAI:
         scope: str = "project",
         selection_range: dict[str, int] | None = None,
         messages: list[dict[str, Any]] | None = None,
+        *,
+        world_rules: list[dict[str, Any]] | None = None,
     ) -> Result:
-        from prolog_ai import run_aiq
+        from app.ai.grounded_qa import answer
 
-        return run_aiq(question, manuscript_text, scope, selection_range, messages)
+        return answer(
+            question, manuscript_text, scope, selection_range, messages, world_rules or []
+        )
 
     def run_scds_rules(
         self,
