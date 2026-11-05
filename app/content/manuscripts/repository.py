@@ -3,9 +3,10 @@ from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import func, literal, select, tuple_
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.content.manuscripts.models import Chapter, Manuscript
+from app.content.manuscripts.models import Chapter, Manuscript, ManuscriptCounter
 
 
 async def count_by_projects(session: AsyncSession, project_ids: Sequence[UUID]) -> dict[UUID, int]:
@@ -77,6 +78,16 @@ async def list_manuscripts(
             < tuple_(literal(cursor[0]), literal(cursor[1]))
         )
     return list((await session.execute(stmt)).scalars())
+
+
+async def next_manuscript_seq(session: AsyncSession, project_id: UUID) -> int:
+    """작품의 원고 생성 순번을 하나 올려 돌려준다. 동시에 만들어도 같은 번호가 나가지 않는다."""
+    stmt = pg_insert(ManuscriptCounter).values(project_id=project_id, seq=1)
+    stmt = stmt.on_conflict_do_update(
+        index_elements=[ManuscriptCounter.project_id],
+        set_={"seq": ManuscriptCounter.seq + 1, "updated_at": func.now()},
+    ).returning(ManuscriptCounter.seq)
+    return (await session.execute(stmt)).scalar_one()
 
 
 async def add_manuscript(session: AsyncSession, manuscript: Manuscript) -> Manuscript:

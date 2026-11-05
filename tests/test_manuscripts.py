@@ -52,8 +52,13 @@ async def test_editor_manuscript_is_ready_with_empty_body(client: AsyncClient) -
     assert data["status"] == "ready"
     assert data["content"] == ""
     assert data["file_key"] is None
-    assert data["chapter_count"] == 0
+    # 에디터 원고는 열자마자 쓸 수 있게 빈 1장이 같이 만들어진다.
+    assert data["chapter_count"] == 1
     assert data["extraction_job_id"] is None
+    first = await client.get(
+        f"/projects/{pid}/chapters?manuscript_id={data['manuscript_id']}", headers=user["headers"]
+    )
+    assert [(c["chapter_no"], c["content"]) for c in first.json()["data"]] == [(1, "")]
 
     listed = await client.get(f"/projects/{pid}/manuscripts", headers=user["headers"])
     assert [m["manuscript_id"] for m in listed.json()["data"]] == [data["manuscript_id"]]
@@ -180,7 +185,7 @@ async def test_chapters_live_under_the_project(client: AsyncClient) -> None:
     listed = await client.get(
         f"/projects/{pid}/chapters?manuscript_id={mid}", headers=user["headers"]
     )
-    assert [c["chapter_no"] for c in listed.json()["data"]] == [3]
+    assert [c["chapter_no"] for c in listed.json()["data"]] == [1, 3]
 
     patched = await client.patch(
         f"/projects/{pid}/chapters/{chapter['chapter_id']}",
@@ -191,7 +196,7 @@ async def test_chapters_live_under_the_project(client: AsyncClient) -> None:
 
     # 원고 응답의 chapter_count 는 같은 모듈에서 센다.
     detail = await client.get(f"/projects/{pid}/manuscripts/{mid}", headers=user["headers"])
-    assert detail.json()["data"]["chapter_count"] == 1
+    assert detail.json()["data"]["chapter_count"] == 2
 
     assert (
         await client.delete(
@@ -210,7 +215,7 @@ async def test_deleting_a_manuscript_removes_its_chapters(client: AsyncClient) -
     ms = await _manuscript(client, user, pid)
     await client.post(
         f"/projects/{pid}/chapters",
-        json={"manuscript_id": ms["manuscript_id"], "chapter_no": 1, "content": "x"},
+        json={"manuscript_id": ms["manuscript_id"], "chapter_no": 2, "content": "x"},
         headers=user["headers"],
     )
 
@@ -296,7 +301,7 @@ async def test_chapter_project_id_must_match_its_manuscript(
         Chapter(
             project_id=UUID("00000000-0000-0000-0000-000000000000"),
             manuscript_id=UUID(ms["manuscript_id"]),
-            chapter_no=1,
+            chapter_no=2,
             content="",
         )
     )
@@ -310,8 +315,8 @@ async def test_chapters_are_cursor_paginated_by_chapter_no(client: AsyncClient) 
     user, pid = await _project(client, "chpage@example.com")
     first = (await _manuscript(client, user, pid, title="1부"))["manuscript_id"]
     second = (await _manuscript(client, user, pid, title="2부"))["manuscript_id"]
-    # 원고가 둘이면 화 번호가 겹친다 — 타이는 id 로 끊는다.
-    for mid, no in [(first, 2), (first, 1), (second, 1)]:
+    # 원고마다 빈 1장이 이미 있어 화 번호가 겹친다 — 타이는 id 로 끊는다.
+    for mid, no in [(first, 2), (second, 2)]:
         res = await client.post(
             f"/projects/{pid}/chapters",
             json={"manuscript_id": mid, "chapter_no": no},
@@ -330,8 +335,8 @@ async def test_chapters_are_cursor_paginated_by_chapter_no(client: AsyncClient) 
         cursor = page["meta"]["next_cursor"]
         if cursor is None:
             break
-    assert [no for no, _ in seen] == [1, 1, 2]
-    assert len(set(seen)) == 3
+    assert [no for no, _ in seen] == [1, 1, 2, 2]
+    assert len(set(seen)) == 4
 
     # 원고 필터와 함께 써도 커서가 이어진다.
     only = await client.get(
@@ -353,6 +358,11 @@ async def test_export_joins_chapters_in_order_as_txt_and_docx(client: AsyncClien
     mid = ms["manuscript_id"]
     url = f"/projects/{pid}/manuscripts/{mid}/export"
 
+    # 챕터가 없는 원고(업로드 추출 결과 등)의 내보내기를 보려고 처음 1장을 지운다.
+    first = (
+        await client.get(f"/projects/{pid}/chapters?manuscript_id={mid}", headers=user["headers"])
+    ).json()["data"][0]
+    await client.delete(f"/projects/{pid}/chapters/{first['chapter_id']}", headers=user["headers"])
     await client.patch(
         f"/projects/{pid}/manuscripts/{mid}", json={"content": "통짜 본문"}, headers=user["headers"]
     )
@@ -408,3 +418,38 @@ async def test_export_rejects_bad_format_and_unready_manuscript(client: AsyncCli
         headers=user["headers"],
     )
     assert code(missing) == "MANUSCRIPT_NOT_FOUND"
+
+
+async def test_default_title_counts_creations_not_current_manuscripts(
+    client: AsyncClient,
+) -> None:
+    """제목을 비우면 서버가 "N차 원고" 를 붙이고, 지워도 N 은 줄지 않는다."""
+    user, pid = await _project(client, "seq1@example.com")
+    url = f"/projects/{pid}/manuscripts"
+
+    async def create(**body: object) -> dict:
+        res = await client.post(url, json=body | {"source_type": "editor"}, headers=user["headers"])
+        assert res.status_code == 201, res.text
+        return res.json()["data"]
+
+    one, two, three = await create(), await create(), await create()
+    assert [m["title"] for m in (one, two, three)] == ["1차 원고", "2차 원고", "3차 원고"]
+
+    # 1차를 지운 뒤 새로 만들면 "3차 원고" 와 겹치지 않고 4번째로 만든 원고다.
+    assert (
+        await client.delete(f"{url}/{one['manuscript_id']}", headers=user["headers"])
+    ).status_code == 204
+    assert (await create())["title"] == "4차 원고"
+
+    # 직접 지은 제목도 만든 횟수로 센다.
+    assert (await create(title="외전"))["title"] == "외전"
+    assert (await create())["title"] == "6차 원고"
+
+    # 번호는 작품마다 따로다.
+    other_user, other_pid = await _project(client, "seq2@example.com")
+    first = await client.post(
+        f"/projects/{other_pid}/manuscripts",
+        json={"source_type": "editor"},
+        headers=other_user["headers"],
+    )
+    assert first.json()["data"]["title"] == "1차 원고"

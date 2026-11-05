@@ -83,18 +83,28 @@ async def _get(
 async def create(
     session: AsyncSession, project_id: UUID, body: ManuscriptCreate
 ) -> ManuscriptResponse:
-    """에디터 원고는 빈 본문으로 즉시 `ready`, 업로드 원고는 파일이 오기 전까지 `draft`."""
+    """에디터 원고는 빈 본문으로 즉시 `ready` + 빈 1장, 업로드 원고는 파일이 오기 전까지 `draft`.
+
+    제목을 비우면 "N차 원고". 순번은 원고를 만들 때마다 오르므로 제목을 직접 지은 원고도 센다.
+    """
     editor = body.source_type == "editor"
+    seq = await repo.next_manuscript_seq(session, project_id)
     manuscript = await repo.add_manuscript(
         session,
         Manuscript(
             project_id=project_id,
-            title=body.title,
+            title=body.title or f"{seq}차 원고",
             source_type=body.source_type,
             content="" if editor else None,
             status="ready" if editor else "draft",
         ),
     )
+    if editor:
+        # 열자마자 쓸 수 있게 1장을 만들어 둔다. 제목이 없으면 내보낼 때도 "1장" 으로 나온다.
+        await repo.add_chapter(
+            session,
+            Chapter(project_id=project_id, manuscript_id=manuscript.id, chapter_no=1, content=""),
+        )
     return await _one(session, manuscript)
 
 

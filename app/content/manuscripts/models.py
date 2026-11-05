@@ -21,6 +21,16 @@ class Manuscript(Base, Timestamps):
     extraction_job_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True))
 
 
+class ManuscriptCounter(Base, Timestamps):
+    """작품별 원고 생성 순번. 원고를 지워도 줄지 않는다 (0014)."""
+
+    __tablename__ = "manuscript_counters"
+    __table_args__ = {"schema": "content"}
+
+    project_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True)
+    seq: Mapped[int] = mapped_column(Integer, default=0)
+
+
 class Chapter(Base, Timestamps):
     __tablename__ = "chapters"
     __table_args__ = {"schema": "content"}

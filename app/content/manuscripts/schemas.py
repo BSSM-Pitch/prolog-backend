@@ -10,7 +10,8 @@ ManuscriptStatus = Literal["draft", "processing", "ready", "failed"]
 
 
 class ManuscriptCreate(BaseModel):
-    title: str = Field(min_length=1, max_length=200)
+    # 비우면 서버가 "N차 원고" 로 붙인다. N 은 작품에서 원고를 만든 횟수다(지워도 줄지 않는다).
+    title: str | None = Field(default=None, min_length=1, max_length=200)
     source_type: SourceType = "editor"
 
 
