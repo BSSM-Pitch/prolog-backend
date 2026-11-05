@@ -24,6 +24,8 @@ from app.db.session import SessionFactory
 from app.events.consumer import consume
 from app.events.queue import AI_QUEUE, SqsQueue
 from app.insight.aiq import service as aiq
+from app.insight.character_memory import assessment as character_assessment
+from app.insight.character_memory import service as character_memory
 from app.insight.scds import service as scds
 from app.insight.ssm import service as ssm
 
@@ -36,6 +38,8 @@ HANDLERS: dict[str, Handler] = {
     aiq.JOB_TYPE: aiq.handle,
     scds.JOB_TYPE: scds.handle,
     ssm.JOB_TYPE: ssm.handle,
+    character_memory.JOB_TYPE: character_memory.handle,
+    character_assessment.JOB_TYPE: character_assessment.handle,
 }
 
 ai: AIClient = PrologAI()

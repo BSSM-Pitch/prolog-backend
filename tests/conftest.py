@@ -250,6 +250,13 @@ class FakeAI:
     def run_nlcd(self, source_text: str) -> dict[str, Any]:
         return self._next("run_nlcd", source_text, default=dict(self.EMPTY_NLCD))
 
+    def run_character_assessment(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return self._next("run_character_assessment", payload)
+
+    def run_character_discovery(self, payload: dict[str, Any]) -> dict[str, Any]:
+        self.calls.append(("run_character_discovery", (payload,)))
+        return {"data": {"people": []}}
+
     def run_rex(self, manuscript_text: str) -> dict[str, Any]:
         return self._next("run_rex", manuscript_text)
 
@@ -281,6 +288,11 @@ class FakeAI:
 
     def run_ssm(self, manuscript_text: str, characters: Any = None) -> dict[str, Any]:
         return self._next("run_ssm", manuscript_text)
+
+    def run_character_memory(
+        self, project_id: str, scenes: Any, characters: Any, previous_memory: Any = None
+    ) -> dict[str, Any]:
+        return self._next("run_character_memory", project_id, scenes, characters, previous_memory)
 
 
 app.dependency_overrides[google_oauth] = FakeGoogle

@@ -16,6 +16,7 @@ from app.core import openapi
 from app.core.errors import AppError
 from app.core.response import Envelope, ok
 from app.insight.aiq.router import router as aiq_router
+from app.insight.character_memory.router import router as character_memory_router
 from app.insight.fts.router import router as fts_router
 from app.insight.scds.router import router as scds_router
 from app.insight.ssm.router import router as ssm_router
@@ -101,6 +102,7 @@ for _router in (
     aiq_router,
     scds_router,
     ssm_router,
+    character_memory_router,
     api_router,
     nlcd_router,
     nlcd_forward_router,
