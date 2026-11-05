@@ -1364,6 +1364,23 @@
       },
       "ConflictCheckResponse": {
         "properties": {
+          "analysis_kind": {
+            "default": "legacy_keyword",
+            "enum": [
+              "ai_rule_review",
+              "legacy_keyword"
+            ],
+            "title": "Analysis Kind",
+            "type": "string"
+          },
+          "assessments": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/RuleAssessment"
+            },
+            "title": "Assessments",
+            "type": "array"
+          },
           "check_id": {
             "format": "uuid",
             "title": "Check Id",
@@ -2509,7 +2526,6 @@
               "type": "string"
             },
             "maxItems": 50,
-            "minItems": 1,
             "title": "Character Ids",
             "type": "array"
           },
@@ -2521,7 +2537,6 @@
           }
         },
         "required": [
-          "character_ids",
           "content"
         ],
         "title": "EventCreate",
@@ -6078,12 +6093,116 @@
         "title": "ResolveDiscoveredCharacter",
         "type": "object"
       },
+      "RuleAssessment": {
+        "properties": {
+          "evidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "rule_description": {
+            "title": "Rule Description",
+            "type": "string"
+          },
+          "rule_id": {
+            "format": "uuid",
+            "title": "Rule Id",
+            "type": "string"
+          },
+          "rule_title": {
+            "title": "Rule Title",
+            "type": "string"
+          },
+          "severity": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Severity"
+          },
+          "verdict": {
+            "enum": [
+              "supports",
+              "violates",
+              "undetermined"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule_id",
+          "rule_title",
+          "rule_description",
+          "verdict",
+          "reason"
+        ],
+        "title": "RuleAssessment",
+        "type": "object"
+      },
       "RuleCandidate": {
         "description": "추출 결과의 규칙 하나. `index` 로 확정·무시한다(명세 `selected_indices`).",
         "properties": {
           "description": {
             "title": "Description",
             "type": "string"
+          },
+          "duplicate_kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "exact",
+                  "suggested"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duplicate Kind"
+          },
+          "duplicate_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duplicate Reason"
+          },
+          "duplicate_rule_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duplicate Rule Id"
           },
           "evidence": {
             "anyOf": [
@@ -6158,6 +6277,58 @@
         "title": "RuleCandidate",
         "type": "object"
       },
+      "RuleEvidence": {
+        "properties": {
+          "candidate_index": {
+            "title": "Candidate Index",
+            "type": "integer"
+          },
+          "chapter_no": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chapter No"
+          },
+          "extraction_id": {
+            "format": "uuid",
+            "title": "Extraction Id",
+            "type": "string"
+          },
+          "manuscript_id": {
+            "format": "uuid",
+            "title": "Manuscript Id",
+            "type": "string"
+          },
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          },
+          "source_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Hash"
+          }
+        },
+        "required": [
+          "manuscript_id",
+          "extraction_id",
+          "candidate_index",
+          "quote"
+        ],
+        "title": "RuleEvidence",
+        "type": "object"
+      },
       "RuleExtractionConfirm": {
         "description": "명세 §4.4 + `ignored_indices`(화면 21 \"무시\", 명세에 없다).",
         "properties": {
@@ -6177,6 +6348,14 @@
             "maxItems": 200,
             "title": "Ignored Indices",
             "type": "array"
+          },
+          "merge_targets": {
+            "additionalProperties": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Merge Targets",
+            "type": "object"
           },
           "selected_indices": {
             "default": [],
@@ -6291,6 +6470,7 @@
       "RuleResult": {
         "properties": {
           "candidates": {
+            "description": "키워드 검색 단서. 위반 확정 결과가 아니다.",
             "items": {
               "$ref": "#/components/schemas/Candidate"
             },
@@ -7913,6 +8093,14 @@
               }
             ],
             "title": "Evidence"
+          },
+          "evidence_sources": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/RuleEvidence"
+            },
+            "title": "Evidence Sources",
+            "type": "array"
           },
           "extraction_id": {
             "anyOf": [
@@ -21414,7 +21602,7 @@
     },
     "/v1/projects/{projectId}/manuscripts/{manuscriptId}/rule-extractions/{extractionId}/confirm": {
       "post": {
-        "description": "`selected_indices` 의 후보를 `origin = ai_extracted` 규칙으로 만든다.\n\n새로 만든 규칙만 돌려준다.\n\n- `edits` 로 확정 전에 제목·설명·키워드를 고친다(키는 선택한 index).\n- `ignored_indices` 는 후보를 \"무시\" 로 표시한다(화면 21). 무시한 후보도 나중에 확정할 수 있다.\n- 이미 확정한 후보는 다시 만들지 않는다. 완료 전이면 `EXTRACTION_NOT_READY`.",
+        "description": "`selected_indices` 의 후보를 `origin = ai_extracted` 규칙으로 만든다.\n\n새로 만들거나 근거를 합친 기존 규칙을 돌려준다.\n\n- `edits` 로 확정 전에 제목·설명·키워드를 고친다(키는 선택한 index).\n- `ignored_indices` 는 후보를 \"무시\" 로 표시한다(화면 21). 무시한 후보도 나중에 확정할 수 있다.\n- `merge_targets`는 선택한 후보의 근거를 합칠 프로젝트 내 규칙 ID다.\n- 같은 내용은 기존 규칙에 근거를 합친다. 기존 설명·키워드는 덮어쓰지 않는다.\n- 이미 확정한 후보는 다시 만들지 않는다. 완료 전이면 `EXTRACTION_NOT_READY`.",
         "operationId": "confirm_extraction_v1_projects__projectId__manuscripts__manuscriptId__rule_extractions__extractionId__confirm_post",
         "parameters": [
           {

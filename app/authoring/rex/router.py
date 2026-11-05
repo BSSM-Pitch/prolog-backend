@@ -190,10 +190,12 @@ async def confirm_extraction(
 ) -> dict[str, Any]:
     """`selected_indices` 의 후보를 `origin = ai_extracted` 규칙으로 만든다.
 
-    새로 만든 규칙만 돌려준다.
+    새로 만들거나 근거를 합친 기존 규칙을 돌려준다.
 
     - `edits` 로 확정 전에 제목·설명·키워드를 고친다(키는 선택한 index).
     - `ignored_indices` 는 후보를 "무시" 로 표시한다(화면 21). 무시한 후보도 나중에 확정할 수 있다.
+    - `merge_targets`는 선택한 후보의 근거를 합칠 프로젝트 내 규칙 ID다.
+    - 같은 내용은 기존 규칙에 근거를 합친다. 기존 설명·키워드는 덮어쓰지 않는다.
     - 이미 확정한 후보는 다시 만들지 않는다. 완료 전이면 `EXTRACTION_NOT_READY`.
     """
     rules = await extraction.confirm(session, project_id, manuscript_id, extraction_id, body)

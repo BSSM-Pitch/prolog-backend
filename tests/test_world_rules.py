@@ -58,7 +58,9 @@ async def test_rules_list_oldest_first_with_cursor(client: AsyncClient) -> None:
     ids = []
     for title in ("R01", "R02", "R03"):
         res = await client.post(
-            f"/projects/{pid}/world-rules", json={"title": title, "description": "d"}, headers=h
+            f"/projects/{pid}/world-rules",
+            json={"title": title, "description": f"description {title}"},
+            headers=h,
         )
         ids.append(res.json()["data"]["rule_id"])
     first = (await client.get(f"/projects/{pid}/world-rules?limit=2", headers=h)).json()

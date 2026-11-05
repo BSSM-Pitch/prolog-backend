@@ -20,6 +20,14 @@ Result = dict[str, Any]
 
 
 class AIClient(Protocol):
+    def run_rule_duplicates(
+        self, candidates: list[dict[str, Any]], rules: list[dict[str, Any]]
+    ) -> Result: ...
+
+    def run_rule_review(
+        self, event: dict[str, Any], rules: list[dict[str, Any]], characters: list[dict[str, Any]]
+    ) -> Result: ...
+
     def run_character_discovery(self, payload: dict[str, Any]) -> Result: ...
 
     def run_character_assessment(self, payload: dict[str, Any]) -> Result: ...
@@ -94,6 +102,20 @@ class PrologAI:
             os.environ.setdefault("OPENROUTER_API_KEY", settings.openrouter_api_key)
         if settings.prolog_ai_model:
             os.environ.setdefault("PROLOG_AI_MODEL", settings.prolog_ai_model)
+
+    def run_rule_duplicates(
+        self, candidates: list[dict[str, Any]], rules: list[dict[str, Any]]
+    ) -> Result:
+        from app.ai.rule_review import duplicates
+
+        return duplicates(candidates, rules)
+
+    def run_rule_review(
+        self, event: dict[str, Any], rules: list[dict[str, Any]], characters: list[dict[str, Any]]
+    ) -> Result:
+        from app.ai.rule_review import review
+
+        return review(event, rules, characters)
 
     def run_character_discovery(self, payload: dict[str, Any]) -> Result:
         from app.ai.character_discovery import run

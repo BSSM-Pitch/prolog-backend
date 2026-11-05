@@ -59,7 +59,7 @@ async def _extract(client: AsyncClient, m: dict[str, Any], *results: dict[str, A
     eid = res.json()["data"]["extraction_id"]
     ai = FakeAI(*results)
     await handle(SessionFactory, UUID(eid), ai)
-    assert ai.calls == [("run_rex", (BODY,))] or not results
+    assert ai.calls[0] == ("run_rex", (BODY,)) or not results
     return str(eid)
 
 
@@ -155,3 +155,96 @@ async def test_extraction_belongs_to_its_manuscript(client: AsyncClient) -> None
     ).json()["data"]["manuscript_id"]
     wrong = m["base"].replace(m["mid"], other)
     assert code(await client.get(f"{wrong}/{eid}", headers=m["h"])) == "RULE_EXTRACTION_NOT_FOUND"
+
+
+async def test_repeated_extraction_merges_evidence_into_existing_rule(client: AsyncClient) -> None:
+    m = await _manuscript(client, "rx-dedup@example.com")
+    original = (
+        await client.post(
+            f"/projects/{m['pid']}/world-rules",
+            json={
+                "title": "기존 규칙",
+                "description": RULES["data"]["extracted_rules"][0]["description"],
+                "violation_keywords": [],
+            },
+            headers=m["h"],
+        )
+    ).json()["data"]
+    eid = await _extract(client, m, RULES)
+    candidates = (await client.get(f"{m['base']}/{eid}", headers=m["h"])).json()["data"][
+        "extracted_rules"
+    ]
+    assert candidates[0]["duplicate_rule_id"] == original["rule_id"]
+    assert candidates[0]["duplicate_kind"] == "exact"
+    confirmed = await client.post(
+        f"{m['base']}/{eid}/confirm", json={"selected_indices": [0]}, headers=m["h"]
+    )
+    [merged] = confirmed.json()["data"]
+    assert merged["rule_id"] == original["rule_id"]
+    assert merged["title"] == "기존 규칙" and merged["violation_keywords"] == []
+    assert merged["evidence_sources"][0]["manuscript_id"] == m["mid"]
+    assert merged["evidence_sources"][0]["quote"] == RULES["data"]["extracted_rules"][0]["evidence"]
+    await client.post(f"{m['base']}/{eid}/confirm", json={"selected_indices": [0]}, headers=m["h"])
+    listed = (await client.get(f"/projects/{m['pid']}/world-rules", headers=m["h"])).json()["data"]
+    assert len(listed) == 1 and len(listed[0]["evidence_sources"]) == 1
+    eid2 = await _extract(client, m, RULES)
+    await client.post(f"{m['base']}/{eid2}/confirm", json={"selected_indices": [0]}, headers=m["h"])
+    listed = (await client.get(f"/projects/{m['pid']}/world-rules", headers=m["h"])).json()["data"]
+    assert len(listed) == 1 and len(listed[0]["evidence_sources"]) == 1
+
+
+async def test_semantic_merge_requires_project_owned_target(client: AsyncClient) -> None:
+    m = await _manuscript(client, "rx-merge@example.com")
+    other = await _manuscript(client, "rx-merge-other@example.com")
+    foreign = (
+        await client.post(
+            f"/projects/{other['pid']}/world-rules",
+            json={"title": "다른 프로젝트", "description": "외부 규칙"},
+            headers=other["h"],
+        )
+    ).json()["data"]
+    eid = await _extract(client, m, RULES)
+    response = await client.post(
+        f"{m['base']}/{eid}/confirm",
+        json={"selected_indices": [0], "merge_targets": {"0": foreign["rule_id"]}},
+        headers=m["h"],
+    )
+    assert code(response) == "INVALID_INPUT"
+    target = (
+        await client.post(
+            f"/projects/{m['pid']}/world-rules",
+            json={"title": "우천 제한", "description": "강우가 멈춘 이후에만 붉은 문 개방 가능"},
+            headers=m["h"],
+        )
+    ).json()["data"]
+    merged = (
+        await client.post(
+            f"{m['base']}/{eid}/confirm",
+            json={"selected_indices": [0], "merge_targets": {"0": target["rule_id"]}},
+            headers=m["h"],
+        )
+    ).json()["data"]
+    assert merged[0]["rule_id"] == target["rule_id"]
+    assert merged[0]["description"] == target["description"]
+
+
+async def test_two_extraction_confirms_do_not_race_into_duplicate_rules(
+    client: AsyncClient,
+) -> None:
+    import asyncio
+
+    m = await _manuscript(client, "rx-race@example.com")
+    first = await _extract(client, m, RULES)
+    second = await _extract(client, m, RULES)
+    responses = await asyncio.gather(
+        *[
+            client.post(
+                f"{m['base']}/{eid}/confirm", json={"selected_indices": [0]}, headers=m["h"]
+            )
+            for eid in (first, second)
+        ]
+    )
+    assert all(r.status_code == 201 for r in responses)
+    assert responses[0].json()["data"][0]["rule_id"] == responses[1].json()["data"][0]["rule_id"]
+    rules = (await client.get(f"/projects/{m['pid']}/world-rules", headers=m["h"])).json()["data"]
+    assert len(rules) == 1 and len(rules[0]["evidence_sources"]) == 1

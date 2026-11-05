@@ -8,6 +8,7 @@
 원고는 REX 가 MSU(Ring 2)에서 읽는다 — 아래 Ring 이라 import 할 수 있다.
 """
 
+import hashlib
 from typing import Any, cast
 from uuid import UUID
 
@@ -16,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai import jobs as ai_jobs
 from app.ai.client import AIClient, Result
+from app.authoring.rex.deduplication import identity, locked_rules
 from app.authoring.rex.models import WorldRule
 from app.authoring.rex.schemas import (
     CandidateEdit,
@@ -25,6 +27,7 @@ from app.authoring.rex.schemas import (
     RuleExtractionResponse,
 )
 from app.content.manuscripts import service as manuscripts
+from app.content.manuscripts.models import Chapter
 from app.core import errors
 from app.jobs import service as jobs
 from app.jobs.models import Job
@@ -67,6 +70,9 @@ def to_response(job: Job) -> RuleExtractionResponse:
                 source_chapter=r.get("source_chapter"),
                 review_status=reviews.get(str(i), {}).get("status", "pending"),
                 rule_id=reviews.get(str(i), {}).get("rule_id"),
+                duplicate_rule_id=r.get("duplicate_rule_id"),
+                duplicate_reason=r.get("duplicate_reason"),
+                duplicate_kind=r.get("duplicate_kind"),
             )
             for i, r in enumerate(_rules(job))
         ],
@@ -170,7 +176,8 @@ async def confirm(
     selected, ignored = list(dict.fromkeys(body.selected_indices)), set(body.ignored_indices)
     wrong = [i for i in [*selected, *ignored] if not 0 <= i < len(rules)]
     edit_keys = {k for k in body.edits if k not in {str(i) for i in selected}}
-    if wrong or edit_keys or set(selected) & ignored:
+    invalid_merges = set(body.merge_targets) - {str(i) for i in selected}
+    if wrong or edit_keys or invalid_merges or set(selected) & ignored:
         raise errors.InvalidInput(
             "선택·무시·수정할 후보가 올바르지 않습니다",
             out_of_range=wrong,
@@ -178,25 +185,68 @@ async def confirm(
             both=sorted(set(selected) & ignored),
         )
 
+    existing = await locked_rules(session, project_id)
     created = []
     for i in selected:
         if reviews.get(str(i), {}).get("status") == "confirmed":
             continue
         candidate = rules[i] | body.edits.get(str(i), _NO_EDIT).model_dump(exclude_none=True)
-        rule = WorldRule(
-            project_id=project_id,
-            title=candidate["title"],
-            description=candidate["description"],
-            violation_keywords=candidate.get("violation_keywords") or [],
-            origin="ai_extracted",
-            evidence=candidate.get("evidence"),
-            extraction_job_id=job.id,
-            source_chapter_no=candidate.get("source_chapter"),
+        target = body.merge_targets.get(str(i))
+        rule = (
+            next((r for r in existing if r.id == target), None)
+            if target
+            else next(
+                (
+                    r
+                    for r in existing
+                    if identity(r.description) == identity(candidate["description"])
+                ),
+                None,
+            )
         )
-        session.add(rule)
-        await session.flush()
+        if target and rule is None:
+            raise errors.InvalidInput(
+                "합칠 기존 규칙을 이 프로젝트에서 찾을 수 없습니다", field="merge_targets"
+            )
+        if rule is None:
+            rule = WorldRule(
+                project_id=project_id,
+                title=candidate["title"],
+                description=candidate["description"],
+                violation_keywords=candidate.get("violation_keywords") or [],
+                origin="ai_extracted",
+                evidence=candidate.get("evidence"),
+                extraction_job_id=job.id,
+                source_chapter_no=candidate.get("source_chapter"),
+                evidence_sources=[],
+            )
+            session.add(rule)
+            await session.flush()
+            existing.append(rule)
+        quote = candidate.get("evidence")
+        if quote:
+            source = {
+                "manuscript_id": str(manuscript_id),
+                "extraction_id": str(job.id),
+                "candidate_index": i,
+                "chapter_no": candidate.get("source_chapter"),
+                "source_hash": (job.result or {}).get("source_hash"),
+                "quote": quote,
+            }
+            sources = list(rule.evidence_sources or [])
+            if not any(
+                s.get("manuscript_id") == source["manuscript_id"]
+                and s.get("source_hash") == source["source_hash"]
+                and s.get("quote") == quote
+                and s.get("chapter_no") == source["chapter_no"]
+                for s in sources
+            ):
+                rule.evidence_sources = [*sources, source]
+            if not rule.evidence:
+                rule.evidence = quote
         reviews[str(i)] = {"status": "confirmed", "rule_id": str(rule.id)}
-        created.append(rule)
+        if rule not in created:
+            created.append(rule)
     for i in ignored:
         if reviews.get(str(i), {}).get("status") != "confirmed":
             reviews[str(i)] = {"status": "ignored", "rule_id": None}
@@ -210,14 +260,84 @@ async def confirm(
 # --- 워커 --------------------------------------------------------------------
 
 
-async def _prepare(session: AsyncSession, job: Job) -> str:
-    """실행 시점의 본문을 읽는다. 원고가 그 사이 지워졌으면 재시도 없이 실패한다."""
+async def _prepare(session: AsyncSession, job: Job) -> dict[str, Any]:
     manuscript = await manuscripts.get(session, job.project_id, cast(UUID, job.target_id))
-    return manuscript.content or ""
+    rows = (
+        await session.execute(select(WorldRule).where(WorldRule.project_id == job.project_id))
+    ).scalars()
+    chapters = (
+        (
+            await session.execute(
+                select(Chapter).where(
+                    Chapter.project_id == job.project_id, Chapter.manuscript_id == job.target_id
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return {
+        "chapters": [{"chapter_no": c.chapter_no, "content": c.content} for c in chapters],
+        "text": manuscript.content or "",
+        "existing_rules": [
+            {"rule_id": str(r.id), "title": r.title, "description": r.description} for r in rows
+        ],
+    }
 
 
-def _call(ai: AIClient, manuscript_text: Any) -> Result:
-    return ai.run_rex(manuscript_text)
+def _call(ai: AIClient, payload: Any) -> Result:
+    result = ai.run_rex(payload["text"])
+    if "error" in result:
+        return result
+    data = dict(result["data"])
+    candidates = [dict(c) for c in data.get("extracted_rules", [])]
+    existing = payload["existing_rules"]
+    suggestions: dict[int, dict[str, Any]] = {}
+    if candidates and existing:
+        review = ai.run_rule_duplicates(candidates, existing)
+        if "error" not in review:
+            for match in review["data"].get("matches", []):
+                index = match.get("candidate_index")
+                if (
+                    type(index) is int
+                    and 0 <= index < len(candidates)
+                    and any(r["rule_id"] == match.get("rule_id") for r in existing)
+                ):
+                    suggestions[index] = match
+    for i, candidate in enumerate(candidates):
+        quote = candidate.get("evidence")
+        matches = [c for c in payload["chapters"] if quote and quote in c["content"]]
+        if candidate.get("source_chapter") is None and len(matches) == 1:
+            candidate["source_chapter"] = matches[0]["chapter_no"]
+        exact = next(
+            (
+                r
+                for r in existing
+                if identity(r["description"]) == identity(candidate["description"])
+            ),
+            None,
+        )
+        hint = suggestions.get(i)
+        if exact or hint:
+            chosen = exact or hint
+            assert chosen is not None
+            candidate.update(
+                {
+                    "duplicate_rule_id": chosen["rule_id"],
+                    "duplicate_kind": "exact" if exact else "suggested",
+                    "duplicate_reason": "공백·표기를 정규화한 규칙 내용이 같습니다."
+                    if exact
+                    else chosen["reason"],
+                }
+            )
+    return {
+        "data": {
+            **data,
+            "extracted_rules": candidates,
+            "source_hash": hashlib.sha256(payload["text"].encode()).hexdigest(),
+        },
+        "meta": result.get("meta", {}),
+    }
 
 
 async def handle(sessions: Any, job_id: UUID, ai: AIClient) -> ai_jobs.Outcome:

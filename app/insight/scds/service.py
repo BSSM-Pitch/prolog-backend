@@ -8,9 +8,9 @@
 **흐름(명세 §5).**
 1. 사건 저장 요청 안에서 `run_scds_rules`(LLM 없음, 동기). 억제된 후보(§4.11 `ignored` 와
    같은 조합)는 백엔드가 거른다 — 패키지는 억제를 모른다.
-2. 후보가 없으면 검사는 `skipped`. 있으면 `conflict_check` 잡(ai 큐) → `run_scds_analysis`.
-3. AI 가 성공하면 AI 가 남긴 충돌을 만든다(`detected_by = ai`). 끝내 실패하면 룰 후보를 조언 없는
-   충돌로 만든다(`detected_by = rule`) — 명세 §4.7 "failed 면 후보만 표시", ERD "advice null".
+2. 새 검사는 키워드 유무와 무관하게 모든 저장 규칙을 AI 의미 검토한다.
+3. 지지·위반·판단 불가를 구분하며 위반만 충돌로 저장한다. AI 실패는 판단 불가다.
+   배포 전 생성된 잡은 기존 후보 기반 분석 경로로 마무리한다.
 """
 
 import hashlib
@@ -122,6 +122,7 @@ async def rules_payload(session: AsyncSession, project_id: UUID) -> list[dict[st
     return [
         {
             "rule_id": str(r.id),
+            "title": r.title,
             "description": r.description,
             "violation_keywords": list(r.violation_keywords),
         }
@@ -162,6 +163,8 @@ async def to_check(session: AsyncSession, job: Job) -> ConflictCheckResponse:
         status=status_of(job),
         rule_result=RuleResult.model_validate(_rule_result(job)),
         conflict_ids=list(ids),
+        analysis_kind="ai_rule_review" if job.input.get("review_mode") else "legacy_keyword",
+        assessments=(job.result or {}).get("assessments", []),
         created_at=job.created_at,
         updated_at=job.updated_at,
     )
@@ -257,7 +260,8 @@ async def create_event(
     )
 
     payload = {"character_ids": [str(i) for i in ids], "content": body.content}
-    result = ai.run_scds_rules(payload, await rules_payload(session, project_id), characters)
+    rules = await rules_payload(session, project_id)
+    result = ai.run_scds_rules(payload, rules, characters)
     if "error" in result:
         raise errors.RuleEngineError(detail=result["error"].get("message"))
     rule_result = dict(result["data"]["rule_result"])
@@ -271,6 +275,17 @@ async def create_event(
     rule_result["suppressed_count"] = len(blocked)
     rule_result["has_candidate"] = bool(rule_result["candidates"])
 
+    # Suppression of an author-dismissed scene/rule applies to semantic checks too.
+    review_keys = [suppression_key("world", r["rule_id"], body.content) for r in rules]
+    suppressed_reviews = await _suppressed(session, project_id, review_keys)
+    review_rules = [
+        r for r, k in zip(rules, review_keys, strict=True) if k not in suppressed_reviews
+    ]
+    if not review_rules and suppressed_reviews:
+        rule_result["suppressed_count"] = max(
+            rule_result["suppressed_count"], len(suppressed_reviews)
+        )
+        rule_result.update(skipped=True, skipped_reason="ALL_RULES_DISMISSED")
     job = await jobs.create(
         session,
         project_id=project_id,
@@ -278,14 +293,13 @@ async def create_event(
         target_type="event",
         target_id=event.id,
         queue=QUEUE,
-        input={"rule_result": rule_result},
+        input={"rule_result": rule_result, "review_mode": "semantic-v1", "rules": review_rules},
         created_by=user_id,
     )
-    if rule_result["has_candidate"]:
+    if review_rules:
         jobs.announce(session, job)
     else:
-        # 참조 데이터가 없거나 후보가 없다 — AI 를 부르지 않는다(명세 §4.6 "후보 없음").
-        job.status, job.result = "skipped", {"rule_result": rule_result}
+        job.status, job.result = "skipped", {"rule_result": rule_result, "assessments": []}
     await session.flush()
     await session.refresh(job)
     await session.refresh(event)
@@ -355,10 +369,14 @@ async def _prepare(session: AsyncSession, job: Job) -> dict[str, Any]:
         "event": {"character_ids": [str(i) for i in ids], "content": event.description},
         "rule_result": rule_result,
         "characters": await characters_payload(session, job.project_id, ids),
+        "rules": job.input.get("rules", []),
+        "review_mode": job.input.get("review_mode"),
     }
 
 
 def _call(ai: AIClient, args: Any) -> Result:
+    if args.get("review_mode"):
+        return ai.run_rule_review(args["event"], args["rules"], args["characters"])
     return ai.run_scds_analysis(args["event"], args["rule_result"], args["characters"])
 
 
@@ -396,11 +414,82 @@ async def _conflict_rows(
 
 
 async def _analyzed(session: AsyncSession, job: Job, data: dict[str, Any]) -> None:
+    if job.input.get("review_mode"):
+        event = await session.get(Event, cast(UUID, job.target_id))
+        if event is None:
+            return
+        rules = {r["rule_id"]: r for r in job.input["rules"]}
+        current = {
+            str(r.id): r
+            for r in (
+                await session.execute(
+                    select(WorldRule)
+                    .where(WorldRule.project_id == job.project_id)
+                    .with_for_update()
+                )
+            ).scalars()
+        }
+        assessments = [dict(a) for a in data.get("assessments", [])]
+        for assessment in assessments:
+            latest = current.get(assessment["rule_id"])
+            snapshot = rules.get(assessment["rule_id"])
+            if latest is None or snapshot is None or latest.description != snapshot["description"]:
+                assessment.update(
+                    verdict="undetermined",
+                    severity=None,
+                    reason=(
+                        "AI 검토 중 규칙이 변경되거나 삭제되어 판정을 유보했습니다. "
+                        "다시 검사해 주세요."
+                    ),
+                )
+        job.result = {**(job.result or {}), "assessments": assessments}
+        for assessment in assessments:
+            rule = rules.get(assessment["rule_id"])
+            if rule is None or assessment["verdict"] != "violates":
+                continue
+            key = suppression_key("world", assessment["rule_id"], event.description)
+            if await _suppressed(session, job.project_id, [key]):
+                continue
+            session.add(
+                Conflict(
+                    project_id=job.project_id,
+                    event_id=event.id,
+                    chapter_id=event.chapter_id,
+                    character_id=None,
+                    rule_id=UUID(assessment["rule_id"]),
+                    detected_by="ai",
+                    severity=assessment.get("severity") or "medium",
+                    advice=assessment["reason"],
+                    conflict_target=rule["description"],
+                    matched_keyword=assessment.get("evidence"),
+                    suppression_key=key,
+                    job_id=job.id,
+                )
+            )
+        return
     await _conflict_rows(session, job, list(data.get("conflicts") or []), "ai")
 
 
 async def mark_failed(session: AsyncSession, job: Job, error: dict[str, Any] | None = None) -> None:
-    """AI 가 끝내 실패하면 룰 후보를 조언 없는 충돌로 남긴다. 스위퍼(좀비 소진)도 부른다."""
+    """새 검사는 AI 실패를 판단 불가로 남긴다. 이전 잡만 기존 후보 보존 정책을 쓴다."""
+    if job.input.get("review_mode"):
+        job.result = {
+            "assessments": [
+                {
+                    "rule_id": r["rule_id"],
+                    "rule_title": r.get("title", "설정 규칙"),
+                    "rule_description": r["description"],
+                    "verdict": "undetermined",
+                    "evidence": None,
+                    "severity": None,
+                    "reason": (
+                        "AI 검토를 완료하지 못했습니다. 키워드 일치만으로 위반을 판정하지 않습니다."
+                    ),
+                }
+                for r in job.input.get("rules", [])
+            ]
+        }
+        return
     await _conflict_rows(session, job, list(_rule_result(job).get("candidates") or []), "rule")
 
 

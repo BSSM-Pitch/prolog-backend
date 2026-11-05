@@ -71,13 +71,16 @@ async def _event(
 
 
 def advice_for(w: dict[str, Any]) -> dict[str, Any]:
-    conflict = {
-        "character_id": w["char"],
-        "conflict_target": "붉은 문은 비가 그친 뒤에만 열린다",
+    assessment = {
+        "rule_id": w["rule"],
+        "rule_title": "붉은 문",
+        "rule_description": "붉은 문은 비가 그친 뒤에만 열린다",
+        "verdict": "violates",
+        "evidence": VIOLATION,
         "severity": "high",
-        "advice": "비가 그친 뒤로 옮기는 것을 고려해 보세요.",
+        "reason": "비가 그친 뒤로 옮기는 것을 고려해 보세요.",
     }
-    return {"data": {"status": "completed", "rule_result": {}, "conflicts": [conflict]}, "meta": {}}
+    return {"data": {"assessments": [assessment]}, "meta": {}}
 
 
 async def test_rule_detection_then_ai_advice(client: AsyncClient, db: AsyncSession) -> None:
@@ -106,7 +109,8 @@ async def test_rule_detection_then_ai_advice(client: AsyncClient, db: AsyncSessi
     assert await handle(SessionFactory, UUID(check["check_id"]), ai) == "completed"
     event_arg, rule_arg, chars_arg = ai.calls[0][1]
     assert event_arg == {"character_ids": [w["char"]], "content": VIOLATION}
-    assert "suppressed_count" not in rule_arg  # 패키지 RuleResult 에 없는 필드는 빼고 넘긴다
+    assert rule_arg[0]["rule_id"] == w["rule"]
+    assert ai.calls[0][0] == "run_rule_review"
     assert chars_arg[0]["core_values"] == ["약속 중시"]
 
     got = (
@@ -131,7 +135,7 @@ async def test_rule_detection_then_ai_advice(client: AsyncClient, db: AsyncSessi
     assert [c["conflict_id"] for c in pending] == [cid]
 
 
-async def test_skipped_without_reference_or_match(client: AsyncClient) -> None:
+async def test_no_rules_skips_but_absent_keyword_still_gets_ai_review(client: AsyncClient) -> None:
     w = await _world(client, "sc2@example.com", rule=False)
     none = await _event(client, w)
     # 캐릭터에 핵심 가치가 있어 참조 데이터는 있다 — 걸린 규칙이 없을 뿐
@@ -139,7 +143,7 @@ async def test_skipped_without_reference_or_match(client: AsyncClient) -> None:
     assert none["conflict_check"]["rule_result"]["skipped"] is False
     w2 = await _world(client, "sc3@example.com")
     miss = await _event(client, w2, content="윤서는 비가 그친 뒤 문을 열었다.")
-    assert miss["conflict_check"]["status"] == "skipped"
+    assert miss["conflict_check"]["status"] == "queued"
     assert miss["conflict_check"]["rule_result"]["has_candidate"] is False
 
 
@@ -171,7 +175,9 @@ async def test_resolve_and_ignored_is_suppressed(client: AsyncClient) -> None:
     assert other["conflict_check"]["status"] == "queued"
 
 
-async def test_ai_failure_keeps_candidates_and_retry(client: AsyncClient) -> None:
+async def test_ai_failure_keeps_only_unverified_keyword_clues_and_retry(
+    client: AsyncClient,
+) -> None:
     w = await _world(client, "sc5@example.com")
     h, pid = w["h"], w["pid"]
     check_id = (await _event(client, w))["conflict_check"]["check_id"]
@@ -185,13 +191,10 @@ async def test_ai_failure_keeps_candidates_and_retry(client: AsyncClient) -> Non
     assert await handle(SessionFactory, UUID(check_id), FakeAI(failed)) == "failed"
     got = (await client.get(f"/projects/{pid}/conflict-checks/{check_id}", headers=h)).json()
     assert got["error"] == {"code": "AI_ANALYSIS_FAILED", "message": "실패", "details": {}}
-    [cid] = got["data"]["conflict_ids"]
-    rule_only = (await client.get(f"/projects/{pid}/conflicts/{cid}", headers=h)).json()["data"]
-    assert (rule_only["detected_by"], rule_only["advice"], rule_only["severity"]) == (
-        "rule",
-        None,
-        None,
-    )
+    assert got["data"]["conflict_ids"] == []
+    assert got["data"]["assessments"][0]["verdict"] == "undetermined"
+    # A keyword match is retained separately; it never becomes a violation on AI failure.
+    assert got["data"]["rule_result"]["has_candidate"]
 
     res = await client.post(f"/projects/{pid}/conflict-checks/{check_id}/retry", headers=h)
     assert res.status_code == 202 and res.json()["data"]["status"] == "queued"
@@ -226,3 +229,71 @@ async def test_unknown_chapter_or_character(client: AsyncClient) -> None:
     assert code(await client.get(f"/projects/{pid}/conflict-checks/{UUID(int=4)}", headers=h)) == (
         "CONFLICT_CHECK_NOT_FOUND"
     )
+
+
+async def test_positive_keyword_is_not_a_violation_and_character_is_optional(
+    client: AsyncClient,
+) -> None:
+    w = await _world(client, "sc-positive@example.com")
+    await client.patch(
+        f"/projects/{w['pid']}/world-rules/{w['rule']}",
+        json={"description": "정확히 7시간 뒤의 메시지만 수신", "violation_keywords": ["7시간"]},
+        headers=w["h"],
+    )
+    res = await client.post(
+        f"/projects/{w['pid']}/chapters/{w['chapter']}/events",
+        json={
+            "character_ids": [],
+            "content": (
+                "현재 시각은 새벽 두 시. 발신 시각은 오늘 오전 아홉 시. "
+                "정확히 7시간 뒤의 메시지였다."
+            ),
+        },
+        headers=w["h"],
+    )
+    assert res.status_code == 201, res.text
+    check = res.json()["data"]["conflict_check"]
+    assert check["status"] == "queued"
+    assessment = {
+        "rule_id": w["rule"],
+        "rule_title": "미래 로그",
+        "rule_description": "정확히 7시간 뒤의 메시지만 수신",
+        "verdict": "supports",
+        "evidence": "정확히 7시간 뒤의 메시지였다.",
+        "reason": "같은 날 02:00에서 09:00까지 7시간이므로 일치",
+        "severity": None,
+    }
+    assert (
+        await handle(
+            SessionFactory, UUID(check["check_id"]), FakeAI({"data": {"assessments": [assessment]}})
+        )
+        == "completed"
+    )
+    result = (
+        await client.get(
+            f"/projects/{w['pid']}/conflict-checks/{check['check_id']}", headers=w["h"]
+        )
+    ).json()["data"]
+    assert result["analysis_kind"] == "ai_rule_review"
+    assert result["assessments"][0]["verdict"] == "supports"
+    assert result["conflict_ids"] == []
+
+
+async def test_changed_rule_cannot_publish_a_stale_violation(client: AsyncClient) -> None:
+    w = await _world(client, "sc-rule-changed@example.com")
+    check = (await _event(client, w))["conflict_check"]
+    await client.patch(
+        f"/projects/{w['pid']}/world-rules/{w['rule']}",
+        json={"description": "붉은 문은 언제든 열 수 있다"},
+        headers=w["h"],
+    )
+    assert (
+        await handle(SessionFactory, UUID(check["check_id"]), FakeAI(advice_for(w))) == "completed"
+    )
+    got = (
+        await client.get(
+            f"/projects/{w['pid']}/conflict-checks/{check['check_id']}", headers=w["h"]
+        )
+    ).json()["data"]
+    assert got["conflict_ids"] == []
+    assert got["assessments"][0]["verdict"] == "undetermined"

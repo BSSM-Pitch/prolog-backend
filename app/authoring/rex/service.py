@@ -11,8 +11,14 @@ from uuid import UUID
 from sqlalchemy import literal, select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.authoring.rex.deduplication import identity, locked_rules
 from app.authoring.rex.models import WorldRule
-from app.authoring.rex.schemas import WorldRuleCreate, WorldRuleResponse, WorldRuleUpdate
+from app.authoring.rex.schemas import (
+    RuleEvidence,
+    WorldRuleCreate,
+    WorldRuleResponse,
+    WorldRuleUpdate,
+)
 from app.core import errors
 
 
@@ -27,6 +33,7 @@ def to_responses(rows: Sequence[WorldRule]) -> list[WorldRuleResponse]:
             origin=r.origin,  # type: ignore[arg-type]
             extraction_id=r.extraction_job_id,
             evidence=r.evidence,
+            evidence_sources=[RuleEvidence.model_validate(s) for s in r.evidence_sources or []],
             source_chapter_no=r.source_chapter_no,
             created_at=r.created_at,
             updated_at=r.updated_at,
@@ -70,6 +77,12 @@ async def list_rules(
 async def create_rule(
     session: AsyncSession, project_id: UUID, body: WorldRuleCreate
 ) -> WorldRuleResponse:
+    existing = await locked_rules(session, project_id)
+    duplicate = next(
+        (r for r in existing if identity(r.description) == identity(body.description)), None
+    )
+    if duplicate is not None:
+        return await _one(session, duplicate)
     rule = WorldRule(
         project_id=project_id,
         title=body.title,

@@ -15,7 +15,7 @@ Content = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, 
 
 
 class EventCreate(BaseModel):
-    character_ids: list[UUID] = Field(min_length=1, max_length=50)
+    character_ids: list[UUID] = Field(default_factory=list, max_length=50)
     content: Content
 
 
@@ -39,9 +39,19 @@ class RuleResult(BaseModel):
     has_candidate: bool
     skipped: bool
     skipped_reason: str | None
-    candidates: list[Candidate]
+    candidates: list[Candidate] = Field(description="키워드 검색 단서. 위반 확정 결과가 아니다.")
     # 억제(ignored 처리한 같은 조합)로 뺀 후보 수. 명세에 없다(제안 목록).
     suppressed_count: int = 0
+
+
+class RuleAssessment(BaseModel):
+    rule_id: UUID
+    rule_title: str
+    rule_description: str
+    verdict: Literal["supports", "violates", "undetermined"]
+    reason: str
+    evidence: str | None = None
+    severity: Severity | None = None
 
 
 class ConflictCheckResponse(BaseModel):
@@ -50,6 +60,8 @@ class ConflictCheckResponse(BaseModel):
     status: CheckStatus
     rule_result: RuleResult
     conflict_ids: list[UUID]
+    analysis_kind: Literal["ai_rule_review", "legacy_keyword"] = "legacy_keyword"
+    assessments: list[RuleAssessment] = []
     created_at: datetime
     updated_at: datetime
 
