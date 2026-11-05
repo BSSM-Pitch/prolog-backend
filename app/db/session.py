@@ -21,4 +21,6 @@ async def get_session() -> AsyncIterator[AsyncSession]:
             raise
 
 
-Session = Annotated[AsyncSession, Depends(get_session)]
+# Commit/rollback must finish before the response is sent. Otherwise an immediate
+# chapter switch or invitation acceptance can read data that is not committed yet.
+Session = Annotated[AsyncSession, Depends(get_session, scope="function")]

@@ -40,12 +40,22 @@ class WorldRuleUpdate(BaseModel):
     _unique = field_validator("violation_keywords")(_dedupe)
 
 
+class RuleEvidence(BaseModel):
+    manuscript_id: UUID
+    extraction_id: UUID
+    candidate_index: int
+    source_hash: str | None = None
+    chapter_no: int | None = None
+    quote: str
+
+
 class WorldRuleResponse(BaseModel):
     rule_id: UUID
     project_id: UUID
     title: str
     description: str
     violation_keywords: list[str]
+    evidence_sources: list[RuleEvidence] = []
     origin: Literal["ai_extracted", "user_added"]
     # 명세는 `extraction_id`. AI 추출 경로(2b)에서 채운다 — 지금은 항상 null.
     extraction_id: UUID | None
@@ -74,6 +84,9 @@ class RuleCandidate(BaseModel):
     # 화면 21 의 "검토 대기 / 확정 / 무시". 명세에 없다(제안 목록).
     review_status: ReviewStatus
     rule_id: UUID | None = Field(description="확정했으면 만든 규칙 id")
+    duplicate_rule_id: UUID | None = None
+    duplicate_reason: str | None = None
+    duplicate_kind: Literal["exact", "suggested"] | None = None
 
 
 class RuleExtractionResponse(BaseModel):
@@ -106,3 +119,4 @@ class RuleExtractionConfirm(BaseModel):
     # 키는 선택한 index(문자열). 명세 예시 `{"0": {"description": ...}}`.
     edits: dict[str, CandidateEdit] = {}
     ignored_indices: list[int] = Field(default=[], max_length=200)
+    merge_targets: dict[str, UUID] = Field(default_factory=dict)

@@ -1,6 +1,8 @@
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import ARRAY, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -25,3 +27,7 @@ class WorldRule(Base, Timestamps):
     evidence: Mapped[str | None] = mapped_column(Text)
     extraction_job_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True))
     source_chapter_no: Mapped[int | None] = mapped_column(Integer)
+
+    evidence_sources: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, default=list, server_default="[]"
+    )
