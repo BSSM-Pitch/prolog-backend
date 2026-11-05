@@ -20,6 +20,10 @@ Result = dict[str, Any]
 
 
 class AIClient(Protocol):
+    def run_character_discovery(self, payload: dict[str, Any]) -> Result: ...
+
+    def run_character_assessment(self, payload: dict[str, Any]) -> Result: ...
+
     def run_nlcd(self, source_text: str) -> Result: ...
 
     def run_rex(self, manuscript_text: str) -> Result: ...
@@ -51,6 +55,14 @@ class AIClient(Protocol):
         self, manuscript_text: str, characters: list[dict[str, Any]] | None = None
     ) -> Result: ...
 
+    def run_character_memory(
+        self,
+        project_id: str,
+        scenes: list[dict[str, Any]],
+        characters: list[dict[str, Any]],
+        previous_memory: dict[str, Any] | None = None,
+    ) -> Result: ...
+
 
 def is_retryable(error: dict[str, Any]) -> bool:
     """패키지 에러를 잡 자동 재시도 대상(인프라 실패)으로 볼 것인가.
@@ -69,15 +81,51 @@ class PrologAI:
     """실제 구현. 패키지는 첫 호출 때 import 한다(테스트·API 프로세스가 openai 를 끌어오지 않게)."""
 
     def __init__(self) -> None:
+        for key, value in {
+            "NVIDIA_API_KEY": settings.nvidia_api_key,
+            "PROLOG_AI_PROVIDER": settings.prolog_ai_provider,
+            "PROLOG_AI_REASONING_EFFORT": settings.prolog_ai_reasoning_effort,
+        }.items():
+            if value:
+                os.environ.setdefault(key, value)
         if settings.openrouter_api_key:
             os.environ.setdefault("OPENROUTER_API_KEY", settings.openrouter_api_key)
         if settings.prolog_ai_model:
             os.environ.setdefault("PROLOG_AI_MODEL", settings.prolog_ai_model)
 
+    def run_character_discovery(self, payload: dict[str, Any]) -> Result:
+        from app.ai.character_discovery import run
+
+        return run(payload)
+
     def run_nlcd(self, source_text: str) -> Result:
         from prolog_ai import run_nlcd
 
         return run_nlcd(source_text)
+
+    def run_character_assessment(self, payload: dict[str, Any]) -> Result:
+        from app.ai.character_assessment import run
+
+        return run(payload)
+
+    def run_character_memory(
+        self,
+        project_id: str,
+        scenes: list[dict[str, Any]],
+        characters: list[dict[str, Any]],
+        previous_memory: dict[str, Any] | None = None,
+    ) -> Result:
+        from prolog_ai import run_character_memory
+
+        return run_character_memory(
+            project_id,
+            scenes,
+            characters,
+            previous_memory=previous_memory,
+            chunk_chars=3000,
+            batch_chars=12000,
+            max_llm_calls=10,
+        )
 
     def run_rex(self, manuscript_text: str) -> Result:
         from prolog_ai import run_rex

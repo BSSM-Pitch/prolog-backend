@@ -40,6 +40,7 @@ modules =
     app.insight.aiq
     app.insight.rcv
     app.insight.fts
+    app.insight.character_memory
 
 [importlinter:contract:core-is-a-leaf]
 name = core/domain 은 어떤 모듈도 import 하지 않는다 (규칙 4)

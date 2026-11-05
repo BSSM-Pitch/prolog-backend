@@ -125,6 +125,31 @@
         "title": "AnalysisEnvelope",
         "type": "object"
       },
+      "AnalysisError": {
+        "properties": {
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "AnalysisError",
+        "type": "object"
+      },
       "AnalysisResponse": {
         "properties": {
           "analysis_id": {
@@ -429,6 +454,24 @@
         "title": "ChapterForeshadowingListEnvelope",
         "type": "object"
       },
+      "ChapterOption": {
+        "properties": {
+          "order": {
+            "title": "Order",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "order",
+          "title"
+        ],
+        "title": "ChapterOption",
+        "type": "object"
+      },
       "ChapterRef": {
         "properties": {
           "chapter_id": {
@@ -585,6 +628,458 @@
         "title": "ChapterUpdate",
         "type": "object"
       },
+      "CharacterAssessmentCoverage": {
+        "properties": {
+          "available_records": {
+            "title": "Available Records",
+            "type": "integer"
+          },
+          "available_scenes": {
+            "title": "Available Scenes",
+            "type": "integer"
+          },
+          "exhaustive": {
+            "title": "Exhaustive",
+            "type": "boolean"
+          },
+          "reviewed_records": {
+            "title": "Reviewed Records",
+            "type": "integer"
+          },
+          "reviewed_scenes": {
+            "title": "Reviewed Scenes",
+            "type": "integer"
+          },
+          "sampling": {
+            "title": "Sampling",
+            "type": "string"
+          }
+        },
+        "required": [
+          "available_records",
+          "reviewed_records",
+          "available_scenes",
+          "reviewed_scenes",
+          "sampling",
+          "exhaustive"
+        ],
+        "title": "CharacterAssessmentCoverage",
+        "type": "object"
+      },
+      "CharacterAssessmentJob": {
+        "properties": {
+          "assessment_id": {
+            "title": "Assessment Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CharacterAssessmentResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "completed",
+              "failed",
+              "skipped"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "assessment_id",
+          "status",
+          "created_at",
+          "finished_at",
+          "result",
+          "error"
+        ],
+        "title": "CharacterAssessmentJob",
+        "type": "object"
+      },
+      "CharacterAssessmentJobEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CharacterAssessmentJob"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "CharacterAssessmentJobEnvelope",
+        "type": "object"
+      },
+      "CharacterAssessmentOverview": {
+        "properties": {
+          "job": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CharacterAssessmentJob"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "memory_analysis_id": {
+            "title": "Memory Analysis Id",
+            "type": "string"
+          },
+          "rubric": {
+            "items": {
+              "$ref": "#/components/schemas/CharacterRubric"
+            },
+            "title": "Rubric",
+            "type": "array"
+          },
+          "rubric_version": {
+            "title": "Rubric Version",
+            "type": "string"
+          },
+          "stale": {
+            "title": "Stale",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "rubric_version",
+          "rubric",
+          "stale",
+          "memory_analysis_id",
+          "job"
+        ],
+        "title": "CharacterAssessmentOverview",
+        "type": "object"
+      },
+      "CharacterAssessmentOverviewEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CharacterAssessmentOverview"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "CharacterAssessmentOverviewEnvelope",
+        "type": "object"
+      },
+      "CharacterAssessmentResult": {
+        "properties": {
+          "aggregation": {
+            "const": "median_of_unique_scene_ratings",
+            "title": "Aggregation",
+            "type": "string"
+          },
+          "axes": {
+            "items": {
+              "$ref": "#/components/schemas/CharacterAxisScore"
+            },
+            "title": "Axes",
+            "type": "array"
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/CharacterAssessmentCoverage"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          },
+          "minimum_rated_scenes": {
+            "title": "Minimum Rated Scenes",
+            "type": "integer"
+          },
+          "rubric_version": {
+            "title": "Rubric Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rubric_version",
+          "axes",
+          "coverage",
+          "minimum_rated_scenes",
+          "aggregation",
+          "meta"
+        ],
+        "title": "CharacterAssessmentResult",
+        "type": "object"
+      },
+      "CharacterAxisScore": {
+        "additionalProperties": false,
+        "properties": {
+          "axis_id": {
+            "enum": [
+              "agency",
+              "regulation",
+              "judgment",
+              "perspective",
+              "problem_solving",
+              "adaptation"
+            ],
+            "title": "Axis Id",
+            "type": "string"
+          },
+          "conditions": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Conditions",
+            "type": "string"
+          },
+          "counterevidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 12,
+            "title": "Counterevidence Ids",
+            "type": "array"
+          },
+          "limitations": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Limitations",
+            "type": "string"
+          },
+          "observed_range": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed Range"
+          },
+          "rated_scenes": {
+            "title": "Rated Scenes",
+            "type": "integer"
+          },
+          "ratings": {
+            "items": {
+              "$ref": "#/components/schemas/SceneRating"
+            },
+            "maxItems": 6,
+            "title": "Ratings",
+            "type": "array"
+          },
+          "rubric": {
+            "$ref": "#/components/schemas/CharacterRubric"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "status": {
+            "enum": [
+              "scored",
+              "insufficient_evidence",
+              "unverified_evidence"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "verdict": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "axis_id",
+          "verdict",
+          "conditions",
+          "ratings",
+          "counterevidence_ids",
+          "limitations",
+          "rubric",
+          "status",
+          "score",
+          "observed_range",
+          "rated_scenes"
+        ],
+        "title": "CharacterAxisScore",
+        "type": "object"
+      },
+      "CharacterDiscoveryProgress": {
+        "properties": {
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/DiscoveredCharacter"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "processed_chunks": {
+            "title": "Processed Chunks",
+            "type": "integer"
+          },
+          "total_chunks": {
+            "title": "Total Chunks",
+            "type": "integer"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "processed_chunks",
+          "total_chunks",
+          "complete",
+          "candidates"
+        ],
+        "title": "CharacterDiscoveryProgress",
+        "type": "object"
+      },
+      "CharacterMemoryAnalysisResponse": {
+        "properties": {
+          "analysis_id": {
+            "title": "Analysis Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "discovery": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CharacterDiscoveryProgress"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AnalysisError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "progress": {
+            "$ref": "#/components/schemas/Progress"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "completed",
+              "failed",
+              "skipped"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "analysis_id",
+          "status",
+          "created_at",
+          "finished_at",
+          "progress",
+          "error"
+        ],
+        "title": "CharacterMemoryAnalysisResponse",
+        "type": "object"
+      },
+      "CharacterMemoryAnalysisResponseEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CharacterMemoryAnalysisResponse"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "CharacterMemoryAnalysisResponseEnvelope",
+        "type": "object"
+      },
       "CharacterResponse": {
         "properties": {
           "character_id": {
@@ -708,6 +1203,55 @@
           "meta"
         ],
         "title": "CharacterResponsePage",
+        "type": "object"
+      },
+      "CharacterRubric": {
+        "properties": {
+          "anchors": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Anchors",
+            "type": "array"
+          },
+          "caution": {
+            "title": "Caution",
+            "type": "string"
+          },
+          "group": {
+            "title": "Group",
+            "type": "string"
+          },
+          "id": {
+            "enum": [
+              "agency",
+              "regulation",
+              "judgment",
+              "perspective",
+              "problem_solving",
+              "adaptation"
+            ],
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "group",
+          "question",
+          "anchors",
+          "caution"
+        ],
+        "title": "CharacterRubric",
         "type": "object"
       },
       "CharacterUpdate": {
@@ -1120,6 +1664,465 @@
           "meta"
         ],
         "title": "ConflictResponsePage",
+        "type": "object"
+      },
+      "Counts": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "integer"
+          },
+          "inner_thought": {
+            "title": "Inner Thought",
+            "type": "integer"
+          },
+          "narration": {
+            "title": "Narration",
+            "type": "integer"
+          },
+          "observations": {
+            "title": "Observations",
+            "type": "integer"
+          },
+          "patterns": {
+            "title": "Patterns",
+            "type": "integer"
+          },
+          "scenes": {
+            "title": "Scenes",
+            "type": "integer"
+          },
+          "speech": {
+            "title": "Speech",
+            "type": "integer"
+          },
+          "uncertain": {
+            "title": "Uncertain",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "observations",
+          "patterns",
+          "uncertain",
+          "scenes",
+          "speech",
+          "action",
+          "inner_thought",
+          "narration"
+        ],
+        "title": "Counts",
+        "type": "object"
+      },
+      "Coverage": {
+        "properties": {
+          "exhaustive": {
+            "const": false,
+            "title": "Exhaustive",
+            "type": "boolean"
+          },
+          "patterns_hidden_by_cutoff": {
+            "title": "Patterns Hidden By Cutoff",
+            "type": "integer"
+          },
+          "speaker_verification_complete": {
+            "title": "Speaker Verification Complete",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "exhaustive",
+          "patterns_hidden_by_cutoff",
+          "speaker_verification_complete"
+        ],
+        "title": "Coverage",
+        "type": "object"
+      },
+      "DetailRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "attribution": {
+            "enum": [
+              "certain",
+              "uncertain"
+            ],
+            "title": "Attribution",
+            "type": "string"
+          },
+          "behavior_role": {
+            "default": "other",
+            "enum": [
+              "trigger",
+              "awareness",
+              "desire",
+              "involuntary_reaction",
+              "choice",
+              "other"
+            ],
+            "title": "Behavior Role",
+            "type": "string"
+          },
+          "chapter_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chapter Id"
+          },
+          "character_id": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Character Id"
+          },
+          "context": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Context",
+            "type": "string"
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/Evidence"
+          },
+          "interlocutor_ids": {
+            "items": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Interlocutor Ids",
+            "type": "array"
+          },
+          "interlocutors": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Interlocutors",
+            "type": "array"
+          },
+          "kind": {
+            "enum": [
+              "speech",
+              "action",
+              "inner_thought",
+              "narration"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "observation_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Observation Id",
+            "type": "string"
+          },
+          "order": {
+            "title": "Order",
+            "type": "integer"
+          },
+          "presentation": {
+            "enum": [
+              "depicted",
+              "character_claim",
+              "narrator_claim",
+              "thought"
+            ],
+            "title": "Presentation",
+            "type": "string"
+          },
+          "scene_title": {
+            "title": "Scene Title",
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/SourceContext"
+          },
+          "speaker_check": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SpeakerCheck"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "story_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Story Time"
+          },
+          "summary": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "observation_id",
+          "character_id",
+          "attribution",
+          "kind",
+          "presentation",
+          "summary",
+          "context",
+          "interlocutor_ids",
+          "evidence",
+          "order",
+          "chapter_id",
+          "scene_title",
+          "story_time",
+          "interlocutors",
+          "source",
+          "speaker_check"
+        ],
+        "title": "DetailRecord",
+        "type": "object"
+      },
+      "DetailsResponse": {
+        "properties": {
+          "analysis_id": {
+            "title": "Analysis Id",
+            "type": "string"
+          },
+          "character_id": {
+            "title": "Character Id",
+            "type": "string"
+          },
+          "character_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Character Name"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/Counts"
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/Coverage"
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "hypotheses": {
+            "items": {
+              "$ref": "#/components/schemas/Hypothesis"
+            },
+            "title": "Hypotheses",
+            "type": "array"
+          },
+          "manuscript_id": {
+            "title": "Manuscript Id",
+            "type": "string"
+          },
+          "manuscript_title": {
+            "title": "Manuscript Title",
+            "type": "string"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/Metrics"
+          },
+          "mode": {
+            "enum": [
+              "real",
+              "fake"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "observations": {
+            "items": {
+              "$ref": "#/components/schemas/DetailRecord"
+            },
+            "title": "Observations",
+            "type": "array"
+          },
+          "patterns": {
+            "items": {
+              "$ref": "#/components/schemas/Pattern"
+            },
+            "title": "Patterns",
+            "type": "array"
+          },
+          "snapshot_id": {
+            "title": "Snapshot Id",
+            "type": "string"
+          },
+          "stale": {
+            "title": "Stale",
+            "type": "boolean"
+          },
+          "through_order": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Through Order"
+          },
+          "uncertain_observations": {
+            "items": {
+              "$ref": "#/components/schemas/DetailRecord"
+            },
+            "title": "Uncertain Observations",
+            "type": "array"
+          }
+        },
+        "required": [
+          "character_id",
+          "character_name",
+          "snapshot_id",
+          "mode",
+          "through_order",
+          "counts",
+          "observations",
+          "metrics",
+          "uncertain_observations",
+          "patterns",
+          "hypotheses",
+          "coverage",
+          "analysis_id",
+          "generated_at",
+          "stale",
+          "manuscript_id",
+          "manuscript_title"
+        ],
+        "title": "DetailsResponse",
+        "type": "object"
+      },
+      "DetailsResponseEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/DetailsResponse"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "DetailsResponseEnvelope",
+        "type": "object"
+      },
+      "DiscoveredCharacter": {
+        "properties": {
+          "alias_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alias Of"
+          },
+          "candidate_id": {
+            "title": "Candidate Id",
+            "type": "string"
+          },
+          "character_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Character Id"
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/Evidence"
+          },
+          "kind": {
+            "enum": [
+              "named_person",
+              "ambiguous"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "added",
+              "existing",
+              "needs_review",
+              "confirmed",
+              "dismissed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "candidate_id",
+          "name",
+          "kind",
+          "alias_of",
+          "reason",
+          "evidence",
+          "status",
+          "character_id"
+        ],
+        "title": "DiscoveredCharacter",
+        "type": "object"
+      },
+      "DiscoveredCharacterEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/DiscoveredCharacter"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "DiscoveredCharacterEnvelope",
         "type": "object"
       },
       "DraftCreate": {
@@ -1600,6 +2603,48 @@
           "created_at"
         ],
         "title": "EventResponse",
+        "type": "object"
+      },
+      "Evidence": {
+        "additionalProperties": false,
+        "properties": {
+          "end": {
+            "exclusiveMinimum": 0.0,
+            "title": "End",
+            "type": "integer"
+          },
+          "quote": {
+            "maxLength": 1200,
+            "minLength": 1,
+            "title": "Quote",
+            "type": "string"
+          },
+          "revision": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Revision",
+            "type": "string"
+          },
+          "scene_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Scene Id",
+            "type": "string"
+          },
+          "start": {
+            "minimum": 0.0,
+            "title": "Start",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "scene_id",
+          "revision",
+          "start",
+          "end",
+          "quote"
+        ],
+        "title": "Evidence",
         "type": "object"
       },
       "ExtractedInfluenceItem": {
@@ -2376,6 +3421,59 @@
         "title": "HistoryItemPage",
         "type": "object"
       },
+      "Hypothesis": {
+        "additionalProperties": false,
+        "properties": {
+          "alternatives": {
+            "items": {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Alternatives",
+            "type": "array"
+          },
+          "character_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Character Id",
+            "type": "string"
+          },
+          "hypothesis_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Hypothesis Id",
+            "type": "string"
+          },
+          "pattern_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Pattern Id",
+            "type": "string"
+          },
+          "statement": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Statement",
+            "type": "string"
+          },
+          "status": {
+            "const": "tentative",
+            "default": "tentative",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "hypothesis_id",
+          "character_id",
+          "pattern_id",
+          "statement",
+          "alternatives"
+        ],
+        "title": "Hypothesis",
+        "type": "object"
+      },
       "ItemCreate": {
         "properties": {
           "field": {
@@ -2989,6 +4087,151 @@
         "title": "MessageResponseListEnvelope",
         "type": "object"
       },
+      "MetricPeriod": {
+        "properties": {
+          "choice_count": {
+            "title": "Choice Count",
+            "type": "integer"
+          },
+          "choice_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Choice Ids",
+            "type": "array"
+          },
+          "choice_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Choice Share"
+          },
+          "classified_count": {
+            "title": "Classified Count",
+            "type": "integer"
+          },
+          "interaction_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Interaction Ids",
+            "type": "array"
+          },
+          "orders": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Orders",
+            "type": "array"
+          },
+          "other_count": {
+            "title": "Other Count",
+            "type": "integer"
+          },
+          "partner_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Partner Counts",
+            "type": "object"
+          },
+          "reaction_count": {
+            "title": "Reaction Count",
+            "type": "integer"
+          },
+          "reaction_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reaction Ids",
+            "type": "array"
+          },
+          "record_count": {
+            "title": "Record Count",
+            "type": "integer"
+          },
+          "record_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Record Ids",
+            "type": "array"
+          },
+          "small_sample": {
+            "title": "Small Sample",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "orders",
+          "record_count",
+          "record_ids",
+          "choice_count",
+          "reaction_count",
+          "choice_ids",
+          "reaction_ids",
+          "choice_share",
+          "classified_count",
+          "other_count",
+          "small_sample",
+          "partner_counts",
+          "interaction_ids"
+        ],
+        "title": "MetricPeriod",
+        "type": "object"
+      },
+      "Metrics": {
+        "properties": {
+          "basis": {
+            "const": "extracted_records",
+            "title": "Basis",
+            "type": "string"
+          },
+          "choice_delta_pp": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Choice Delta Pp"
+          },
+          "previous": {
+            "$ref": "#/components/schemas/MetricPeriod"
+          },
+          "recent": {
+            "$ref": "#/components/schemas/MetricPeriod"
+          },
+          "timeline": {
+            "items": {
+              "$ref": "#/components/schemas/TimelinePoint"
+            },
+            "title": "Timeline",
+            "type": "array"
+          },
+          "window_size": {
+            "title": "Window Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "basis",
+          "window_size",
+          "recent",
+          "previous",
+          "choice_delta_pp",
+          "timeline"
+        ],
+        "title": "Metrics",
+        "type": "object"
+      },
       "NodeResponse": {
         "properties": {
           "chapter": {
@@ -3478,6 +4721,106 @@
         "title": "OAuthNaverResponse",
         "type": "object"
       },
+      "OverviewResponse": {
+        "properties": {
+          "available_analysis_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Available Analysis Id"
+          },
+          "can_analyze": {
+            "title": "Can Analyze",
+            "type": "boolean"
+          },
+          "chapters": {
+            "items": {
+              "$ref": "#/components/schemas/ChapterOption"
+            },
+            "title": "Chapters",
+            "type": "array"
+          },
+          "character_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Character Counts",
+            "type": "object"
+          },
+          "job": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CharacterMemoryAnalysisResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "job_stale": {
+            "title": "Job Stale",
+            "type": "boolean"
+          },
+          "manuscript_id": {
+            "title": "Manuscript Id",
+            "type": "string"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "real",
+                  "fake"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "stale": {
+            "title": "Stale",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "manuscript_id",
+          "job",
+          "available_analysis_id",
+          "stale",
+          "job_stale",
+          "mode",
+          "character_counts",
+          "chapters",
+          "can_analyze"
+        ],
+        "title": "OverviewResponse",
+        "type": "object"
+      },
+      "OverviewResponseEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/OverviewResponse"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "OverviewResponseEnvelope",
+        "type": "object"
+      },
       "PageMeta": {
         "properties": {
           "next_cursor": {
@@ -3499,6 +4842,97 @@
         "title": "PageMeta",
         "type": "object"
       },
+      "Pattern": {
+        "additionalProperties": false,
+        "properties": {
+          "analyzed_through_order": {
+            "minimum": 0.0,
+            "title": "Analyzed Through Order",
+            "type": "integer"
+          },
+          "character_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Character Id",
+            "type": "string"
+          },
+          "condition": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Condition",
+            "type": "string"
+          },
+          "counterexample_observation_ids": {
+            "items": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Counterexample Observation Ids",
+            "type": "array"
+          },
+          "counterexample_scene_count": {
+            "minimum": 0.0,
+            "title": "Counterexample Scene Count",
+            "type": "integer"
+          },
+          "description": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Description",
+            "type": "string"
+          },
+          "evaluated_observation_count": {
+            "minimum": 2.0,
+            "title": "Evaluated Observation Count",
+            "type": "integer"
+          },
+          "pattern_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Pattern Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "recurring",
+              "contested"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "supporting_observation_ids": {
+            "items": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 2,
+            "title": "Supporting Observation Ids",
+            "type": "array"
+          },
+          "supporting_scene_count": {
+            "minimum": 2.0,
+            "title": "Supporting Scene Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pattern_id",
+          "character_id",
+          "description",
+          "condition",
+          "supporting_observation_ids",
+          "counterexample_observation_ids",
+          "supporting_scene_count",
+          "counterexample_scene_count",
+          "evaluated_observation_count",
+          "analyzed_through_order",
+          "status"
+        ],
+        "title": "Pattern",
+        "type": "object"
+      },
       "PayoffBody": {
         "properties": {
           "payoff_chapter_id": {
@@ -3511,6 +4945,49 @@
           "payoff_chapter_id"
         ],
         "title": "PayoffBody",
+        "type": "object"
+      },
+      "Progress": {
+        "properties": {
+          "completed_requests": {
+            "title": "Completed Requests",
+            "type": "integer"
+          },
+          "observations": {
+            "title": "Observations",
+            "type": "integer"
+          },
+          "patterns": {
+            "title": "Patterns",
+            "type": "integer"
+          },
+          "processed_scenes": {
+            "title": "Processed Scenes",
+            "type": "integer"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          },
+          "total_scenes": {
+            "title": "Total Scenes",
+            "type": "integer"
+          },
+          "verified_speakers": {
+            "title": "Verified Speakers",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "processed_scenes",
+          "total_scenes",
+          "observations",
+          "verified_speakers",
+          "patterns",
+          "completed_requests",
+          "stage"
+        ],
+        "title": "Progress",
         "type": "object"
       },
       "ProjectCreate": {
@@ -4099,6 +5576,49 @@
         "title": "RelatedRef",
         "type": "object"
       },
+      "ResolveDiscoveredCharacter": {
+        "properties": {
+          "action": {
+            "enum": [
+              "create",
+              "link",
+              "dismiss"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "character_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Character Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "title": "ResolveDiscoveredCharacter",
+        "type": "object"
+      },
       "RuleCandidate": {
         "description": "추출 결과의 규칙 하나. `index` 로 확정·무시한다(명세 `selected_indices`).",
         "properties": {
@@ -4352,6 +5872,44 @@
         "title": "RuleResult",
         "type": "object"
       },
+      "SceneRating": {
+        "additionalProperties": false,
+        "properties": {
+          "explanation": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Explanation",
+            "type": "string"
+          },
+          "level": {
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Level",
+            "type": "integer"
+          },
+          "observation_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Observation Ids",
+            "type": "array"
+          },
+          "scene_id": {
+            "title": "Scene Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "scene_id",
+          "level",
+          "observation_ids",
+          "explanation"
+        ],
+        "title": "SceneRating",
+        "type": "object"
+      },
       "SelectionRange": {
         "properties": {
           "end": {
@@ -4496,6 +6054,51 @@
           "email"
         ],
         "title": "SignupTicketResponse",
+        "type": "object"
+      },
+      "SourceContext": {
+        "properties": {
+          "after": {
+            "title": "After",
+            "type": "string"
+          },
+          "before": {
+            "title": "Before",
+            "type": "string"
+          },
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          }
+        },
+        "required": [
+          "before",
+          "quote",
+          "after"
+        ],
+        "title": "SourceContext",
+        "type": "object"
+      },
+      "SpeakerCheck": {
+        "properties": {
+          "adjudicated": {
+            "title": "Adjudicated",
+            "type": "boolean"
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/Evidence"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason",
+          "adjudicated",
+          "evidence"
+        ],
+        "title": "SpeakerCheck",
         "type": "object"
       },
       "StatusCounts": {
@@ -5316,6 +6919,109 @@
           "meta"
         ],
         "title": "ThreadSummaryPage",
+        "type": "object"
+      },
+      "TimelinePoint": {
+        "properties": {
+          "choice_count": {
+            "title": "Choice Count",
+            "type": "integer"
+          },
+          "choice_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Choice Ids",
+            "type": "array"
+          },
+          "choice_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Choice Share"
+          },
+          "classified_count": {
+            "title": "Classified Count",
+            "type": "integer"
+          },
+          "interaction_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Interaction Ids",
+            "type": "array"
+          },
+          "order": {
+            "title": "Order",
+            "type": "integer"
+          },
+          "orders": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Orders",
+            "type": "array"
+          },
+          "other_count": {
+            "title": "Other Count",
+            "type": "integer"
+          },
+          "partner_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Partner Counts",
+            "type": "object"
+          },
+          "reaction_count": {
+            "title": "Reaction Count",
+            "type": "integer"
+          },
+          "reaction_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reaction Ids",
+            "type": "array"
+          },
+          "record_count": {
+            "title": "Record Count",
+            "type": "integer"
+          },
+          "record_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Record Ids",
+            "type": "array"
+          },
+          "small_sample": {
+            "title": "Small Sample",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "orders",
+          "record_count",
+          "record_ids",
+          "choice_count",
+          "reaction_count",
+          "choice_ids",
+          "reaction_ids",
+          "choice_share",
+          "classified_count",
+          "other_count",
+          "small_sample",
+          "partner_counts",
+          "interaction_ids",
+          "order"
+        ],
+        "title": "TimelinePoint",
         "type": "object"
       },
       "TimelineTrack": {
@@ -15897,6 +17603,1323 @@
         "summary": "원고의 제목이나 본문을 수정한다",
         "tags": [
           "MSU"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/manuscripts/{manuscriptId}/character-memory": {
+      "get": {
+        "description": "진행 상태와 최근 완료본. 원문·모델 호출 캐시는 노출하지 않는다.",
+        "operationId": "overview_v1_projects__projectId__manuscripts__manuscriptId__character_memory_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "manuscriptId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Manuscriptid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OverviewResponseEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "MANUSCRIPT_NOT_FOUND": {
+                    "summary": "원고를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "MANUSCRIPT_NOT_FOUND",
+                        "details": {},
+                        "message": "원고를 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `MANUSCRIPT_NOT_FOUND` — 원고를 찾을 수 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "원고의 인물 탐색·기억 분석 상태를 조회한다",
+        "tags": [
+          "Character memory"
+        ]
+      },
+      "post": {
+        "description": "원고에서 새 인물을 발견·등록한 뒤 기억을 분석한다. 같은 작업은 재사용한다.",
+        "operationId": "build_v1_projects__projectId__manuscripts__manuscriptId__character_memory_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "manuscriptId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Manuscriptid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CharacterMemoryAnalysisResponseEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "MANUSCRIPT_NOT_FOUND": {
+                    "summary": "원고를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "MANUSCRIPT_NOT_FOUND",
+                        "details": {},
+                        "message": "원고를 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `MANUSCRIPT_NOT_FOUND` — 원고를 찾을 수 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "MANUSCRIPT_TOO_SHORT": {
+                    "summary": "구조 분석을 수행하기에 원고 분량이 부족합니다",
+                    "value": {
+                      "error": {
+                        "code": "MANUSCRIPT_TOO_SHORT",
+                        "details": {},
+                        "message": "구조 분석을 수행하기에 원고 분량이 부족합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `MANUSCRIPT_TOO_SHORT` — 구조 분석을 수행하기에 원고 분량이 부족합니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "원고에서 인물을 자동 등록하고 기억을 분석한다",
+        "tags": [
+          "Character memory"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/manuscripts/{manuscriptId}/character-memory/{analysisId}/candidates/{candidateId}/resolve": {
+      "post": {
+        "description": "보류한 이름을 새 인물로 등록하거나 기존 인물의 별칭으로 연결한다.",
+        "operationId": "resolve_candidate_v1_projects__projectId__manuscripts__manuscriptId__character_memory__analysisId__candidates__candidateId__resolve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "manuscriptId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Manuscriptid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "analysisId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Analysisid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "candidateId",
+            "required": true,
+            "schema": {
+              "maxLength": 100,
+              "minLength": 1,
+              "title": "Candidateid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveDiscoveredCharacter"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscoveredCharacterEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "CHARACTER_MEMORY_NOT_FOUND": {
+                    "summary": "인물 기억 작업을 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "CHARACTER_MEMORY_NOT_FOUND",
+                        "details": {},
+                        "message": "인물 기억 작업을 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "CHARACTER_NOT_FOUND": {
+                    "summary": "캐릭터를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "CHARACTER_NOT_FOUND",
+                        "details": {},
+                        "message": "캐릭터를 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "MANUSCRIPT_NOT_FOUND": {
+                    "summary": "원고를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "MANUSCRIPT_NOT_FOUND",
+                        "details": {},
+                        "message": "원고를 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `CHARACTER_MEMORY_NOT_FOUND` — 인물 기억 작업을 찾을 수 없습니다\n- `CHARACTER_NOT_FOUND` — 캐릭터를 찾을 수 없습니다\n- `MANUSCRIPT_NOT_FOUND` — 원고를 찾을 수 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "인물 후보를 등록·별칭 연결·제외로 확인한다",
+        "tags": [
+          "Character memory"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/manuscripts/{manuscriptId}/character-memory/{analysisId}/retry": {
+      "post": {
+        "description": "원고·인물이 같은 실패 작업만 저장된 탐색·기억 체크포인트에서 재개한다.",
+        "operationId": "retry_v1_projects__projectId__manuscripts__manuscriptId__character_memory__analysisId__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "manuscriptId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Manuscriptid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "analysisId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Analysisid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CharacterMemoryAnalysisResponseEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "CHARACTER_MEMORY_NOT_FOUND": {
+                    "summary": "인물 기억 작업을 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "CHARACTER_MEMORY_NOT_FOUND",
+                        "details": {},
+                        "message": "인물 기억 작업을 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "MANUSCRIPT_NOT_FOUND": {
+                    "summary": "원고를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "MANUSCRIPT_NOT_FOUND",
+                        "details": {},
+                        "message": "원고를 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `CHARACTER_MEMORY_NOT_FOUND` — 인물 기억 작업을 찾을 수 없습니다\n- `MANUSCRIPT_NOT_FOUND` — 원고를 찾을 수 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_STATUS_TRANSITION": {
+                    "summary": "허용되지 않는 상태 전이입니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_STATUS_TRANSITION",
+                        "details": {},
+                        "message": "허용되지 않는 상태 전이입니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_STATUS_TRANSITION` — 허용되지 않는 상태 전이입니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "중단된 인물 기억 분석을 이어서 실행한다",
+        "tags": [
+          "Character memory"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/manuscripts/{manuscriptId}/characters/{characterId}/assessment": {
+      "get": {
+        "description": "선택한 시점까지의 기억에 대응하는 평가 작업과 공통 행동 기준을 읽는다.",
+        "operationId": "get_assessment_v1_projects__projectId__manuscripts__manuscriptId__characters__characterId__assessment_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "manuscriptId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Manuscriptid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "characterId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Characterid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "through_order",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Through Order"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CharacterAssessmentOverviewEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "CHARACTER_NOT_FOUND": {
+                    "summary": "캐릭터를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "CHARACTER_NOT_FOUND",
+                        "details": {},
+                        "message": "캐릭터를 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "MANUSCRIPT_NOT_FOUND": {
+                    "summary": "원고를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "MANUSCRIPT_NOT_FOUND",
+                        "details": {},
+                        "message": "원고를 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `CHARACTER_NOT_FOUND` — 캐릭터를 찾을 수 없습니다\n- `MANUSCRIPT_NOT_FOUND` — 원고를 찾을 수 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "CHARACTER_MEMORY_NOT_READY": {
+                    "summary": "인물 기억 분석이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "CHARACTER_MEMORY_NOT_READY",
+                        "details": {},
+                        "message": "인물 기억 분석이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `CHARACTER_MEMORY_NOT_READY` — 인물 기억 분석이 필요합니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "인물 평가 기준과 저장된 평가를 조회한다",
+        "tags": [
+          "Character memory"
+        ]
+      },
+      "post": {
+        "description": "확실한 원문 기록을 표집해 비동기로 평가한다. 근거가 부족한 항목은 점수를 보류한다.",
+        "operationId": "build_assessment_v1_projects__projectId__manuscripts__manuscriptId__characters__characterId__assessment_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "manuscriptId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Manuscriptid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "characterId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Characterid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "through_order",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Through Order"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CharacterAssessmentJobEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "CHARACTER_NOT_FOUND": {
+                    "summary": "캐릭터를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "CHARACTER_NOT_FOUND",
+                        "details": {},
+                        "message": "캐릭터를 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "MANUSCRIPT_NOT_FOUND": {
+                    "summary": "원고를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "MANUSCRIPT_NOT_FOUND",
+                        "details": {},
+                        "message": "원고를 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `CHARACTER_NOT_FOUND` — 캐릭터를 찾을 수 없습니다\n- `MANUSCRIPT_NOT_FOUND` — 원고를 찾을 수 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "CHARACTER_MEMORY_NOT_READY": {
+                    "summary": "인물 기억 분석이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "CHARACTER_MEMORY_NOT_READY",
+                        "details": {},
+                        "message": "인물 기억 분석이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `CHARACTER_MEMORY_NOT_READY` — 인물 기억 분석이 필요합니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "원문 근거로 인물의 성향·판단력·역량을 평가한다",
+        "tags": [
+          "Character memory"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/manuscripts/{manuscriptId}/characters/{characterId}/details": {
+      "get": {
+        "description": "원문 인용·반복 경향·반례·잠정 해석을 분리한다. 모델 호출 없이 저장된 결과를 읽는다.",
+        "operationId": "details_v1_projects__projectId__manuscripts__manuscriptId__characters__characterId__details_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "manuscriptId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Manuscriptid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "characterId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Characterid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "through_order",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Through Order"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetailsResponseEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "CHARACTER_NOT_FOUND": {
+                    "summary": "캐릭터를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "CHARACTER_NOT_FOUND",
+                        "details": {},
+                        "message": "캐릭터를 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "MANUSCRIPT_NOT_FOUND": {
+                    "summary": "원고를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "MANUSCRIPT_NOT_FOUND",
+                        "details": {},
+                        "message": "원고를 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `CHARACTER_NOT_FOUND` — 캐릭터를 찾을 수 없습니다\n- `MANUSCRIPT_NOT_FOUND` — 원고를 찾을 수 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "CHARACTER_MEMORY_NOT_READY": {
+                    "summary": "인물 기억 분석이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "CHARACTER_MEMORY_NOT_READY",
+                        "details": {},
+                        "message": "인물 기억 분석이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `CHARACTER_MEMORY_NOT_READY` — 인물 기억 분석이 필요합니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "인물의 원문 기록·반복 경향·상황 수치를 조회한다",
+        "tags": [
+          "Character memory"
         ]
       }
     },

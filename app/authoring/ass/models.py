@@ -2,6 +2,7 @@ from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import DateTime, String, Text, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -47,6 +48,7 @@ class Character(Base, Timestamps):
     id: Mapped[UUID] = pk()
     project_id: Mapped[UUID] = fk_uuid()
     name: Mapped[str] = mapped_column(String(100))
+    aliases: Mapped[list[str]] = mapped_column(JSONB, default=list, server_default="[]")
     status: Mapped[str] = mapped_column(String(20), default="active")
     role: Mapped[str | None] = mapped_column(String(50))
     description: Mapped[str | None] = mapped_column(Text)

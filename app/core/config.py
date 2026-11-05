@@ -51,6 +51,9 @@ class Settings(BaseSettings):
     job_heartbeat_seconds: int = 60
     # prolog-ai 는 .env 를 읽지 않는다. 여기 값을 첫 호출 때 환경변수로 넘긴다(app.ai.client).
     openrouter_api_key: str = ""
+    nvidia_api_key: str = ""
+    prolog_ai_provider: str = "nvidia"
+    prolog_ai_reasoning_effort: str = "low"
     prolog_ai_model: str = ""
     # ai 워커가 동시에 돌리는 잡 수. 대부분 LLM 응답을 기다리는 시간이라 CPU 가 아니라
     # OpenRouter 속도 제한 · DB 커넥션(잡당 동시 1개)이 상한이다.

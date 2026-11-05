@@ -85,6 +85,11 @@ NotificationNotFound = _err("NOTIFICATION_NOT_FOUND", 404, "알림을 찾을 수
 DraftNotFound = _err("DRAFT_NOT_FOUND", 404, "해당 초안을 찾을 수 없습니다")
 ItemNotFound = _err("ITEM_NOT_FOUND", 404, "초안 항목을 찾을 수 없습니다")
 CharacterNotFound = _err("CHARACTER_NOT_FOUND", 404, "캐릭터를 찾을 수 없습니다")
+# 인물 기억 화면의 새 API 계약.
+CharacterMemoryNotReady = _err("CHARACTER_MEMORY_NOT_READY", 409, "인물 기억 분석이 필요합니다")
+CharacterMemoryNotFound = _err(
+    "CHARACTER_MEMORY_NOT_FOUND", 404, "인물 기억 작업을 찾을 수 없습니다"
+)
 DraftAlreadyResolved = _err("DRAFT_ALREADY_RESOLVED", 409, "이미 확정되었거나 폐기된 초안입니다")
 MissingRequiredField = _err("MISSING_REQUIRED_FIELD", 400, "확정에 필요한 항목이 비어 있습니다")
 DuplicateCharacterCandidate = _err(
