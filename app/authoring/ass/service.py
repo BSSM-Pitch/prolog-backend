@@ -15,6 +15,7 @@ from uuid import UUID
 
 from sqlalchemy import func, literal, select, tuple_
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.authoring.ass.models import (
@@ -608,8 +609,17 @@ async def delete_character(session: AsyncSession, project_id: UUID, character_id
 
     초안은 남는다(`confirmed_character_id` 가 SET NULL). 초안 단계 이력도 남는다.
     """
-    await session.delete(await _character(session, project_id, character_id))
-    await session.flush()
+    try:
+        await session.delete(await _character(session, project_id, character_id, lock=True))
+        await session.flush()
+    except IntegrityError as exc:
+        # RCV를 직접 호출하지 않고 DB의 RESTRICT 결과를 도메인 오류로 번역한다.
+        if errors.constraint_name(exc) in {
+            "relationships_source_character_id_fkey",
+            "relationships_target_character_id_fkey",
+        }:
+            raise errors.CharacterHasDependentRelationships() from exc
+        raise
 
 
 # --- 편집 이력 --------------------------------------------------------------
