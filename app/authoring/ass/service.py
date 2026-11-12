@@ -622,6 +622,162 @@ async def delete_character(session: AsyncSession, project_id: UUID, character_id
         raise
 
 
+# --- 확정 캐릭터 속성 직접 편집 -----------------------------------------------
+# 추출(AI)을 거치지 않고 확정된 캐릭터의 태그·가치관 등을 바로 고친다. 이력은 `confirmed` 단계로 남는다.
+
+
+async def _attribute(
+    session: AsyncSession, character: Character, attribute_id: UUID
+) -> CharacterAttribute:
+    attr = (
+        await session.execute(
+            select(CharacterAttribute).where(
+                CharacterAttribute.id == attribute_id,
+                CharacterAttribute.character_id == character.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if attr is None:
+        raise errors.AttributeNotFound()
+    return attr
+
+
+def _attribute_response(a: CharacterAttribute) -> AttributeResponse:
+    return AttributeResponse(
+        attribute_id=a.id,
+        field=FIELD_OF[a.category],
+        value=a.value,
+        evidence=a.evidence,
+        origin=a.origin,  # type: ignore[arg-type]
+    )
+
+
+async def _same_value_exists(
+    session: AsyncSession,
+    character_id: UUID,
+    category: str,
+    value: str,
+    *,
+    exclude: UUID | None = None,
+) -> bool:
+    stmt = select(CharacterAttribute.id).where(
+        CharacterAttribute.character_id == character_id,
+        CharacterAttribute.category == category,
+        func.lower(CharacterAttribute.value) == value.lower(),
+    )
+    if exclude is not None:
+        stmt = stmt.where(CharacterAttribute.id != exclude)
+    return (await session.execute(stmt.limit(1))).first() is not None
+
+
+async def add_attribute(
+    session: AsyncSession, project_id: UUID, character_id: UUID, body: ItemCreate, user_id: UUID
+) -> AttributeResponse:
+    character = await _character(session, project_id, character_id, lock=True)
+    category = CATEGORY_OF[body.field]
+    if await _same_value_exists(session, character.id, category, body.value):
+        raise errors.DuplicateAttribute()
+    attr = CharacterAttribute(
+        project_id=project_id,
+        character_id=character.id,
+        category=category,
+        value=body.value,
+        origin="user_added",
+    )
+    session.add(attr)
+    await session.flush()
+    character.updated_at = func.now()
+    _log(
+        session,
+        project_id,
+        user_id,
+        character_id=character.id,
+        item_id=attr.id,
+        phase="confirmed",
+        action="create",
+        field=body.field,
+        after_value=body.value,
+    )
+    await session.flush()
+    await session.refresh(attr)
+    return _attribute_response(attr)
+
+
+async def update_attribute(
+    session: AsyncSession,
+    project_id: UUID,
+    character_id: UUID,
+    attribute_id: UUID,
+    body: ItemUpdate,
+    user_id: UUID,
+) -> AttributeResponse:
+    character = await _character(session, project_id, character_id, lock=True)
+    attr = await _attribute(session, character, attribute_id)
+    category = CATEGORY_OF[body.field] if body.field is not None else attr.category
+    value = body.value if body.value is not None else attr.value
+    if (category, value) == (attr.category, attr.value):
+        return _attribute_response(attr)
+    if await _same_value_exists(session, character.id, category, value, exclude=attr.id):
+        raise errors.DuplicateAttribute()
+    common = {
+        "character_id": character.id,
+        "item_id": attr.id,
+        "phase": "confirmed",
+        "action": "update",
+    }
+    if category != attr.category:
+        _log(
+            session,
+            project_id,
+            user_id,
+            field="category",
+            before_value=FIELD_OF[attr.category],
+            after_value=FIELD_OF[category],
+            **common,
+        )
+    if value != attr.value:
+        _log(
+            session,
+            project_id,
+            user_id,
+            field=FIELD_OF[category],
+            before_value=attr.value,
+            after_value=value,
+            **common,
+        )
+    attr.category = category
+    attr.value = value
+    character.updated_at = func.now()
+    await session.flush()
+    await session.refresh(attr)
+    return _attribute_response(attr)
+
+
+async def delete_attribute(
+    session: AsyncSession,
+    project_id: UUID,
+    character_id: UUID,
+    attribute_id: UUID,
+    user_id: UUID,
+) -> None:
+    character = await _character(session, project_id, character_id, lock=True)
+    attr = await _attribute(session, character, attribute_id)
+    _log(
+        session,
+        project_id,
+        user_id,
+        character_id=character.id,
+        item_id=attr.id,
+        phase="confirmed",
+        action="delete",
+        field=FIELD_OF[attr.category],
+        before_value=attr.value,
+    )
+    character.updated_at = func.now()
+    await session.delete(attr)
+    await session.flush()
+
+
 # --- 편집 이력 --------------------------------------------------------------
 
 

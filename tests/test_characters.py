@@ -304,3 +304,67 @@ def test_edit_history_is_read_only() -> None:
     for path, ops in app.openapi()["paths"].items():
         if path.endswith("/edit-history"):
             assert set(ops) == {"get"}, path
+
+
+async def test_confirmed_character_attributes_are_editable_without_extraction(
+    client: AsyncClient,
+) -> None:
+    user, pid = await _project(client, "ch-attr@example.com")
+    h = user["headers"]
+    did = await _draft(client, user, pid)
+    await _item(client, user, pid, did, "personality_tags", "신중함")
+    res = await client.post(f"/projects/{pid}/character-drafts/{did}/confirm", json={}, headers=h)
+    cid = res.json()["data"]["character_id"]
+    base = f"/projects/{pid}/characters/{cid}/attributes"
+
+    added = await client.post(base, json={"field": "personality_tags", "value": "집요함"}, headers=h)
+    assert added.status_code == 201, added.text
+    attr = added.json()["data"]
+    assert (attr["field"], attr["value"], attr["origin"], attr["evidence"]) == (
+        "personality_tags",
+        "집요함",
+        "user_added",
+        None,
+    )
+    # 같은 분류에 같은 값(대소문자 무시)은 겹칠 수 없다
+    dup = await client.post(base, json={"field": "personality_tags", "value": "집요함"}, headers=h)
+    assert code(dup) == "DUPLICATE_ATTRIBUTE"
+
+    # 값·분류를 고친다. 기존 AI 추출이 아닌 항목도, 이전에 있던 항목도 그대로 남는다
+    path = f"{base}/{attr['attribute_id']}"
+    edited = await client.patch(path, json={"value": "끈질김", "field": "core_values"}, headers=h)
+    assert (edited.json()["data"]["field"], edited.json()["data"]["value"]) == ("core_values", "끈질김")
+    got = (await client.get(f"/projects/{pid}/characters/{cid}", headers=h)).json()["data"]
+    assert [a["value"] for a in got["personality_tags"]] == ["신중함"]
+    assert [a["value"] for a in got["core_values"]] == ["끈질김"]
+
+    assert (await client.delete(path, headers=h)).status_code == 204
+    assert code(await client.delete(path, headers=h)) == "ATTRIBUTE_NOT_FOUND"
+    got = (await client.get(f"/projects/{pid}/characters/{cid}", headers=h)).json()["data"]
+    assert got["core_values"] == [] and len(got["personality_tags"]) == 1
+
+    history = (
+        await client.get(f"/projects/{pid}/characters/{cid}/edit-history", headers=h)
+    ).json()["data"]
+    assert [(e["action"], e["field"]) for e in history[-4:]] == [
+        ("added", "personality_tags"),
+        ("modified", "category"),
+        ("modified", "core_values"),
+        ("removed", "core_values"),
+    ]
+
+
+async def test_viewer_cannot_edit_attributes(client: AsyncClient) -> None:
+    user, pid = await _project(client, "ch-attr2@example.com")
+    did = await _draft(client, user, pid)
+    res = await client.post(
+        f"/projects/{pid}/character-drafts/{did}/confirm", json={}, headers=user["headers"]
+    )
+    cid = res.json()["data"]["character_id"]
+    other = await signup(client, "ch-attr3@example.com")
+    denied = await client.post(
+        f"/projects/{pid}/characters/{cid}/attributes",
+        json={"field": "core_values", "value": "약속"},
+        headers=other["headers"],
+    )
+    assert denied.status_code in (403, 404)

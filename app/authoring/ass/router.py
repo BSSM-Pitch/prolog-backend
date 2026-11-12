@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Path, Query, Response, status
 
 from app.authoring.ass import service
 from app.authoring.ass.schemas import (
+    AttributeResponse,
     CharacterResponse,
     CharacterUpdate,
     ConfirmRequest,
@@ -37,8 +38,11 @@ EditorCtx = Annotated[ProjectContext, Depends(require_project_role("editor"))]
 DRAFTS = "/{projectId}/character-drafts"
 DRAFT = DRAFTS + "/{draftId}"
 ITEM = DRAFT + "/items/{itemId}"
+AttributeId = Annotated[UUID, Path(alias="attributeId")]
 CHARACTERS = "/{projectId}/characters"
 CHARACTER = CHARACTERS + "/{characterId}"
+ATTRIBUTES = CHARACTER + "/attributes"
+ATTRIBUTE = ATTRIBUTES + "/{attributeId}"
 
 Resolved = (errors.DraftNotFound, errors.DraftAlreadyResolved)
 
@@ -298,6 +302,63 @@ async def delete_character(
 ) -> None:
     """되돌릴 수 없다. 속성과 확정 후 이력이 함께 지워진다. 원본 초안은 남는다."""
     await service.delete_character(session, project_id, character_id)
+
+
+@router.post(
+    ATTRIBUTES,
+    status_code=status.HTTP_201_CREATED,
+    summary="확정된 캐릭터에 속성을 직접 추가한다",
+    response_model=Envelope[AttributeResponse],
+    responses=raises(errors.CharacterNotFound, errors.DuplicateAttribute),
+)
+async def add_attribute(
+    project_id: ProjectId,
+    character_id: CharacterId,
+    body: ItemCreate,
+    session: Session,
+    ctx: EditorCtx,
+) -> dict[str, Any]:
+    """AI 추출 없이 태그·가치관 등을 넣는다. `origin` 은 `user_added`. 같은 분류의 같은 값이면 409."""
+    return ok(await service.add_attribute(session, project_id, character_id, body, ctx.user.id))
+
+
+@router.patch(
+    ATTRIBUTE,
+    summary="확정된 캐릭터의 속성을 고친다",
+    response_model=Envelope[AttributeResponse],
+    responses=raises(errors.CharacterNotFound, errors.AttributeNotFound, errors.DuplicateAttribute),
+)
+async def update_attribute(
+    project_id: ProjectId,
+    character_id: CharacterId,
+    attribute_id: AttributeId,
+    body: ItemUpdate,
+    session: Session,
+    ctx: EditorCtx,
+) -> dict[str, Any]:
+    """보낸 것만 바뀐다. `origin`·`evidence` 는 그대로 — 고쳐도 근거 문장은 원문이다."""
+    return ok(
+        await service.update_attribute(
+            session, project_id, character_id, attribute_id, body, ctx.user.id
+        )
+    )
+
+
+@router.delete(
+    ATTRIBUTE,
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="확정된 캐릭터의 속성을 삭제한다",
+    responses=raises(errors.CharacterNotFound, errors.AttributeNotFound),
+)
+async def delete_attribute(
+    project_id: ProjectId,
+    character_id: CharacterId,
+    attribute_id: AttributeId,
+    session: Session,
+    ctx: EditorCtx,
+) -> None:
+    """이력에 지운 값이 남는다."""
+    await service.delete_attribute(session, project_id, character_id, attribute_id, ctx.user.id)
 
 
 @router.get(
