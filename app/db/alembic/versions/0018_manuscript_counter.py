@@ -6,16 +6,16 @@
 
 기존 작품은 `원고 수` 와 제목에 이미 쓰인 가장 큰 "N차 원고" 중 큰 값으로 시작한다.
 
-Revision ID: 0014
-Revises: 0013
+Revision ID: 0018
+Revises: 0017
 """
 
 from collections.abc import Sequence
 
 from alembic import op
 
-revision: str = "0014"
-down_revision: str | None = "0013"
+revision: str = "0018"
+down_revision: str | None = "0017"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
