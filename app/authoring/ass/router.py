@@ -318,7 +318,10 @@ async def add_attribute(
     session: Session,
     ctx: EditorCtx,
 ) -> dict[str, Any]:
-    """AI 추출 없이 태그·가치관 등을 넣는다. `origin` 은 `user_added`. 같은 분류의 같은 값이면 409."""
+    """AI 추출 없이 태그·가치관 등을 넣는다. `origin` 은 `user_added`.
+
+    같은 분류에 같은 값(대소문자 무시)이 있으면 409.
+    """
     return ok(await service.add_attribute(session, project_id, character_id, body, ctx.user.id))
 
 

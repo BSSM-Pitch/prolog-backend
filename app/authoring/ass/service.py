@@ -624,7 +624,8 @@ async def delete_character(session: AsyncSession, project_id: UUID, character_id
 
 
 # --- 확정 캐릭터 속성 직접 편집 -----------------------------------------------
-# 추출(AI)을 거치지 않고 확정된 캐릭터의 태그·가치관 등을 바로 고친다. 이력은 `confirmed` 단계로 남는다.
+# 추출(AI)을 거치지 않고 확정된 캐릭터의 태그·가치관 등을 바로 고친다.
+# 이력은 `confirmed` 단계로 남는다.
 
 
 async def _attribute(

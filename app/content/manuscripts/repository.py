@@ -82,8 +82,8 @@ async def list_manuscripts(
 
 async def next_manuscript_seq(session: AsyncSession, project_id: UUID) -> int:
     """작품의 원고 생성 순번을 하나 올려 돌려준다. 동시에 만들어도 같은 번호가 나가지 않는다."""
-    stmt = pg_insert(ManuscriptCounter).values(project_id=project_id, seq=1)
-    stmt = stmt.on_conflict_do_update(
+    insert_stmt = pg_insert(ManuscriptCounter).values(project_id=project_id, seq=1)
+    stmt = insert_stmt.on_conflict_do_update(
         index_elements=[ManuscriptCounter.project_id],
         set_={"seq": ManuscriptCounter.seq + 1, "updated_at": func.now()},
     ).returning(ManuscriptCounter.seq)

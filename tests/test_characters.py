@@ -317,7 +317,8 @@ async def test_confirmed_character_attributes_are_editable_without_extraction(
     cid = res.json()["data"]["character_id"]
     base = f"/projects/{pid}/characters/{cid}/attributes"
 
-    added = await client.post(base, json={"field": "personality_tags", "value": "집요함"}, headers=h)
+    body = {"field": "personality_tags", "value": "집요함"}
+    added = await client.post(base, json=body, headers=h)
     assert added.status_code == 201, added.text
     attr = added.json()["data"]
     assert (attr["field"], attr["value"], attr["origin"], attr["evidence"]) == (
@@ -333,7 +334,8 @@ async def test_confirmed_character_attributes_are_editable_without_extraction(
     # 값·분류를 고친다. 기존 AI 추출이 아닌 항목도, 이전에 있던 항목도 그대로 남는다
     path = f"{base}/{attr['attribute_id']}"
     edited = await client.patch(path, json={"value": "끈질김", "field": "core_values"}, headers=h)
-    assert (edited.json()["data"]["field"], edited.json()["data"]["value"]) == ("core_values", "끈질김")
+    changed = edited.json()["data"]
+    assert (changed["field"], changed["value"]) == ("core_values", "끈질김")
     got = (await client.get(f"/projects/{pid}/characters/{cid}", headers=h)).json()["data"]
     assert got["aliases"] == []  # 별칭은 원고 분석이 채운다. 없으면 빈 배열이다
     assert [a["value"] for a in got["personality_tags"]] == ["신중함"]
