@@ -38,6 +38,9 @@ def upgrade() -> None:
                )
         FROM content.manuscripts
         GROUP BY project_id;
+
+        CREATE TRIGGER touch_updated_at BEFORE UPDATE ON content.manuscript_counters
+            FOR EACH ROW EXECUTE FUNCTION ops.touch_updated_at();
         """
     )
 

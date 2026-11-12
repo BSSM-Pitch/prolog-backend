@@ -322,6 +322,15 @@ async def create_chapter(
 ) -> ChapterResponse:
     # 남의 프로젝트 원고에 챕터를 달 수 없다.
     await _get(session, project_id, body.manuscript_id)
+    # 에디터 원고는 빈 1장을 미리 갖고 있다.
+    # 같은 번호의 빈 장이 있으면 새로 만들지 않고 그 장을 채운다.
+    placeholder = await repo.empty_chapter_at(session, body.manuscript_id, body.chapter_no)
+    if placeholder is not None:
+        placeholder.title = body.title
+        placeholder.content = body.content
+        await session.flush()
+        await session.refresh(placeholder)
+        return _chapter(placeholder)
     try:
         row = await repo.add_chapter(
             session,

@@ -8,7 +8,9 @@ from sqlalchemy import text
 from app.db.all_models import Base
 from app.db.session import engine
 
-EXPECTED_TABLE_COUNT = 39  # 0003: ops.processed_events · 0013: platform.email_verifications
+# 0003: ops.processed_events · 0013: platform.email_verifications
+# 0018: content.manuscript_counters (기억·관계 등 0014~0017 의 테이블 포함)
+EXPECTED_TABLE_COUNT = 40
 SCHEMAS = ("platform", "content", "authoring", "insight", "ops")
 
 

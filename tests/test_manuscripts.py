@@ -453,3 +453,38 @@ async def test_default_title_counts_creations_not_current_manuscripts(
         headers=other_user["headers"],
     )
     assert first.json()["data"]["title"] == "1차 원고"
+
+
+async def test_creating_chapter_one_fills_the_empty_placeholder(client: AsyncClient) -> None:
+    user, pid = await _project(client, "ms-placeholder@example.com")
+    h = user["headers"]
+    ms = (await _manuscript(client, user, pid))["manuscript_id"]
+
+    made = await client.post(
+        f"/projects/{pid}/chapters",
+        json={"manuscript_id": ms, "chapter_no": 1, "title": "시작", "content": "첫 장의 글"},
+        headers=h,
+    )
+    assert made.status_code == 201, made.text
+    listed = await client.get(f"/projects/{pid}/chapters?manuscript_id={ms}", headers=h)
+    assert [(c["chapter_no"], c["content"]) for c in listed.json()["data"]] == [(1, "첫 장의 글")]
+
+    # 글이 들어간 장은 더 이상 자리표시자가 아니므로 같은 번호는 다시 겹친다
+    again = await client.post(
+        f"/projects/{pid}/chapters",
+        json={"manuscript_id": ms, "chapter_no": 1, "content": "또 1장"},
+        headers=h,
+    )
+    assert code(again) == "INVALID_INPUT"
+
+
+async def test_export_uses_body_when_only_the_empty_chapter_exists(client: AsyncClient) -> None:
+    user, pid = await _project(client, "ms-export-body@example.com")
+    h = user["headers"]
+    ms = (await _manuscript(client, user, pid))["manuscript_id"]
+    path = f"/projects/{pid}/manuscripts/{ms}"
+    await client.patch(path, json={"content": "본문만 있는 원고"}, headers=h)
+
+    res = await client.get(path + "/export?format=txt", headers=h)
+    assert res.status_code == 200, res.text
+    assert "본문만 있는 원고" in res.content.decode("utf-8")

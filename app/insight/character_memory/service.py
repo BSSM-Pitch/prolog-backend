@@ -58,7 +58,9 @@ async def source(
     rows: list[tuple[str, int, str | None, str, str | None]] = [
         (str(c.id), c.chapter_no, c.title, c.content, str(c.id)) for c in chapters
     ]
-    if not chapters:
+    # 에디터 원고는 빈 1장을 갖고 시작한다.
+    # 장에 글이 하나도 없으면 원고 본문 전체를 한 장면으로 읽는다.
+    if not any(c.content.strip() for c in chapters):
         rows = [(str(manuscript.id), 1, manuscript.title, manuscript.content or "", None)]
     for sid, order, title, text, chapter_id in rows:
         if not text.strip():

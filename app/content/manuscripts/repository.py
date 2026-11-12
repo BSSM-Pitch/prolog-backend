@@ -130,6 +130,22 @@ async def chapters_of(session: AsyncSession, manuscript_id: UUID) -> list[Chapte
     return list((await session.execute(stmt)).scalars())
 
 
+async def empty_chapter_at(
+    session: AsyncSession, manuscript_id: UUID, chapter_no: int
+) -> Chapter | None:
+    """같은 번호의 **빈** 장. 에디터 원고가 미리 만들어 두는 1장이 이런 장이다. 행을 잠근다."""
+    stmt = (
+        select(Chapter)
+        .where(
+            Chapter.manuscript_id == manuscript_id,
+            Chapter.chapter_no == chapter_no,
+            Chapter.content == "",
+        )
+        .with_for_update()
+    )
+    return (await session.execute(stmt)).scalars().first()
+
+
 async def add_chapter(session: AsyncSession, chapter: Chapter) -> Chapter:
     session.add(chapter)
     await session.flush()

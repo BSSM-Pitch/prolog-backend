@@ -30,8 +30,11 @@ def _heading(chapter: Chapter) -> str:
 
 
 def sections(chapters: list[Chapter], content: str | None) -> list[tuple[str | None, str]]:
-    """(장 제목, 본문) 목록. 챕터가 없으면 제목 없는 한 덩어리다."""
-    if not chapters:
+    """(장 제목, 본문) 목록. 챕터가 없으면 제목 없는 한 덩어리다.
+
+    장이 모두 비어 있는데 원고 본문에 글이 있으면(빈 1장만 있는 에디터 원고) 본문을 쓴다.
+    """
+    if not chapters or (not any(c.content.strip() for c in chapters) and (content or "").strip()):
         return [(None, content or "")]
     ordered = sorted(chapters, key=lambda c: c.chapter_no)
     return [(_heading(c), c.content) for c in ordered]
