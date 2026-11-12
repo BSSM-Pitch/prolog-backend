@@ -187,6 +187,7 @@ async def to_character_responses(
                 character_id=c.id,
                 project_id=c.project_id,
                 name=c.name,
+                aliases=list(c.aliases or []),
                 created_from_draft_id=c.created_from_draft_id,
                 confirmed_at=c.confirmed_at,
                 updated_at=c.updated_at,

@@ -335,6 +335,7 @@ async def test_confirmed_character_attributes_are_editable_without_extraction(
     edited = await client.patch(path, json={"value": "끈질김", "field": "core_values"}, headers=h)
     assert (edited.json()["data"]["field"], edited.json()["data"]["value"]) == ("core_values", "끈질김")
     got = (await client.get(f"/projects/{pid}/characters/{cid}", headers=h)).json()["data"]
+    assert got["aliases"] == []  # 별칭은 원고 분석이 채운다. 없으면 빈 배열이다
     assert [a["value"] for a in got["personality_tags"]] == ["신중함"]
     assert [a["value"] for a in got["core_values"]] == ["끈질김"]
 

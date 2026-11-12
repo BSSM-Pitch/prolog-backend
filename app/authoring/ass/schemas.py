@@ -95,6 +95,8 @@ class CharacterResponse(BaseModel):
     character_id: UUID
     project_id: UUID
     name: str
+    # 원고 분석에서 같은 인물로 묶인 다른 이름(별명·호칭). 화면이 "마지막 등장 장"을 셀 때 쓴다.
+    aliases: list[str] = []
     personality_tags: list[AttributeResponse]
     core_values: list[AttributeResponse]
     influence_relations: list[AttributeResponse]
