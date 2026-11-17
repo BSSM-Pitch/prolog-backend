@@ -10,7 +10,7 @@ from contextlib import contextmanager
 from dataclasses import replace
 from typing import Any, Literal
 
-from prolog_ai.core.llm import LLMTimeoutError
+from prolog_ai.core.llm import LLMFailedError, LLMTimeoutError
 from prolog_ai.core.request_policy import RequestPolicy, current_policy, request_policy
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -45,7 +45,16 @@ def summary_text(tracks: list[dict[str, Any]], findings: list[dict[str, Any]]) -
     overview = f"원문 근거와 함께 주요 설정·관계·복선 {len(tracks)}개를 추적했습니다. "
     if focused:
         overview += ", ".join(focused) + "을 구분해 살펴봤습니다. "
-    return overview + f"최종 목록에는 충돌 후보 {contradictions}건과 설명 확인 {gaps}건이 있습니다."
+    summary = (
+        overview + f"최종 목록에는 충돌 후보 {contradictions}건과 설명 확인 {gaps}건이 있습니다."
+    )
+    if any(
+        needs_korean(item.get("title", ""))
+        or needs_korean(item.get("explanation", item.get("reason", "")))
+        for item in [*tracks, *findings]
+    ):
+        summary += " 일부 항목의 제목·설명은 원문 언어로 표시됩니다."
+    return summary
 
 
 @contextmanager
@@ -490,7 +499,16 @@ def run(payload: dict[str, Any]) -> dict[str, Any]:
                 selected.summary = audit.summary
             final = resolve_sources(selected, refs)
             validate_evidence(final, payload["chapters"])
-            final, localized_items = localize_review(final)
+            localized_items = 0
+            localization_pending = False
+            try:
+                final, localized_items = localize_review(final)
+            except (LLMFailedError, LLMTimeoutError, ValueError):
+                # Presentation failure must not discard a completed, source-verified review.
+                localization_pending = True
+                logging.getLogger(__name__).warning(
+                    "Narrative presentation translation unavailable"
+                )
             data = final.model_dump()
             data["summary"] = summary_text(data["tracks"], data["findings"])
             return {
@@ -499,6 +517,7 @@ def run(payload: dict[str, Any]) -> dict[str, Any]:
                     "review_passes": 2 + int(expanded) + int(audit is not None),
                     "coverage_expanded": expanded,
                     "localized_items": localized_items,
+                    "localization_pending": localization_pending,
                     "version": VERSION,
                     "review_revision": REVIEW_REVISION,
                     "finding_audit": audit.model_dump() if audit else None,
