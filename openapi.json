@@ -14901,6 +14901,16 @@
                       }
                     }
                   },
+                  "LINK_TARGET_NOT_FOUND": {
+                    "summary": "연결하려는 대상이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "LINK_TARGET_NOT_FOUND",
+                        "details": {},
+                        "message": "연결하려는 대상이 없습니다"
+                      }
+                    }
+                  },
                   "PROJECT_NOT_FOUND": {
                     "summary": "프로젝트를 찾을 수 없습니다",
                     "value": {
@@ -14927,7 +14937,7 @@
                 }
               }
             },
-            "description": "- `CHAPTER_NOT_FOUND` — 챕터를 찾을 수 없습니다\n- `CHARACTER_NOT_FOUND` — 캐릭터를 찾을 수 없습니다\n- `CONFLICT_CHECK_NOT_FOUND` — 충돌 검사 작업을 찾을 수 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다\n- `RELATIONSHIP_NOT_FOUND` — 해당 관계를 찾을 수 없습니다"
+            "description": "- `CHAPTER_NOT_FOUND` — 챕터를 찾을 수 없습니다\n- `CHARACTER_NOT_FOUND` — 캐릭터를 찾을 수 없습니다\n- `CONFLICT_CHECK_NOT_FOUND` — 충돌 검사 작업을 찾을 수 없습니다\n- `LINK_TARGET_NOT_FOUND` — 연결하려는 대상이 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다\n- `RELATIONSHIP_NOT_FOUND` — 해당 관계를 찾을 수 없습니다"
           },
           "409": {
             "content": {
