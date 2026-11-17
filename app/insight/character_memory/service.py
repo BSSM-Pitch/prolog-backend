@@ -18,7 +18,7 @@ from app.authoring.ass.models import Character
 from app.content.manuscripts.models import Chapter, Manuscript
 from app.core import errors
 from app.insight.character_memory import discovery
-from app.insight.character_memory.projection import character_counts, dossier
+from app.insight.character_memory.projection import character_counts, dossier, last_recorded_orders
 from app.jobs import service as jobs
 from app.jobs.models import Job
 
@@ -166,6 +166,7 @@ async def overview(session: AsyncSession, project_id: UUID, manuscript_id: UUID)
         "job_stale": bool(job and job.input["fingerprint"] != current["fingerprint"]),
         "mode": memory.get("mode") if memory else None,
         "character_counts": character_counts(memory) if memory else {},
+        "character_last_records": last_recorded_orders(memory) if memory else {},
         "chapters": [
             {"order": s["order"], "title": ready.input["titles"][s["scene_id"]]}
             for s in memory["scenes"]

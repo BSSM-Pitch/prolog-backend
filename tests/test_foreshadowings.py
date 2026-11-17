@@ -54,6 +54,39 @@ async def _deliver_chapter_deletions(db: AsyncSession) -> None:
         await handle(message(event))  # at-least-once — 두 번 와도 한 번만
 
 
+async def test_chapter_links_cannot_cross_manuscripts_with_same_numbers(
+    client: AsyncClient,
+) -> None:
+    s = await _setup(client, "fs-scope@example.com")
+    f = (await _make(client, s, "낡은 수신기", 5))["data"]
+    second = (
+        await client.post(
+            f"/projects/{s['pid']}/manuscripts", json={"title": "다른 원고"}, headers=s["h"]
+        )
+    ).json()["data"]["manuscript_id"]
+    chapter = (
+        await client.post(
+            f"/projects/{s['pid']}/chapters",
+            json={"manuscript_id": second, "chapter_no": 10},
+            headers=s["h"],
+        )
+    ).json()["data"]["chapter_id"]
+    path = f"{s['base']}/{f['foreshadowing_id']}"
+    for method, suffix, field in [
+        ("post", "/linked-chapters", "chapter_id"),
+        ("put", "/payoff", "payoff_chapter_id"),
+        ("patch", "", "setup_chapter_id"),
+    ]:
+        response = await getattr(client, method)(
+            path + suffix, json={field: chapter}, headers=s["h"]
+        )
+        assert response.status_code == 400
+        assert code(response) == "INVALID_INPUT"
+    saved = (await client.get(path, headers=s["h"])).json()["data"]
+    assert saved["chapters"] == f["chapters"]
+    assert saved["status"] == "unresolved"
+
+
 async def test_setup_link_payoff_flow(client: AsyncClient) -> None:
     s = await _setup(client, "fs1@example.com")
     h, base = s["h"], s["base"]
