@@ -4,12 +4,13 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Path, Query, status
 
 from app.ai.client import AIClient, ai_client
+from app.content.manuscripts import service as manuscripts
 from app.core import errors
 from app.core.deps import ProjectContext, require_project_role
 from app.core.pagination import DEFAULT_LIMIT, Cursor, Limit, decode_cursor, next_cursor
 from app.core.response import Envelope, Page, ok, raises
 from app.db.session import Session
-from app.insight.scds import service
+from app.insight.scds import narrative, service
 from app.insight.scds.schemas import (
     ConflictAction,
     ConflictCheckEnvelope,
@@ -19,6 +20,7 @@ from app.insight.scds.schemas import (
     EventCreate,
     EventCreated,
     HistoryItem,
+    LatestNarrativeEnvelope,
     Severity,
 )
 
@@ -27,6 +29,7 @@ router = APIRouter(prefix="/projects", tags=["SCDS"])
 ProjectId = Annotated[UUID, Path(alias="projectId")]
 ChapterId = Annotated[UUID, Path(alias="chapterId")]
 CheckId = Annotated[UUID, Path(alias="checkId")]
+ManuscriptId = Annotated[UUID, Path(alias="manuscriptId")]
 ConflictId = Annotated[UUID, Path(alias="conflictId")]
 AI = Annotated[AIClient, Depends(ai_client)]
 # ASSUMPTION: 명세가 역할을 정하지 않았다. 읽기 viewer / 쓰기 editor.
@@ -37,6 +40,42 @@ EditorCtx = Annotated[ProjectContext, Depends(require_project_role("editor"))]
 
 def _cursor(cursor: str | None) -> Any:
     return decode_cursor(cursor) if cursor else None
+
+
+@router.post(
+    "/{projectId}/manuscripts/{manuscriptId}/narrative-reviews",
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="등록된 규칙 없이도 원고 전체의 설정·관계·복선을 검토한다",
+    response_model=Envelope[ConflictCheckResponse],
+    responses=raises(errors.ManuscriptNotFound, errors.InvalidInput),
+)
+async def review_manuscript(
+    project_id: ProjectId,
+    manuscript_id: ManuscriptId,
+    session: Session,
+    ctx: EditorCtx,
+) -> dict[str, Any]:
+    """모든 장과 저장 규칙의 스냅샷을 검토한다. 같은 판본은 기존 작업을 반환한다."""
+    job = await narrative.create(session, project_id, manuscript_id, ctx.user.id)
+    return ok(await service.to_check(session, job))
+
+
+@router.get(
+    "/{projectId}/manuscripts/{manuscriptId}/narrative-reviews/latest",
+    dependencies=[Viewer],
+    response_model=LatestNarrativeEnvelope,
+    summary="원고 전체의 최근 검토와 수정 이후 유효성을 조회한다",
+    responses=raises(errors.ManuscriptNotFound, errors.InvalidInput),
+)
+async def latest_review(
+    project_id: ProjectId,
+    manuscript_id: ManuscriptId,
+    session: Session,
+) -> dict[str, Any]:
+    """새 검사를 시작하지 않고 최근 작업을 복원한다. 원고가 바뀌면 stale을 표시한다."""
+    await manuscripts.get(session, project_id, manuscript_id)
+    job = await narrative.latest(session, project_id, manuscript_id)
+    return ok(await service.to_check(session, job) if job else None)
 
 
 @router.post(

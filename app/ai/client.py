@@ -20,6 +20,8 @@ Result = dict[str, Any]
 
 
 class AIClient(Protocol):
+    def run_narrative_review(self, payload: dict[str, Any]) -> Result: ...
+
     def run_rule_duplicates(
         self, candidates: list[dict[str, Any]], rules: list[dict[str, Any]]
     ) -> Result: ...
@@ -108,6 +110,11 @@ class PrologAI:
     def supports_compact_memory(self) -> bool:
         # Larger output budgets are verified for the OpenAI route only.
         return os.environ.get("PROLOG_AI_PROVIDER") == "openai"
+
+    def run_narrative_review(self, payload: dict[str, Any]) -> Result:
+        from app.ai.narrative_review import run
+
+        return run(payload)
 
     def run_compact_memory_step(self, stage: str, payload: dict[str, Any]) -> dict[str, Any]:
         from prolog_ai.memory.compact import run_step

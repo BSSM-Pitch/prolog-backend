@@ -26,11 +26,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai import jobs as ai_jobs
 from app.ai.client import AIClient, Result
+from app.ai.narrative_review import VERSION, NarrativeEvidence
 from app.authoring.ass.models import Character, CharacterAttribute
 from app.authoring.rex.models import WorldRule
 from app.content.manuscripts import versions
 from app.content.manuscripts.models import Chapter, Manuscript
 from app.core import errors
+from app.insight.scds import narrative
 from app.insight.scds.models import Conflict, ConflictSuppression, Event, EventCharacter
 from app.insight.scds.schemas import (
     CheckStatus,
@@ -41,6 +43,7 @@ from app.insight.scds.schemas import (
     EventCreated,
     EventResponse,
     HistoryItem,
+    NarrativeResult,
     RuleResult,
 )
 from app.insight.scds.source import edit_problem, revision
@@ -165,7 +168,14 @@ async def to_check(session: AsyncSession, job: Job) -> ConflictCheckResponse:
         status=status_of(job),
         rule_result=RuleResult.model_validate(_rule_result(job)),
         conflict_ids=list(ids),
-        analysis_kind="ai_rule_review" if job.input.get("review_mode") else "legacy_keyword",
+        analysis_kind="narrative_review"
+        if job.input.get("review_mode") == VERSION
+        else "ai_rule_review"
+        if job.input.get("review_mode")
+        else "legacy_keyword",
+        narrative=NarrativeResult.model_validate(await narrative.result_view(session, job))
+        if job.input.get("review_mode") == VERSION
+        else None,
         assessments=(job.result or {}).get("assessments", []),
         created_at=job.created_at,
         updated_at=job.updated_at,
@@ -205,7 +215,20 @@ async def _event_response(session: AsyncSession, event: Event) -> EventResponse:
 async def to_conflicts(session: AsyncSession, rows: Sequence[Conflict]) -> list[ConflictResponse]:
     events: dict[UUID, Event] = {}
     chapters: dict[UUID, Chapter] = {}
+    source_evidence: dict[str, list[dict[str, Any]]] = {}
+    stale_jobs: set[UUID] = set()
     if rows:
+        found_jobs = (
+            await session.scalars(
+                select(Job).where(Job.id.in_([c.job_id for c in rows if c.job_id]))
+            )
+        ).all()
+        for j in found_jobs:
+            if j.input.get("review_mode") == VERSION:
+                if await narrative.is_stale(session, j):
+                    stale_jobs.add(j.id)
+                for f in (j.result or {}).get("findings", []):
+                    source_evidence[f.get("key", "")] = f["evidence"]
         found = await session.execute(select(Event).where(Event.id.in_([c.event_id for c in rows])))
         events = {e.id: e for e in found.scalars()}
         chapter_ids = {c.chapter_id for c in rows if c.chapter_id}
@@ -214,6 +237,11 @@ async def to_conflicts(session: AsyncSession, rows: Sequence[Conflict]) -> list[
             chapters = {ch.id: ch for ch in pairs.scalars()}
     return [
         ConflictResponse(
+            source_evidence=[
+                NarrativeEvidence.model_validate(e)
+                for e in source_evidence.get(c.suppression_key, [])
+            ],
+            review_stale=c.job_id in stale_jobs,
             conflict_id=c.id,
             check_id=c.job_id,
             event_id=c.event_id,
@@ -366,6 +394,8 @@ async def retry_check(session: AsyncSession, project_id: UUID, check_id: UUID) -
 
 
 async def _prepare(session: AsyncSession, job: Job) -> dict[str, Any]:
+    if job.input.get("review_mode") == VERSION:
+        return dict(job.input)
     event = await session.get(Event, cast(UUID, job.target_id))
     if event is None:
         raise errors.EventNotFound()
@@ -388,6 +418,8 @@ async def _prepare(session: AsyncSession, job: Job) -> dict[str, Any]:
 
 
 def _call(ai: AIClient, args: Any) -> Result:
+    if args.get("review_mode") == VERSION:
+        return ai.run_narrative_review(args)
     if args.get("review_mode"):
         return ai.run_rule_review(args["event"], args["rules"], args["characters"])
     return ai.run_scds_analysis(args["event"], args["rule_result"], args["characters"])
@@ -427,6 +459,9 @@ async def _conflict_rows(
 
 
 async def _analyzed(session: AsyncSession, job: Job, data: dict[str, Any]) -> None:
+    if job.input.get("review_mode") == VERSION:
+        await narrative.save(session, job, data)
+        return
     if job.input.get("review_mode"):
         event = await session.get(Event, cast(UUID, job.target_id))
         if event is None:
@@ -602,6 +637,9 @@ async def resolve(
 async def _edit_source(
     session: AsyncSession, conflict: Conflict, body: ConflictAction, user_id: UUID
 ) -> None:
+    job = await session.get(Job, conflict.job_id) if conflict.job_id else None
+    if job and job.input.get("review_mode") == VERSION and await narrative.is_stale(session, job):
+        raise errors.InvalidInput("원고 전체의 내용이 바뀌었어요. 다시 검사한 뒤 수정해 주세요.")
     chapter = await session.get(Chapter, conflict.chapter_id) if conflict.chapter_id else None
     if chapter is None:
         raise errors.InvalidInput("원문을 찾을 수 없어요.")

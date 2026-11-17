@@ -6,6 +6,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, StringConstraints
 
+from app.ai.narrative_review import Finding, NarrativeEvidence, Track
 from app.core.response import Envelope, ErrorBody
 
 CheckStatus = Literal["skipped", "queued", "analyzing", "completed", "failed"]
@@ -54,13 +55,28 @@ class RuleAssessment(BaseModel):
     severity: Severity | None = None
 
 
+class NarrativeResult(BaseModel):
+    manuscript_id: UUID
+    source_hash: str
+    chapter_count: int
+    char_count: int
+    stale: bool
+    summary: str
+    tracks: list[Track]
+    findings: list[Finding]
+    more_items: bool
+
+
 class ConflictCheckResponse(BaseModel):
     check_id: UUID
     event_id: UUID
     status: CheckStatus
     rule_result: RuleResult
     conflict_ids: list[UUID]
-    analysis_kind: Literal["ai_rule_review", "legacy_keyword"] = "legacy_keyword"
+    analysis_kind: Literal["ai_rule_review", "legacy_keyword", "narrative_review"] = (
+        "legacy_keyword"
+    )
+    narrative: NarrativeResult | None = None
     assessments: list[RuleAssessment] = []
     created_at: datetime
     updated_at: datetime
@@ -78,6 +94,8 @@ class ConflictCheckEnvelope(Envelope[ConflictCheckResponse]):
 
 
 class ConflictResponse(BaseModel):
+    review_stale: bool = False
+    source_evidence: list[NarrativeEvidence] = Field(default_factory=list)
     conflict_id: UUID
     check_id: UUID | None
     event_id: UUID
@@ -118,3 +136,8 @@ class HistoryItem(BaseModel):
 
 def as_dict(model: BaseModel) -> dict[str, Any]:
     return model.model_dump(mode="json")
+
+
+class LatestNarrativeEnvelope(BaseModel):
+    data: ConflictCheckResponse | None
+    meta: dict[str, Any] = Field(default_factory=dict)
