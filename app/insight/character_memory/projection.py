@@ -132,6 +132,9 @@ def dossier(
             continue
         check = checks.get(o.observation_id)
         candidates = {o.character_id}
+        candidates.update(c.character_id for c in o.attribution_checks)
+        if o.perception_context:
+            candidates.add(o.perception_context.character_id)
         if check:
             candidates.update([check.original_character_id, check.proposed_character_id])
         if character_id in candidates:

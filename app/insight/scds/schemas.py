@@ -86,6 +86,9 @@ class ConflictResponse(BaseModel):
     chapter_id: UUID | None
     chapter: int | None
     conflict_target: str | None
+    manuscript_id: UUID | None = None
+    source_hash: str | None = None
+    edit_unavailable_reason: str | None = None
     matched_keyword: str | None
     input_event: str
     # AI 가 끝내 실패하면 룰 후보만 남는다 — severity · advice 가 null 이다(명세 §4.7).
@@ -100,6 +103,7 @@ class ConflictResponse(BaseModel):
 
 class ConflictAction(BaseModel):
     action: Literal["accepted", "ignored", "modified"]
+    source_hash: str | None = Field(default=None, min_length=64, max_length=64)
     modified_content: (
         Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=5000)]
         | None

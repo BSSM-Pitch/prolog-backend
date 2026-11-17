@@ -135,7 +135,13 @@ def job_view(job: Job) -> dict[str, Any]:
         or {**progress(None), "total_scenes": len(job.input["scenes"])},
         "error": {
             "code": job.error.get("code"),
-            "message": "분석이 중단됐어요. 이어서 다시 시도할 수 있어요.",
+            "message": (
+                "호출 예산을 사용했어요. 저장된 결과는 유지되며 추가 요청은 보내지 않아요."
+                if job.error.get("code") == "AI_MEMORY_BUDGET_EXCEEDED"
+                else "원고가 이번 분석의 처리 한도를 넘어요. 원고 범위를 줄여 주세요."
+                if job.error.get("code") == "AI_MEMORY_PLAN_TOO_LARGE"
+                else "분석이 중단됐어요. 저장된 결과에서 이어서 시도할 수 있어요."
+            ),
         }
         if job.status == "failed" and job.error
         else None,
@@ -173,6 +179,8 @@ async def overview(session: AsyncSession, project_id: UUID, manuscript_id: UUID)
 async def request(
     session: AsyncSession, project_id: UUID, manuscript_id: UUID, user_id: UUID
 ) -> Job:
+    from prolog_ai.memory.compact import VERSION as compact_version
+
     data = await source(session, project_id, manuscript_id, lock=True)
     if not data["scenes"]:
         raise errors.ManuscriptTooShort(length=0)
@@ -183,11 +191,25 @@ async def request(
     ).scalar_one_or_none()
     if active:
         return active
+    recent = await latest(session, project_id, manuscript_id)
+    if (
+        recent
+        and recent.status == "failed"
+        and recent.input["fingerprint"] == data["fingerprint"]
+        and (recent.result or {}).get("compact")
+    ):
+        # Repeated POSTs for the same failed snapshot must not mint fresh spend.
+        # Recovery uses /retry with the existing reservations and checkpoints.
+        return recent
     ready = await latest(session, project_id, manuscript_id, completed=True)
     if (
         ready
         and ready.input["fingerprint"] == data["fingerprint"]
         and ready.input.get("discovery_version") == discovery.VERSION
+        and (
+            not (ready.result or {}).get("compact")
+            or (ready.result or {})["compact"].get("version") == compact_version
+        )
     ):
         return ready
     job = await jobs.create(
@@ -208,6 +230,15 @@ async def request(
             "memory": (ready.result or {}).get("memory"),
             "progress": progress(None),
         }
+        compact_cache = (ready.result or {}).get("compact")
+        if compact_cache:
+            # Reuse unchanged source batches, never the previous job's spend allowance.
+            job.result["compact"] = {
+                "version": compact_cache.get("version"),
+                "cache": compact_cache.get("cache", {}),
+                "requests": 0,
+                "attempts": {},
+            }
     jobs.announce(session, job)
     await session.flush()
     await session.refresh(job)
@@ -230,6 +261,8 @@ async def retry(
         raise errors.InvalidInput("원고나 인물이 바뀌었어요. 현재 원고로 새로 분석해 주세요.")
     if job.status != "failed":
         raise errors.InvalidStatusTransition(status=job.status)
+    if (job.error or {}).get("code") == "AI_MEMORY_BUDGET_EXCEEDED":
+        raise errors.InvalidInput("호출 예산을 사용했어요. 재시도로 예산이 초기화되지 않습니다.")
     active = (
         await session.execute(
             query(project_id, manuscript_id).where(Job.status.in_(["queued", "running"])).limit(1)
@@ -274,6 +307,16 @@ async def persist(
         if not job:
             return False
         job.result = {**(job.result or {}), "memory": memory, "progress": progress(memory, stage)}
+        if job.result.get("discovery"):
+            job.result["discovery"] = discovery.apply_memory_links(job.result["discovery"], memory)
+        compact_state = job.result.get("compact")
+        if compact_state:
+            job.result["progress"].update(
+                completed_requests=len(compact_state.get("used_keys", [])),
+                http_requests=compact_state.get("requests", 0),
+                request_limit=40,
+                planned_requests=compact_state.get("planned_steps", 0),
+            )
         await session.commit()
         return True
 
@@ -293,6 +336,10 @@ async def handle(sessions: ai_jobs.Sessions, job_id: UUID, ai: AIClient) -> str:
         await session.commit()
     beat = asyncio.create_task(ai_jobs._heartbeat(sessions, job_id, attempt))
     try:
+        if getattr(ai, "supports_compact_memory", False) is True:
+            from app.insight.character_memory import optimized
+
+            return await optimized.run(sessions, job_id, attempt, ai, args)
         if report:
             args = await discovery.discover(sessions, job_id, attempt, ai, args, report)
         if not args["characters"]:

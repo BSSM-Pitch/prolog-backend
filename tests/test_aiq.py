@@ -285,3 +285,42 @@ async def test_saved_rules_are_project_scoped_and_refreshed(client: AsyncClient)
     ai2 = FakeAI(answer("수정 규칙을 비교했습니다."))
     assert await _run(UUID(follow.json()["data"][-1]["message_id"]), ai2) == "completed"
     assert ai2.calls[0][1][5][0]["description"] == "정확히 31시간 뒤의 메시지만 수신"
+
+
+async def test_citations_are_verified_and_survive_reload(client: AsyncClient) -> None:
+    m = await _manuscript(client, "cited@example.com", "1장\n하린은 통신실 문을 잠갔다.")
+    project = m["base"].split("/manuscripts/")[0]
+    manuscript_id = m["base"].split("/manuscripts/")[1].split("/")[0]
+    chapter = (
+        await client.post(
+            f"{project}/chapters",
+            headers=m["h"],
+            json={
+                "manuscript_id": manuscript_id,
+                "chapter_no": 1,
+                "title": "통신실",
+                "content": "하린은 통신실 문을 잠갔다.",
+            },
+        )
+    ).json()["data"]
+    created = await _ask(client, m)
+    ai = FakeAI(
+        {
+            "data": {
+                "content": "**하린**이 문을 잠갔습니다.",
+                "citations": ["하린은 통신실 문을 잠갔다.", "원고에 없는 문장"],
+            }
+        }
+    )
+    assert await _run(_job_of(created), ai) == "completed"
+    detail = (
+        await client.get(f"{m['base']}/{created['thread']['thread_id']}", headers=m["h"])
+    ).json()["data"]
+    assert detail["messages"][-1]["citations"] == [
+        {
+            "chapter_id": chapter["chapter_id"],
+            "chapter_no": 1,
+            "chapter_title": "통신실",
+            "quote": "하린은 통신실 문을 잠갔다.",
+        }
+    ]

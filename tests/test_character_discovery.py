@@ -190,7 +190,9 @@ async def test_discovery_resumes_completed_chunks_and_never_duplicates(client: A
     assert not (await overview(client, m))["stale"]
 
 
-async def test_source_edits_and_lost_attempts_prevent_registration(client: AsyncClient) -> None:
+async def test_source_edits_preserve_snapshot_and_lost_attempts_cannot_write(
+    client: AsyncClient,
+) -> None:
     m = await prepare(client, "discover-source@example.com", "서윤하가 말했다.")
     aid = await queue(client, m)
     await client.patch(m["base"], headers=m["h"], json={"content": "인물이 사라졌다."})
@@ -200,18 +202,24 @@ async def test_source_edits_and_lost_attempts_prevent_registration(client: Async
             aid,
             DiscoverAI({"data": {"people": [person("서윤하", "서윤하가 말했다.")]}}),
         )
-        == "failed"
+        == "completed"
     )
     async with SessionFactory() as session:
         job = await jobs.get(session, aid)
-        assert job and job.error and job.error["code"] == "DISCOVERY_SOURCE_CHANGED"
-        assert not await discovery.people(session, job.project_id)
+        assert job and job.status == "completed"
+        assert job.input["scenes"][0]["text"] == "서윤하가 말했다."
+        assert len(await discovery.people(session, job.project_id)) == 1
         report = deepcopy(job.result["discovery"])
         args = job.input
+        report["complete"] = False
+        report["processed_chunks"] = 0
     with pytest.raises(discovery.DiscoveryFailure):
-        await discovery.discover(SessionFactory, aid, 1, DiscoverAI(), args, report)
+        await discovery.discover(
+            SessionFactory, aid, 1, DiscoverAI({"data": {"people": []}}), args, report
+        )
     async with SessionFactory() as session:
-        assert not await discovery.people(session, UUID(m["project"].split("/")[-1]))
+        assert len(await discovery.people(session, UUID(m["project"].split("/")[-1]))) == 1
+    assert (await overview(client, m))["stale"]
 
 
 async def test_no_named_people_completes_without_fabricated_memory(client: AsyncClient) -> None:
@@ -350,3 +358,65 @@ def test_model_reviews_canonical_names_before_registering(monkeypatch: pytest.Mo
     assert len(prompts) == 2 and "초안을 원문과 다시 대조" in prompts[1]
     assert '"source_spelling": "김서진"' in prompts[1]
     assert result["meta"]["review_passes"] == 2
+
+
+def test_memory_name_links_update_candidates_without_globalizing_relations_or_user_decisions():
+    report = {
+        "complete": True,
+        "candidates": [
+            {"name": "민서", "status": "needs_review", "character_id": None},
+            {"name": "어머니", "status": "needs_review", "character_id": None},
+            {"name": "민서", "status": "dismissed", "character_id": None},
+        ],
+    }
+    memory = {
+        "characters": [
+            {"character_id": "m", "name": "한민서"},
+            {"character_id": "p", "name": "김다은"},
+        ],
+        "observations": [
+            {
+                "identity_links": [
+                    {
+                        "reference": "민서",
+                        "canonical": "한민서",
+                        "character_id": "m",
+                        "relative_to": None,
+                        "evidence": [{"quote": "민서"}],
+                    },
+                    {
+                        "reference": "어머니",
+                        "canonical": "김다은",
+                        "character_id": "p",
+                        "relative_to": "한민서",
+                        "evidence": [{"quote": "어머니"}],
+                    },
+                ]
+            }
+        ],
+    }
+    for candidate in report["candidates"]:
+        candidate["evidence"] = {
+            "scene_id": "s2",
+            "revision": "r",
+            "start": 0,
+            "end": 10,
+            "quote": candidate["name"],
+        }
+    for link in memory["observations"][0]["identity_links"]:
+        link["evidence"][0].update(scene_id="s1", revision="r", start=0, end=10)
+    original = deepcopy(report)
+    result = discovery.apply_memory_links(report, memory)
+    assert report == original
+    assert result["candidates"][0]["character_id"] == "m"
+    assert result["candidates"][0]["status"] == "existing"
+    assert result["candidates"][1:] == report["candidates"][1:]
+    assert discovery.apply_memory_links(result, memory) == result
+    # The relationship can be acknowledged only where its verified evidence overlaps.
+    memory["observations"][0]["identity_links"][1]["evidence"][0]["scene_id"] = "s2"
+    linked = discovery.apply_memory_links(report, memory)
+    assert linked["candidates"][1]["character_id"] == "p"
+    assert memory["characters"] == [
+        {"character_id": "m", "name": "한민서"},
+        {"character_id": "p", "name": "김다은"},
+    ]

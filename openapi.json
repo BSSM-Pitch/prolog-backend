@@ -274,6 +274,80 @@
         "title": "AttributeResponse",
         "type": "object"
       },
+      "AttributionCheck": {
+        "additionalProperties": false,
+        "description": "Retained model decisions, not additional accepted character facts.",
+        "properties": {
+          "attribution": {
+            "enum": [
+              "certain",
+              "uncertain"
+            ],
+            "title": "Attribution",
+            "type": "string"
+          },
+          "character_id": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Character Id"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/Evidence"
+            },
+            "maxItems": 17,
+            "minItems": 1,
+            "title": "Evidence",
+            "type": "array"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "stage": {
+            "enum": [
+              "extract",
+              "verify",
+              "adjudicate"
+            ],
+            "title": "Stage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "stage",
+          "name",
+          "character_id",
+          "attribution",
+          "reason",
+          "evidence"
+        ],
+        "title": "AttributionCheck",
+        "type": "object"
+      },
       "Candidate": {
         "properties": {
           "character_id": {
@@ -1269,6 +1343,42 @@
         "title": "CharacterUpdate",
         "type": "object"
       },
+      "Citation": {
+        "properties": {
+          "chapter_id": {
+            "format": "uuid",
+            "title": "Chapter Id",
+            "type": "string"
+          },
+          "chapter_no": {
+            "title": "Chapter No",
+            "type": "integer"
+          },
+          "chapter_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chapter Title"
+          },
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chapter_id",
+          "chapter_no",
+          "chapter_title",
+          "quote"
+        ],
+        "title": "Citation",
+        "type": "object"
+      },
       "ConfirmRequest": {
         "properties": {
           "merge_target_character_id": {
@@ -1325,6 +1435,19 @@
               }
             ],
             "title": "Modified Content"
+          },
+          "source_hash": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Hash"
           }
         },
         "required": [
@@ -1542,6 +1665,17 @@
             "title": "Detected By",
             "type": "string"
           },
+          "edit_unavailable_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edit Unavailable Reason"
+          },
           "event_id": {
             "format": "uuid",
             "title": "Event Id",
@@ -1550,6 +1684,18 @@
           "input_event": {
             "title": "Input Event",
             "type": "string"
+          },
+          "manuscript_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manuscript Id"
           },
           "matched_keyword": {
             "anyOf": [
@@ -1612,6 +1758,17 @@
               }
             ],
             "title": "Severity"
+          },
+          "source_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Hash"
           },
           "status": {
             "enum": [
@@ -1766,6 +1923,13 @@
             "title": "Attribution",
             "type": "string"
           },
+          "attribution_checks": {
+            "items": {
+              "$ref": "#/components/schemas/AttributionCheck"
+            },
+            "title": "Attribution Checks",
+            "type": "array"
+          },
           "behavior_role": {
             "default": "other",
             "enum": [
@@ -1812,6 +1976,29 @@
           "evidence": {
             "$ref": "#/components/schemas/Evidence"
           },
+          "identity_links": {
+            "items": {
+              "$ref": "#/components/schemas/IdentityLink"
+            },
+            "title": "Identity Links",
+            "type": "array"
+          },
+          "identity_status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "linked",
+                  "unlinked",
+                  "subject_uncertain"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identity Status"
+          },
           "interlocutor_ids": {
             "items": {
               "maxLength": 200,
@@ -1847,6 +2034,16 @@
           "order": {
             "title": "Order",
             "type": "integer"
+          },
+          "perception_context": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PerceptionContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "presentation": {
             "enum": [
@@ -1885,6 +2082,34 @@
               }
             ],
             "title": "Story Time"
+          },
+          "subject_attribution": {
+            "anyOf": [
+              {
+                "enum": [
+                  "certain",
+                  "uncertain"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject Attribution"
+          },
+          "subject_name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject Name"
           },
           "summary": {
             "maxLength": 500,
@@ -3489,6 +3714,59 @@
         "title": "Hypothesis",
         "type": "object"
       },
+      "IdentityLink": {
+        "additionalProperties": false,
+        "properties": {
+          "canonical": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Canonical",
+            "type": "string"
+          },
+          "character_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Character Id",
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/Evidence"
+            },
+            "maxItems": 16,
+            "minItems": 1,
+            "title": "Evidence",
+            "type": "array"
+          },
+          "reference": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Reference",
+            "type": "string"
+          },
+          "relative_to": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relative To"
+          }
+        },
+        "required": [
+          "reference",
+          "canonical",
+          "character_id",
+          "evidence"
+        ],
+        "title": "IdentityLink",
+        "type": "object"
+      },
       "ItemCreate": {
         "properties": {
           "field": {
@@ -3997,6 +4275,13 @@
       },
       "MessageResponse": {
         "properties": {
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/Citation"
+            },
+            "title": "Citations",
+            "type": "array"
+          },
           "content": {
             "anyOf": [
               {
@@ -4962,10 +5247,66 @@
         "title": "PayoffBody",
         "type": "object"
       },
+      "PerceptionContext": {
+        "additionalProperties": false,
+        "properties": {
+          "anchor_observation_ids": {
+            "items": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Anchor Observation Ids",
+            "type": "array"
+          },
+          "basis": {
+            "const": "context_inference",
+            "default": "context_inference",
+            "title": "Basis",
+            "type": "string"
+          },
+          "character_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Character Id",
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/Evidence"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Evidence",
+            "type": "array"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "character_id",
+          "anchor_observation_ids",
+          "evidence",
+          "reason"
+        ],
+        "title": "PerceptionContext",
+        "type": "object"
+      },
       "Progress": {
         "properties": {
           "completed_requests": {
             "title": "Completed Requests",
+            "type": "integer"
+          },
+          "http_requests": {
+            "default": 0,
+            "title": "Http Requests",
             "type": "integer"
           },
           "observations": {
@@ -4976,9 +5317,31 @@
             "title": "Patterns",
             "type": "integer"
           },
+          "planned_requests": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Requests"
+          },
           "processed_scenes": {
             "title": "Processed Scenes",
             "type": "integer"
+          },
+          "request_limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Limit"
           },
           "stage": {
             "title": "Stage",
@@ -14710,7 +15073,7 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "충돌을 처리한다 (수용 · 무시 · 수정)",
+        "summary": "충돌을 검토하거나 원문을 수정한다",
         "tags": [
           "SCDS"
         ]
@@ -23136,6 +23499,163 @@
           }
         ],
         "summary": "원고 편집 이력",
+        "tags": [
+          "MSU"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/manuscripts/{manuscriptId}/versions/{versionId}/restore": {
+      "post": {
+        "description": "선택한 스냅샷의 본문으로 새 원고를 만든다. 현재 원고와 편집 이력은 보관한다.",
+        "operationId": "restore_version_v1_projects__projectId__manuscripts__manuscriptId__versions__versionId__restore_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "manuscriptId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Manuscriptid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "versionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Versionid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManuscriptResponseEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "MANUSCRIPT_NOT_FOUND": {
+                    "summary": "원고를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "MANUSCRIPT_NOT_FOUND",
+                        "details": {},
+                        "message": "원고를 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `MANUSCRIPT_NOT_FOUND` — 원고를 찾을 수 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "과거 원고를 새 복사본으로 복원한다",
         "tags": [
           "MSU"
         ]

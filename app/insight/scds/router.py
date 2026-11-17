@@ -175,9 +175,9 @@ async def get_conflict(
 
 @router.patch(
     "/{projectId}/conflicts/{conflictId}",
-    summary="충돌을 처리한다 (수용 · 무시 · 수정)",
+    summary="충돌을 검토하거나 원문을 수정한다",
     response_model=Envelope[ConflictResponse],
-    responses=raises(errors.ConflictNotFound, errors.InvalidStatusTransition),
+    responses=raises(errors.ConflictNotFound, errors.InvalidStatusTransition, errors.InvalidInput),
 )
 async def resolve(
     project_id: ProjectId,

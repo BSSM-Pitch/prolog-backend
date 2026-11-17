@@ -14,6 +14,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Literal, cast
 from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -150,6 +151,36 @@ async def list_versions(
 ) -> list[ManuscriptVersion]:
     manuscript = await _get(session, project_id, manuscript_id)
     return await versions.list_versions(session, manuscript.id, limit, cursor)
+
+
+async def restore_copy(
+    session: AsyncSession, project_id: UUID, manuscript_id: UUID, version_id: UUID, user_id: UUID
+) -> ManuscriptResponse:
+    """Recover a snapshot as a new manuscript; never overwrite the writer's current draft."""
+    original = await _get(session, project_id, manuscript_id)
+    version = await session.scalar(
+        select(ManuscriptVersion).where(
+            ManuscriptVersion.id == version_id,
+            ManuscriptVersion.manuscript_id == manuscript_id,
+            ManuscriptVersion.project_id == project_id,
+        )
+    )
+    if version is None:
+        raise errors.InvalidInput("복원할 편집 이력을 찾을 수 없어요.")
+    suffix = f" — {version.version_no}차 복원본"
+    copy = await repo.add_manuscript(
+        session,
+        Manuscript(
+            project_id=project_id,
+            title=original.title[: 200 - len(suffix)] + suffix,
+            source_type="editor",
+            status="ready",
+            content=version.content,
+        ),
+    )
+    await versions.snapshot(session, copy, "editor", user_id, force_new=True)
+    await session.flush()
+    return await _one(session, copy)
 
 
 def to_version_responses(rows: Sequence[ManuscriptVersion]) -> list[ManuscriptVersionResponse]:
