@@ -8344,6 +8344,18 @@
             "title": "Explanation",
             "type": "string"
           },
+          "focus": {
+            "default": "general",
+            "enum": [
+              "general",
+              "activation",
+              "cost",
+              "matchup",
+              "knowledge"
+            ],
+            "title": "Focus",
+            "type": "string"
+          },
           "kind": {
             "enum": [
               "setting",

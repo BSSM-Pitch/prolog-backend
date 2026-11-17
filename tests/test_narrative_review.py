@@ -10,6 +10,7 @@ from app.ai.narrative_review import (
     SourceReview,
     indexed_source,
     resolve_sources,
+    review_session,
     run,
     validate_evidence,
 )
@@ -17,6 +18,82 @@ from app.db.session import SessionFactory
 from app.insight.scds.service import handle
 from tests.conftest import FakeAI
 from tests.test_manuscripts import _manuscript, _project
+
+
+def test_review_cache_scope_preserves_parent_budget_and_usage():
+    from prolog_ai.core.request_policy import RequestPolicy, current_policy, request_policy
+
+    reservations: list[bool] = []
+    usages: list[dict] = []
+    parent = RequestPolicy(
+        before_attempt=lambda: reservations.append(True),
+        on_usage=usages.append,
+        max_output_tokens=1234,
+    )
+    with request_policy(parent):
+        with review_session("complete source") as metrics:
+            policy = current_policy.get()
+            assert policy and policy.prompt_cache_prefix == "complete source"
+            assert policy.max_output_tokens == 1234
+            for _ in range(3):
+                policy.before_attempt()
+            usage = {"input_tokens": 100, "input_tokens_details": {"cached_tokens": 90}}
+            assert policy.on_usage
+            policy.on_usage(usage)
+        assert current_policy.get() is parent
+    assert current_policy.get() is None
+    assert len(reservations) == metrics["http_attempts"] == 3
+    assert usages == metrics["usage"] == [usage]
+    assert metrics["duration_seconds"] >= 0
+    assert "complete source" not in str(metrics)
+
+
+def test_review_cache_does_not_bypass_denied_reservation():
+    from prolog_ai.core.request_policy import RequestPolicy, current_policy, request_policy
+
+    def deny():
+        raise RuntimeError("budget exhausted")
+
+    parent = RequestPolicy(before_attempt=deny)
+    with request_policy(parent):
+        with pytest.raises(RuntimeError, match="budget exhausted"):
+            with review_session("private source") as metrics:
+                policy = current_policy.get()
+                assert policy
+                policy.before_attempt()
+        assert current_policy.get() is parent
+    assert metrics["http_attempts"] == 0
+    assert current_policy.get() is None
+
+
+def test_arithmetic_reaches_all_passes_and_final_title_changes_with_verdict():
+    cs = [
+        {"chapter_id": "first", "chapter_no": 1, "content": "가: 7개\n나: 8개\n다: 9개"},
+        {"chapter_id": "last", "chapter_no": 100, "content": "합계는 스물다섯 개였다."},
+    ]
+    draft = verdict(cs)
+    draft["tracks"][0].update(focus="cost", evidence=[{"source_id": "c1p1"}])
+    draft["findings"][0].update(
+        title="초안의 잘못된 차이",
+        evidence=[{"source_id": "c1p1"}, {"source_id": "c2p1"}],
+    )
+    audit = {
+        "summary": "목록 합계와 보고가 다릅니다.",
+        "decisions": [
+            {
+                "index": 0,
+                "decision": "contradiction",
+                "title": "보고 수량이 목록보다 1개 많음",
+                "reason": "목록 합계는 24개인데 보고는 25개입니다.",
+            }
+        ],
+    }
+    with patch("app.ai.narrative_review.call_llm", side_effect=[draft, draft, audit]) as llm:
+        result = run({"chapters": cs, "saved_rules": []})
+    assert result["data"]["findings"][0]["title"] == audit["decisions"][0]["title"]
+    assert result["data"]["tracks"][0]["focus"] == "cost"
+    assert all('"sum": "24"' in call.args[0] for call in llm.call_args_list)
+    assert result["meta"]["processing"]["duration_seconds"] >= 0
 
 
 async def book(client: AsyncClient) -> tuple[dict, str, dict, list[dict]]:
@@ -233,7 +310,9 @@ def test_independent_finding_audit_blocks_ambiguous_or_unreviewed_verdicts(compl
     draft["findings"][0]["evidence"] = [{"source_id": "c1p1"}, {"source_id": "c2p1"}]
     audit = {
         "summary": "문법상 정상 해석이 가능하므로 충돌에서 제외했습니다.",
-        "decisions": [{"index": 0, "decision": "omit", "reason": "표기의 중의성"}]
+        "decisions": [
+            {"index": 0, "decision": "omit", "title": "모호한 수사", "reason": "표기의 중의성"}
+        ]
         if complete
         else [],
     }
