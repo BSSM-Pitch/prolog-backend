@@ -934,11 +934,21 @@ async def test_synthesis_resume_keeps_records_out_of_hot_checkpoints(client, mon
         assert "memory" not in result
         assert result["progress"]["observations"] == len(memory.observations) > 0
         assert result["progress"]["processed_scenes"] == 2
+        state = await overview(client, m)
+        assert state["available_analysis_id"] == str(aid)
+        assert state["patterns_pending"]
+        assert sum(state["character_counts"].values()) > 0
+        async with SessionFactory() as session:
+            job = await jobs.get(session, aid)
+            cid = UUID(job.input["characters"][0]["character_id"])
+            details = await service.details(session, job.project_id, job.target_id, cid, None)
+            assert details["observations"] and not details["patterns"]
         raise RuntimeError("Simulate worker exit during synthesis")
 
     monkeypatch.setattr(scale, "synthesize", interrupted)
     assert await service.handle(SessionFactory, aid, ai) == "failed"
     assert (await saved(aid))["compact"]["requests"] == 2
+    assert (await overview(client, m))["patterns_pending"]
     monkeypatch.setattr(scale, "synthesize", original)
     assert (
         await client.post(f"{m['base']}/character-memory/{aid}/retry", headers=m["h"])
@@ -948,6 +958,7 @@ async def test_synthesis_resume_keeps_records_out_of_hot_checkpoints(client, mon
     assert result["memory"]["complete"]
     assert result["compact"]["requests"] == 4
     assert ai.calls == ["extract", "verify", "propose", "assess"]
+    assert not (await overview(client, m))["patterns_pending"]
 
 
 def test_pattern_assessment_keeps_all_subject_records_without_unrelated_people():
@@ -975,3 +986,38 @@ def test_pattern_assessment_keeps_all_subject_records_without_unrelated_people()
         rows = [row for part in parts for row in part["observations"]]
         assert rows == [r for r in payload["observations"] if r["c"] == subject]
         assert rows[-1]["order"] >= 124  # Late counterexamples remain in every subject's scan.
+
+
+async def test_sparse_verification_repairs_preserve_each_paid_source_prefix(client):
+    from prolog_ai.memory import verification_wire
+
+    m = await prepare(client, "repair-cache-prefix@example.com", "서윤은 말했다. “괜찮아.”")
+    await chapters(m, count=6)
+    aid = await queue(client, m)
+
+    class RepairAI(CompactAI):
+        def __init__(self):
+            super().__init__()
+            self.prefixes = set()
+            self.repairs = 0
+
+        def run_compact_memory_step(self, stage, payload):
+            result = super().run_compact_memory_step(stage, payload)
+            if stage == "verify":
+                corpus, task = verification_wire.cache_parts(payload)
+                prefix = compact.encode(corpus)
+                if payload.get("verification_context"):
+                    assert prefix in self.prefixes
+                    assert len(task["requested_targets"]) == 1
+                    self.repairs += 1
+                else:
+                    self.prefixes.add(prefix)
+                    result["decisions"] = result["decisions"][:-1]
+            return result
+
+    ai = RepairAI()
+    assert await service.handle(SessionFactory, aid, ai) == "completed"
+    assert len(ai.prefixes) == ai.repairs == 3
+    result = await saved(aid)
+    assert not result["compact"]["deferred_verifications"]
+    assert len(result["memory"]["processed_scene_ids"]) == 6

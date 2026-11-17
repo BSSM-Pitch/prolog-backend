@@ -18,7 +18,7 @@ from app.ai.client import AIClient, is_retryable
 from app.authoring.ass.models import Character
 from app.content.manuscripts.models import Chapter, Manuscript
 from app.core import errors
-from app.insight.character_memory import discovery
+from app.insight.character_memory import checkpoints, discovery
 from app.insight.character_memory.projection import character_counts, dossier, last_recorded_orders
 from app.jobs import service as jobs
 from app.jobs.models import Job
@@ -163,19 +163,38 @@ def job_view(job: Job) -> dict[str, Any]:
     }
 
 
+def readable_memory(job: Job | None) -> dict | None:
+    result = job.result if job and job.result else {}
+    if job and job.status == "completed" and result.get("memory", {}).get("complete"):
+        return result["memory"]
+    if result.get("record_snapshot") and result.get("records_ready_at"):
+        return checkpoints.decode(result["record_snapshot"])
+    return None
+
+
+async def readable_job(session: AsyncSession, project_id: UUID, manuscript_id: UUID) -> Job | None:
+    job = await latest(session, project_id, manuscript_id)
+    return (
+        job
+        if readable_memory(job)
+        else await latest(session, project_id, manuscript_id, completed=True)
+    )
+
+
 async def overview(session: AsyncSession, project_id: UUID, manuscript_id: UUID) -> dict[str, Any]:
     current = await source(session, project_id, manuscript_id)
     job = await latest(session, project_id, manuscript_id)
     ready = (
         job
-        if job and job.status == "completed"
+        if readable_memory(job)
         else await latest(session, project_id, manuscript_id, completed=True)
     )
-    memory = (ready.result or {}).get("memory") if ready else None
+    memory = readable_memory(ready)
     return {
         "manuscript_id": str(manuscript_id),
         "job": job_view(job) if job else None,
         "available_analysis_id": str(ready.id) if ready and memory else None,
+        "patterns_pending": bool(ready and memory and ready.status != "completed"),
         "stale": bool(ready and ready.input["fingerprint"] != current["fingerprint"]),
         "job_stale": bool(job and job.input["fingerprint"] != current["fingerprint"]),
         "mode": memory.get("mode") if memory else None,
@@ -300,13 +319,14 @@ async def details(
     current = await source(session, project_id, manuscript_id)
     if str(character_id) not in {c["character_id"] for c in current["characters"]}:
         raise errors.CharacterNotFound()
-    job = await latest(session, project_id, manuscript_id, completed=True)
-    if not job or not job.result:
+    job = await readable_job(session, project_id, manuscript_id)
+    memory = readable_memory(job)
+    if not job or not job.result or not memory:
         raise errors.CharacterMemoryNotReady()
-    result = dossier(job.result["memory"], str(character_id), job.input["titles"], through_order)
+    result = dossier(memory, str(character_id), job.input["titles"], through_order)
     result.update(
         analysis_id=str(job.id),
-        generated_at=job.finished_at,
+        generated_at=job.finished_at or job.result.get("records_ready_at"),
         stale=job.input["fingerprint"] != current["fingerprint"],
         manuscript_id=str(manuscript_id),
         manuscript_title=job.input["manuscript_title"],

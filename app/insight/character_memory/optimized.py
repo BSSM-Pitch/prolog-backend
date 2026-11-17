@@ -9,6 +9,7 @@ import asyncio
 import logging
 import time
 from copy import deepcopy
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -325,6 +326,29 @@ async def run(
                 if not pending:
                     return
                 local = [request(i, missing) for i, missing in pending]
+                config = get_llm_config(simple_query=True)
+                cacheable = config.provider == "openai" and config.model.startswith(
+                    ("gpt-6", "gpt-5.6")
+                )
+                if stage == "verify" and cacheable:
+                    # Remapping several batches destroys their paid source prefixes.
+                    # Repair in parallel against each unchanged source/target space.
+                    async def repair_one(
+                        n: int, payload: dict, *, turn: int = turn, pending: list = pending
+                    ) -> dict:
+                        return await execute(
+                            stage, payload, f"verify-repair:source:{turn + 1}:{pending[n][0]}"
+                        )
+
+                    fixed = await bounded_map(
+                        local,
+                        repair_one,
+                        stopped=failed,
+                        concurrency=settings.character_memory_concurrency,
+                    )
+                    for (i, _), output in zip(pending, fixed, strict=True):
+                        values[i] = merge(payloads[i], values[i], output, require_complete=False)
+                    continue
                 for offset in range(0, len(local), scale.REPAIR_BATCHES):
                     subset = local[offset : offset + scale.REPAIR_BATCHES]
                     combined, mappings = repairs.pack(stage, subset)
@@ -448,9 +472,10 @@ async def run(
             reviews,
             model=config.model,
         )
-        # The validated extraction/review cache is the resumable checkpoint.
-        # Store only counters during synthesis, not 10k+ observations duplicated
-        # by each concurrent reservation, usage callback and polling request.
+        # Publish a compressed, independently verified record snapshot while
+        # pattern checks continue. Never expose unchecked extraction as ready.
+        record_snapshot = memory.model_copy(update={"complete": True}).model_dump()
+        validate_memory(record_snapshot, require_complete=True)
         async with sessions() as session:
             job = await discovery.running(session, job_id, attempt)
             if not job:
@@ -465,6 +490,8 @@ async def run(
                 "verified_speakers": len(memory.speaker_verifications),
                 "patterns": len(memory.patterns),
             }
+            result["record_snapshot"] = checkpoints.encode(record_snapshot)
+            result["records_ready_at"] = datetime.now(UTC).isoformat()
             job.result = result
             await session.commit()
         await scale.synthesize(memory, execute)
@@ -479,6 +506,7 @@ async def run(
             state = (job.result or {})["compact"]
             # Keep only the cache entries actually used by this snapshot.
             result = dict(job.result or {})
+            result.pop("record_snapshot", None)
             result["compact"] = {
                 **state,
                 "cache": {k: state["cache"][k] for k in state.get("used_keys", [])},
