@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.ai.reasoning import call_llm
 
 VERSION = "narrative-v1"
+REVIEW_REVISION = 2
 
 
 class NarrativeEvidence(BaseModel):
@@ -76,6 +77,47 @@ class SourceReview(BaseModel):
     tracks: list[SourceTrack] = Field(max_length=32)
     findings: list[SourceFinding] = Field(max_length=20)
     more_items: bool
+
+
+class FindingDecision(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    index: int = Field(ge=0, le=19)
+    decision: Literal["contradiction", "explanation_gap", "omit"]
+    reason: str = Field(min_length=1, max_length=800)
+
+
+class FindingAudit(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    summary: str = Field(min_length=1, max_length=1000)
+    decisions: list[FindingDecision] = Field(max_length=20)
+
+
+def audit_findings(review: SourceReview, prompt: str) -> FindingAudit:
+    """Challenge each verdict independently, against the entire source once more."""
+    audit = FindingAudit.model_validate(
+        call_llm(
+            prompt + "\n이제 충돌 후보만 독립적으로 반박 검토하라. 아래 findings의 0부터 시작하는 "
+            "index마다 정확히 하나의 결정을 내린다. "
+            "후보의 설명을 사실로 믿지 말고 원문을 직접 읽어라. "
+            "두 인용이 동일한 대상·시간·범위·의미의 양립 불가능한 사실인지 확인한다. "
+            "자연어 수사·단위·한자 표기와 그 뒤의 조사·어미, 옛말·구어체를 문장 전체에서 해석하라. "
+            "글자 하나를 숫자 일부로 읽는 경우와 문법 요소로 읽는 경우 등 합리적인 중의성이 있으면 "
+            "숫자 불일치로 확정하지 않는다. "
+            "시점 전환, 추측, 심리의 다른 의미, 묘사 생략도 확인한다. "
+            "정상 해석이 원문에 있으면 omit, 반드시 확인할 미해결 설명만 explanation_gap, "
+            "실제 양립 불가능한 두 사실이 확인되면 contradiction으로 남긴다. "
+            "반대로 원문에 없는 예외나 사건을 지어내 명백한 모순을 지우지 않는다. "
+            "새 후보나 근거를 만들지 않는다. reason은 살아남는 후보의 최종 작가용 설명이며 "
+            "검토 단계나 초안을 언급하지 않는다. summary는 최종 결정과 추적 항목을 반영하여 "
+            "다시 작성하고 삭제한 주장을 남기지 않는다.\n" + review.model_dump_json(),
+            schema=FindingAudit,
+            timeout=300,
+            max_retries=1,
+        )
+    )
+    if sorted(d.index for d in audit.decisions) != list(range(len(review.findings))):
+        raise ValueError("모든 충돌 후보가 정확히 한 번 검증되어야 합니다")
+    return audit
 
 
 def indexed_source(chapters: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
@@ -201,9 +243,29 @@ def run(payload: dict[str, Any]) -> dict[str, Any]:
                 max_retries=1,
             )
         )
+        audit = audit_findings(selected, prompt) if selected.findings else None
+        if audit:
+            retained = []
+            for decision in sorted(audit.decisions, key=lambda d: d.index):
+                if decision.decision == "omit":
+                    continue
+                finding = selected.findings[decision.index].model_copy(deep=True)
+                finding.category = decision.decision
+                finding.reason = decision.reason
+                retained.append(finding)
+            selected.findings = retained
+            selected.summary = audit.summary
         final = resolve_sources(selected, refs)
         validate_evidence(final, payload["chapters"])
-        return {"data": final.model_dump(), "meta": {"review_passes": 2, "version": VERSION}}
+        return {
+            "data": final.model_dump(),
+            "meta": {
+                "review_passes": 3 if audit else 2,
+                "version": VERSION,
+                "review_revision": REVIEW_REVISION,
+                "finding_audit": audit.model_dump() if audit else None,
+            },
+        }
     except LLMTimeoutError:
         return {
             "error": {

@@ -8,7 +8,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai.narrative_review import VERSION, Review, validate_evidence
+from app.ai.narrative_review import REVIEW_REVISION, VERSION, Review, validate_evidence
 from app.content.manuscripts.models import Chapter, Manuscript
 from app.core import errors
 from app.insight.scds.models import Conflict, Event
@@ -19,7 +19,7 @@ from app.jobs.models import Job
 def fingerprint(chapters: list[dict[str, Any]], rules: list[dict[str, Any]]) -> str:
     return hashlib.sha256(
         json.dumps(
-            [VERSION, chapters, sorted(rules, key=lambda r: r["rule_id"])],
+            [VERSION, REVIEW_REVISION, chapters, sorted(rules, key=lambda r: r["rule_id"])],
             ensure_ascii=False,
             sort_keys=True,
         ).encode()
