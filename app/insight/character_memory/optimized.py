@@ -6,6 +6,7 @@ registration survive retries; no automatic fallback to the legacy paid pipeline.
 """
 
 import asyncio
+import logging
 from copy import deepcopy
 from typing import Any
 from uuid import UUID
@@ -17,8 +18,10 @@ from prolog_ai.memory.source import digest, validate_memory
 
 from app.ai import jobs as ai_jobs
 from app.core.config import settings
-from app.insight.character_memory import discovery, scale
+from app.insight.character_memory import checkpoints, discovery, scale
 from app.jobs import service as jobs
+
+log = logging.getLogger(__name__)
 
 MAX_CONCURRENCY = 9
 
@@ -144,7 +147,11 @@ async def run(
             if not job:
                 return "lost"
             state = deepcopy((job.result or {}).get("compact") or {})
-            cache = state.get("cache", {}) if state.get("version") == compact.VERSION else {}
+            cache = (
+                {k: checkpoints.encode(v) for k, v in state.get("cache", {}).items()}
+                if state.get("version") == compact.VERSION
+                else {}
+            )
             if state.get("version") != compact.VERSION:
                 state["used_keys"] = []
             state.update(version=compact.VERSION, cache=cache, planned_steps=planned)
@@ -207,13 +214,13 @@ async def run(
                 job.result = result
                 await session.commit()
             if cached is not None:
-                output = compact.check(stage, payload, cached)
+                output = compact.check(stage, payload, checkpoints.decode(cached))
             else:
                 if failed.is_set():
                     raise AttemptLost()
 
                 def wait(coro: Any) -> Any:
-                    return asyncio.run_coroutine_threadsafe(coro, loop).result(timeout=30)
+                    return asyncio.run_coroutine_threadsafe(coro, loop).result(timeout=120)
 
                 async def reserve_if_running() -> None:
                     if failed.is_set():
@@ -241,7 +248,7 @@ async def run(
                     raise AttemptLost()
                 result = deepcopy(job.result or {})
                 state = result["compact"]
-                state["cache"][key] = output
+                state["cache"][key] = checkpoints.encode(output)
                 state["used_keys"] = list(dict.fromkeys([*state.get("used_keys", []), key]))
                 result["progress"]["completed_requests"] = len(state["used_keys"])
                 job.result = result
@@ -437,6 +444,7 @@ async def run(
     except AttemptLost:
         return "lost"
     except Exception as exc:
+        log.exception("Compact character analysis failed: job=%s attempt=%s", job_id, attempt)
         code = (
             "AI_MEMORY_BUDGET_EXCEEDED" if isinstance(exc, BudgetExceeded) else "AI_ANALYSIS_FAILED"
         )

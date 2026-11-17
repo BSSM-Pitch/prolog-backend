@@ -107,11 +107,14 @@ def answer(
         if scope == "selection" and selection_range:
             source["selection"] = manuscript_text[selection_range["start"] : selection_range["end"]]
         prompt = GUIDANCE + "\n" + json.dumps(source, ensure_ascii=False).replace("<", "\\u003c")
+        # Long-book reviews can read hundreds of chapters in each independent pass.
+        # Keep the shorter interactive deadline for ordinary manuscripts.
+        timeout = 300 if len(manuscript_text) > 80_000 else 120
         draft = AnswerDraft.model_validate(
             call_llm(
                 prompt,
                 schema=AnswerDraft,
-                timeout=120,
+                timeout=timeout,
                 max_retries=1,
             )
         )
@@ -130,7 +133,7 @@ def answer(
             call_llm(
                 review_prompt,
                 schema=ReviewedAnswer,
-                timeout=120,
+                timeout=timeout,
                 max_retries=1,
             )
         )

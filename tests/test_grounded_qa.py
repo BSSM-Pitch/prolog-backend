@@ -35,6 +35,7 @@ def test_review_receives_original_sources_and_can_correct_bad_arithmetic() -> No
     assert result["meta"]["review_passes"] == 2
     assert model.call_args_list[0].kwargs["schema"] is AnswerDraft
     for call in model.call_args_list:
+        assert call.kwargs["timeout"] == 120
         assert TEXT in call.args[0]
         assert json.dumps(RULES, ensure_ascii=False)[1:-1] in call.args[0]
     assert "잘못된 초안" in model.call_args_list[1].args[0]
@@ -84,3 +85,15 @@ def test_review_only_returns_literal_source_citations() -> None:
     ):
         result = answer(QUESTION, TEXT, "project", None, [], RULES)
     assert result["data"]["citations"] == [TEXT]
+
+
+def test_long_book_review_uses_long_deadline_without_truncating_sources() -> None:
+    text = "시작의 규칙.\n" + "중간 장면. " * 12_000 + "\n마지막 반례."
+    with patch(
+        "app.ai.grounded_qa.call_llm", side_effect=[DRAFT, {"content": "검토 완료"}]
+    ) as model:
+        result = answer("처음과 끝을 비교", text, "project", None, [], [])
+    assert "data" in result
+    for call in model.call_args_list:
+        assert call.kwargs["timeout"] == 300
+        assert "시작의 규칙" in call.args[0] and "마지막 반례" in call.args[0]
