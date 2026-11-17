@@ -3,6 +3,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Path, Query
 
+from app.content.manuscripts.revisions import ConfirmSource
 from app.core import errors
 from app.core.deps import require_project_role
 from app.core.pagination import DEFAULT_LIMIT, Cursor, Limit, decode_cursor, next_cursor
@@ -185,3 +186,30 @@ async def mindmap(
 ) -> dict[str, Any]:
     """원고·시점에 존재하는 관계만 반환한다. character_id는 직접 연결된 관계 필터다."""
     return ok(await service.mindmap(session, project_id, manuscript_id, chapter, character_id))
+
+
+@router.post(
+    ONE + "/history/{chapterId}/source-confirmation",
+    dependencies=[Editor],
+    response_model=Envelope[RelationshipResponse],
+    responses=raises(
+        errors.RelationshipNotFound, errors.RelationshipHistoryNotFound, errors.ChapterNotFound
+    ),
+    summary="현재 원고를 확인하고 기록을 유지한다",
+)
+async def confirm_source(
+    project_id: ProjectId,
+    relationship_id: RelationshipId,
+    chapter_id: ChapterId,
+    body: ConfirmSource,
+    session: Session,
+) -> dict[str, Any]:
+    """editor 이상. 읽은 원고·기록의 revision_token을 비교한 뒤 기준 원고를 갱신한다.
+
+    AI 호출이나 기록 내용 변경은 없다. 다시 바뀐 원고의 오래된 확인 요청은 거부한다.
+    """
+    return ok(
+        await service.confirm_source(
+            session, project_id, relationship_id, chapter_id, body.revision_token
+        )
+    )

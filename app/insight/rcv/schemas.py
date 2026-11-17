@@ -10,6 +10,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, StringConstraints
 
+from app.content.manuscripts.revisions import SourceReview
+
 State = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=50)]
 
 
@@ -27,6 +29,7 @@ class RelationshipCreate(BaseModel):
 
 
 class RelationshipHistoryEntry(BaseModel):
+    source_review: SourceReview | None = None
     chapter_id: UUID
     manuscript_id: UUID
     chapter: int

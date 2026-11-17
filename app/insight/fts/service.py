@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.authoring.ass.models import Character
 from app.content.manuscripts.models import Chapter
+from app.content.manuscripts.revisions import RevisionReader, verify_token
 from app.core import errors
 from app.insight.fts.models import (
     Foreshadowing,
@@ -138,14 +139,45 @@ def _no(refs: list[ChapterRef], role: str) -> int | None:
 
 
 async def to_responses(
-    session: AsyncSession, rows: Sequence[Foreshadowing]
+    session: AsyncSession, rows: Sequence[Foreshadowing], reader: RevisionReader | None = None
 ) -> list[ForeshadowingResponse]:
     ids = [f.id for f in rows]
     refs = await _refs(session, ids)
     chars = await _links(session, ForeshadowingCharacter, ForeshadowingCharacter.character_id, ids)
     events = await _links(session, ForeshadowingEvent, ForeshadowingEvent.event_id, ids)
+    readers = reader or RevisionReader(session)
+    chapter_owners = {
+        cid: mid
+        for cid, mid in (
+            await session.execute(
+                select(Chapter.id, Chapter.manuscript_id).where(
+                    Chapter.id.in_([ref.chapter_id for group in refs.values() for ref in group])
+                )
+            )
+        ).all()
+    }
     return [
         ForeshadowingResponse(
+            source_review=await readers.compare(
+                f.project_id,
+                f.source_snapshot,
+                next(
+                    (
+                        chapter_owners[r.chapter_id]
+                        for r in refs[f.id]
+                        if r.chapter_id in chapter_owners
+                    ),
+                    None,
+                ),
+                [
+                    f.title,
+                    f.description,
+                    f.status,
+                    [r.model_dump(mode="json") for r in refs[f.id]],
+                    chars[f.id],
+                    events[f.id],
+                ],
+            ),
             foreshadowing_id=f.id,
             project_id=f.project_id,
             title=f.title,
@@ -166,10 +198,12 @@ async def to_responses(
     ]
 
 
-async def _one(session: AsyncSession, row: Foreshadowing) -> ForeshadowingResponse:
+async def _one(
+    session: AsyncSession, row: Foreshadowing, reader: RevisionReader | None = None
+) -> ForeshadowingResponse:
     await session.flush()
     await session.refresh(row)
-    return (await to_responses(session, [row]))[0]
+    return (await to_responses(session, [row], reader))[0]
 
 
 async def _role_no(session: AsyncSession, foreshadowing_id: UUID, role: str) -> int | None:
@@ -267,8 +301,13 @@ async def similar(
 async def create(
     session: AsyncSession, project_id: UUID, body: ForeshadowingCreate
 ) -> tuple[ForeshadowingResponse, list[SimilarCandidate]]:
-    await _chapter(session, project_id, body.setup_chapter_id, "setup_chapter_id")
-    row = Foreshadowing(project_id=project_id, title=body.title, description=body.description)
+    chapter = await _chapter(session, project_id, body.setup_chapter_id, "setup_chapter_id")
+    row = Foreshadowing(
+        project_id=project_id,
+        title=body.title,
+        description=body.description,
+        source_snapshot=await RevisionReader(session).capture(project_id, chapter.manuscript_id),
+    )
     session.add(row)
     await session.flush()
     session.add(
@@ -559,3 +598,15 @@ async def of_chapter(
         ChapterForeshadowing(foreshadowing_id=i, title=t, role=r)
         for i, t, r in await session.execute(stmt)
     ]
+
+
+async def confirm_source(
+    session: AsyncSession, project_id: UUID, foreshadowing_id: UUID, token: str
+) -> ForeshadowingResponse:
+    row = await _get(session, project_id, foreshadowing_id, lock=True)
+    reader = RevisionReader(session)
+    status = (await _one(session, row, reader)).source_review
+    assert status is not None
+    manuscript_id = verify_token(status, token)
+    row.source_snapshot = await reader.capture(project_id, manuscript_id)
+    return await _one(session, row)

@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 
 from app.content.manuscripts.models import Chapter
+from app.content.manuscripts.revisions import RevisionReader
 from app.core import errors
 from app.core.deps import require_project_role
 from app.core.response import Envelope, ok, raises
@@ -37,6 +38,8 @@ class AdoptionInput(BaseModel):
     payoff_chapter_id: UUID | None = None
     relationship: RelationshipCreate | None = None
     relationship_id: UUID | None = None
+    replace_existing: bool = False
+    expected_history_token: str | None = None
 
 
 async def review(session: Session, project_id: UUID, check_id: UUID, lock: bool = False) -> Job:
@@ -86,7 +89,8 @@ async def adopt(
     """editor 이상. 최신 검사만 등록 가능하며, 같은 후보의 재요청은 같은 기록을 반환한다.
 
     관계는 인물과 상태를, 복선은 제목과 설치 장을 확인해 보낸다. 기존 관계 기록을
-    덮어쓰지 않는다. 복선 생성과 회수 지정은 하나의 트랜잭션이다.
+    자동으로 덮어쓰지 않는다. 비교한 기록의 토큰과 명시적 교체 요청이 있어야 수정한다.
+    복선 생성과 회수 지정은 하나의 트랜잭션이다.
     """
     job = await review(session, project_id, check_id, lock=True)
     data = job.result or {}
@@ -133,19 +137,40 @@ async def adopt(
         assert body.relationship is not None
         if body.relationship_id:
             # Existing pair: add a chapter record; never overwrite an existing chapter silently.
-            existing = await rcv.get(session, project_id, body.relationship_id)
+            existing = await rcv.get(session, project_id, body.relationship_id, lock=True)
             pair = {existing.source_character_id, existing.target_character_id}
             if pair != {
                 body.relationship.source_character_id,
                 body.relationship.target_character_id,
             }:
                 raise errors.InvalidInput("선택한 관계와 인물이 일치하지 않아요.")
+            reader = RevisionReader(session)
+            if body.replace_existing:
+                current = (await rcv.responses(session, [existing], reader=reader))[0]
+                history = next(
+                    (
+                        h
+                        for h in current.history
+                        if h.chapter_id == body.relationship.initial_history.chapter_id
+                    ),
+                    None,
+                )
+                if (
+                    history is None
+                    or history.source_review is None
+                    or not body.expected_history_token
+                    or history.source_review.revision_token != body.expected_history_token
+                ):
+                    raise errors.InvalidInput(
+                        "원고나 기존 기록이 변경됐어요. 다시 비교한 뒤 저장해 주세요."
+                    )
             await rcv.record(
                 session,
                 project_id,
                 body.relationship_id,
                 body.relationship.initial_history,
-                overwrite=False,
+                overwrite=body.replace_existing,
+                reader=reader,
             )
             target_id = body.relationship_id
         else:
