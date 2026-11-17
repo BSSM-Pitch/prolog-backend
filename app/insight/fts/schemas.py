@@ -11,6 +11,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, StringConstraints
 
+from app.content.manuscripts.revisions import SourceReview
 from app.core.response import Page, PageMeta
 
 Status = Literal["unresolved", "resolved", "orphaned"]
@@ -56,6 +57,7 @@ class ChapterRef(BaseModel):
 
 
 class ForeshadowingResponse(BaseModel):
+    source_review: SourceReview | None = None
     foreshadowing_id: UUID
     project_id: UUID
     title: str

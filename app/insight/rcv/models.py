@@ -1,6 +1,8 @@
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -25,6 +27,7 @@ class RelationshipHistory(Base, Timestamps):
     # PK (relationship_id, chapter_id) → DUPLICATE_CHAPTER_RECORD (409)
     relationship_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True)
     chapter_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True)
+    source_snapshot: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     project_id: Mapped[UUID] = fk_uuid()
     chapter_no: Mapped[int] = mapped_column(Integer)  # carry-forward 정렬 키(§9)
     state: Mapped[str | None] = mapped_column(String(50))

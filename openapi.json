@@ -72,6 +72,17 @@
       },
       "AdoptionInput": {
         "properties": {
+          "expected_history_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected History Token"
+          },
           "foreshadowing": {
             "anyOf": [
               {
@@ -115,6 +126,11 @@
               }
             ],
             "title": "Relationship Id"
+          },
+          "replace_existing": {
+            "default": false,
+            "title": "Replace Existing",
+            "type": "boolean"
           }
         },
         "title": "AdoptionInput",
@@ -1522,6 +1538,21 @@
           }
         },
         "title": "ConfirmRequest",
+        "type": "object"
+      },
+      "ConfirmSource": {
+        "properties": {
+          "revision_token": {
+            "maxLength": 64,
+            "minLength": 64,
+            "title": "Revision Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "revision_token"
+        ],
+        "title": "ConfirmSource",
         "type": "object"
       },
       "ConflictAction": {
@@ -3625,6 +3656,16 @@
               }
             ],
             "title": "Setup Chapter"
+          },
+          "source_review": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceReview"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "status": {
             "enum": [
@@ -6501,6 +6542,16 @@
             "title": "Manuscript Id",
             "type": "string"
           },
+          "source_review": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceReview"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "state": {
             "title": "State",
             "type": "string"
@@ -7459,6 +7510,54 @@
           "after"
         ],
         "title": "SourceContext",
+        "type": "object"
+      },
+      "SourceReview": {
+        "properties": {
+          "changed_chapters": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Changed Chapters",
+            "type": "array"
+          },
+          "manuscript_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manuscript Id"
+          },
+          "revision_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision Token"
+          },
+          "status": {
+            "enum": [
+              "current",
+              "changed",
+              "unverified"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "SourceReview",
         "type": "object"
       },
       "SpeakerCheck": {
@@ -14736,7 +14835,7 @@
     },
     "/v1/projects/{projectId}/conflict-checks/{checkId}/adoptions/{index}": {
       "post": {
-        "description": "editor 이상. 최신 검사만 등록 가능하며, 같은 후보의 재요청은 같은 기록을 반환한다.\n\n관계는 인물과 상태를, 복선은 제목과 설치 장을 확인해 보낸다. 기존 관계 기록을\n덮어쓰지 않는다. 복선 생성과 회수 지정은 하나의 트랜잭션이다.",
+        "description": "editor 이상. 최신 검사만 등록 가능하며, 같은 후보의 재요청은 같은 기록을 반환한다.\n\n관계는 인물과 상태를, 복선은 제목과 설치 장을 확인해 보낸다. 기존 관계 기록을\n자동으로 덮어쓰지 않는다. 비교한 기록의 토큰과 명시적 교체 요청이 있어야 수정한다.\n복선 생성과 회수 지정은 하나의 트랜잭션이다.",
         "operationId": "adopt_v1_projects__projectId__conflict_checks__checkId__adoptions__index__post",
         "parameters": [
           {
@@ -18210,6 +18309,163 @@
           }
         ],
         "summary": "회수 챕터를 지정한다",
+        "tags": [
+          "FTS"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/foreshadowings/{foreshadowingId}/source-confirmation": {
+      "post": {
+        "description": "editor 이상. 읽은 원고·기록의 revision_token을 비교한 뒤 기준 원고를 갱신한다.\n\nAI 호출이나 기록 내용 변경은 없다. 다시 바뀐 원고의 오래된 확인 요청은 거부한다.",
+        "operationId": "confirm_source_v1_projects__projectId__foreshadowings__foreshadowingId__source_confirmation_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "foreshadowingId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Foreshadowingid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmSource"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForeshadowingResponseEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORESHADOWING_NOT_FOUND": {
+                    "summary": "해당 복선을 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORESHADOWING_NOT_FOUND",
+                        "details": {},
+                        "message": "해당 복선을 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORESHADOWING_NOT_FOUND` — 해당 복선을 찾을 수 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "현재 원고를 확인하고 기록을 유지한다",
         "tags": [
           "FTS"
         ]
@@ -27864,6 +28120,193 @@
           }
         ],
         "summary": "장별 관계 기록 삭제",
+        "tags": [
+          "RCV"
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/relationships/{relationshipId}/history/{chapterId}/source-confirmation": {
+      "post": {
+        "description": "editor 이상. 읽은 원고·기록의 revision_token을 비교한 뒤 기준 원고를 갱신한다.\n\nAI 호출이나 기록 내용 변경은 없다. 다시 바뀐 원고의 오래된 확인 요청은 거부한다.",
+        "operationId": "confirm_source_v1_projects__projectId__relationships__relationshipId__history__chapterId__source_confirmation_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "relationshipId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Relationshipid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "chapterId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Chapterid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmSource"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelationshipResponseEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "details": {},
+                        "message": "요청 값이 올바르지 않습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "details": {},
+                        "message": "인증이 필요합니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "details": {},
+                        "message": "권한이 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `FORBIDDEN` — 권한이 없습니다"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "CHAPTER_NOT_FOUND": {
+                    "summary": "챕터를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "CHAPTER_NOT_FOUND",
+                        "details": {},
+                        "message": "챕터를 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "HISTORY_ENTRY_NOT_FOUND": {
+                    "summary": "해당 장의 기록이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "HISTORY_ENTRY_NOT_FOUND",
+                        "details": {},
+                        "message": "해당 장의 기록이 없습니다"
+                      }
+                    }
+                  },
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "details": {},
+                        "message": "프로젝트를 찾을 수 없습니다"
+                      }
+                    }
+                  },
+                  "RELATIONSHIP_NOT_FOUND": {
+                    "summary": "해당 관계를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "RELATIONSHIP_NOT_FOUND",
+                        "details": {},
+                        "message": "해당 관계를 찾을 수 없습니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `CHAPTER_NOT_FOUND` — 챕터를 찾을 수 없습니다\n- `HISTORY_ENTRY_NOT_FOUND` — 해당 장의 기록이 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다\n- `RELATIONSHIP_NOT_FOUND` — 해당 관계를 찾을 수 없습니다"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "현재 원고를 확인하고 기록을 유지한다",
         "tags": [
           "RCV"
         ]

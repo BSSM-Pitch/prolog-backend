@@ -48,7 +48,10 @@ def to_pdf(parts: list[tuple[str | None, str]]) -> bytes:
         for line in text.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
             # Paragraph parses markup; manuscript angle brackets and ampersands remain literal.
             story.append(
-                Paragraph(escape(line).replace("\t", "    "), body)
+                Paragraph(
+                    escape(line.expandtabs(8)).replace(" ", "&#160;").replace("\u3000", "&#12288;"),
+                    body,
+                )
                 if line.strip()
                 else Spacer(1, 10)
             )

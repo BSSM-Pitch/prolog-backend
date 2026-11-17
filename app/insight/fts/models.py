@@ -1,6 +1,8 @@
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -12,6 +14,7 @@ class Foreshadowing(Base, Timestamps):
     __table_args__ = {"schema": "insight"}
 
     id: Mapped[UUID] = pk()
+    source_snapshot: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     project_id: Mapped[UUID] = fk_uuid()
     title: Mapped[str] = mapped_column(String(200))
     description: Mapped[str | None] = mapped_column(Text)

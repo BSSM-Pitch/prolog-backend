@@ -3,6 +3,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Path, Query, status
 
+from app.content.manuscripts.revisions import ConfirmSource
 from app.core import errors
 from app.core.deps import require_project_role
 from app.core.pagination import DEFAULT_LIMIT, Cursor, Limit, decode_cursor, next_cursor
@@ -305,3 +306,22 @@ async def unlink(
 ) -> None:
     """연결이 없어도 204 다."""
     await service.unlink(session, project_id, foreshadowing_id, target_id)
+
+
+@router.post(
+    ONE + "/source-confirmation",
+    dependencies=[Editor],
+    response_model=Envelope[ForeshadowingResponse],
+    responses=raises(errors.ForeshadowingNotFound),
+    summary="현재 원고를 확인하고 기록을 유지한다",
+)
+async def confirm_source(
+    project_id: ProjectId, foreshadowing_id: FId, body: ConfirmSource, session: Session
+) -> dict[str, Any]:
+    """editor 이상. 읽은 원고·기록의 revision_token을 비교한 뒤 기준 원고를 갱신한다.
+
+    AI 호출이나 기록 내용 변경은 없다. 다시 바뀐 원고의 오래된 확인 요청은 거부한다.
+    """
+    return ok(
+        await service.confirm_source(session, project_id, foreshadowing_id, body.revision_token)
+    )

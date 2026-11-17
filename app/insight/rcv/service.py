@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.authoring.ass.models import Character
 from app.content.manuscripts.models import Chapter, Manuscript
+from app.content.manuscripts.revisions import RevisionReader, verify_token
 from app.core import errors
 from app.insight.rcv.models import Relationship, RelationshipHistory
 from app.insight.rcv.schemas import (
@@ -50,8 +51,12 @@ async def get(
 
 
 async def responses(
-    session: AsyncSession, rows: Sequence[Relationship], manuscript_id: UUID | None = None
+    session: AsyncSession,
+    rows: Sequence[Relationship],
+    manuscript_id: UUID | None = None,
+    reader: RevisionReader | None = None,
 ) -> list[RelationshipResponse]:
+    revisions = reader or RevisionReader(session)
     histories: dict[UUID, list[RelationshipHistoryEntry]] = {row.id: [] for row in rows}
     if histories:
         stmt = (
@@ -65,6 +70,12 @@ async def responses(
         for entry, chapter in await session.execute(stmt):
             histories[entry.relationship_id].append(
                 RelationshipHistoryEntry(
+                    source_review=await revisions.compare(
+                        entry.project_id,
+                        entry.source_snapshot,
+                        chapter.manuscript_id,
+                        [entry.state, entry.trust, entry.note],
+                    ),
                     chapter_id=chapter.id,
                     manuscript_id=chapter.manuscript_id,
                     chapter=chapter.chapter_no,
@@ -131,6 +142,7 @@ async def _record(
     chapter: Chapter,
     body: RelationshipEntryCreate,
     overwrite: bool,
+    reader: RevisionReader | None = None,
 ) -> RelationshipHistoryEntry:
     existing = await session.get(RelationshipHistory, (row.id, chapter.id))
     if existing and not overwrite:
@@ -151,10 +163,18 @@ async def _record(
         )
         session.add(existing)
     existing.state, existing.trust, existing.note = body.state, body.trust, body.event_title
+    reader = reader or RevisionReader(session)
+    existing.source_snapshot = await reader.capture(row.project_id, chapter.manuscript_id)
     existing.chapter_no = chapter.chapter_no
     row.updated_at = func.now()
     await session.flush()
     return RelationshipHistoryEntry(
+        source_review=await reader.compare(
+            row.project_id,
+            existing.source_snapshot,
+            chapter.manuscript_id,
+            [existing.state, existing.trust, existing.note],
+        ),
         chapter_id=chapter.id,
         manuscript_id=chapter.manuscript_id,
         chapter=chapter.chapter_no,
@@ -216,10 +236,11 @@ async def record(
     relationship_id: UUID,
     body: RelationshipEntryCreate,
     overwrite: bool,
+    reader: RevisionReader | None = None,
 ) -> RelationshipHistoryEntry:
     row = await get(session, project_id, relationship_id, lock=True)
     return await _record(
-        session, row, await _chapter(session, project_id, body.chapter_id), body, overwrite
+        session, row, await _chapter(session, project_id, body.chapter_id), body, overwrite, reader
     )
 
 
@@ -296,3 +317,24 @@ async def mindmap(
         )
     ]
     return RelationshipMindmap(chapter=chapter, nodes=nodes, edges=edges)
+
+
+async def confirm_source(
+    session: AsyncSession, project_id: UUID, relationship_id: UUID, chapter_id: UUID, token: str
+) -> RelationshipResponse:
+    row = await get(session, project_id, relationship_id, lock=True)
+    entry = await session.get(RelationshipHistory, (relationship_id, chapter_id))
+    if entry is None:
+        raise errors.RelationshipHistoryNotFound()
+    chapter = await _chapter(session, project_id, chapter_id)
+    reader = RevisionReader(session)
+    status = await reader.compare(
+        project_id,
+        entry.source_snapshot,
+        chapter.manuscript_id,
+        [entry.state, entry.trust, entry.note],
+    )
+    verify_token(status, token)
+    entry.source_snapshot = await reader.capture(project_id, chapter.manuscript_id)
+    await session.flush()
+    return (await responses(session, [row], chapter.manuscript_id))[0]
