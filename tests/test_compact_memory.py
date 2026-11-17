@@ -906,3 +906,46 @@ def test_checkpoints_preserve_all_evidence_and_accept_legacy_json():
     assert checkpoints.decode(encoded) == original
     assert checkpoints.decode(original) == original
     assert checkpoints.encode(encoded) == encoded
+
+
+async def test_synthesis_resume_keeps_records_out_of_hot_checkpoints(client, monkeypatch):
+    m = await prepare(client, "synthesis-resume@example.com", "서윤은 말했다. “괜찮아.”")
+    await chapters(m)
+    aid = await queue(client, m)
+    ai = CompactAI()
+    original = scale.synthesize
+
+    async def interrupted(memory, execute):
+        result = await saved(aid)
+        assert "memory" not in result
+        assert result["progress"]["observations"] == len(memory.observations) > 0
+        assert result["progress"]["processed_scenes"] == 2
+        raise RuntimeError("Simulate worker exit during synthesis")
+
+    monkeypatch.setattr(scale, "synthesize", interrupted)
+    assert await service.handle(SessionFactory, aid, ai) == "failed"
+    assert (await saved(aid))["compact"]["requests"] == 2
+    monkeypatch.setattr(scale, "synthesize", original)
+    assert (
+        await client.post(f"{m['base']}/character-memory/{aid}/retry", headers=m["h"])
+    ).status_code == 202
+    assert await service.handle(SessionFactory, aid, ai) == "completed"
+    result = await saved(aid)
+    assert result["memory"]["complete"]
+    assert result["compact"]["requests"] == 4
+    assert ai.calls == ["extract", "verify", "propose", "assess"]
+
+
+def test_pattern_assessment_keeps_all_subject_records_without_unrelated_people():
+    payload = {
+        "characters": [{"i": i, "name": str(i)} for i in range(3)],
+        "observations": [{"i": i, "c": i % 3, "order": i + 1} for i in range(126)],
+    }
+    candidates = [{"c": i, "seeds": [i]} for i in range(3)]
+    groups = scale.assessment_groups(payload, candidates)
+    assert len(groups) == 3
+    for proposals, parts in groups:
+        subject = proposals["proposals"][0]["c"]
+        rows = [row for part in parts for row in part["observations"]]
+        assert rows == [r for r in payload["observations"] if r["c"] == subject]
+        assert rows[-1]["order"] >= 124  # Late counterexamples remain in every subject's scan.

@@ -158,7 +158,11 @@ async def run(
             state.setdefault("request_limit", scale.request_limit(len(batches)))
             state.setdefault("seed_characters", args["characters"])
             # Keep request reservations even if code/model versions changed.
-            job.result = {**(job.result or {}), "compact": state}
+            # Compact steps reconstruct the full memory after a crash. Keeping
+            # that large interim object in the job multiplies it in every worker.
+            result = {k: v for k, v in (job.result or {}).items() if k != "memory"}
+            result.update(compact=state, progress=service.progress(None, "planning"))
+            job.result = result
             await session.commit()
 
         batches = [
@@ -203,7 +207,8 @@ async def run(
                     raise CacheMiss()
                 state.setdefault("request_meta", {})[key] = {"stage": stage, "model": config.model}
                 result["progress"] = {
-                    **service.progress(result.get("memory"), label),
+                    **result.get("progress", service.progress(None)),
+                    "stage": label,
                     "total_scenes": len(args["scenes"]),
                     "completed_requests": len(state.get("used_keys", [])),
                     "http_requests": state.get("requests", 0),
@@ -422,8 +427,25 @@ async def run(
             reviews,
             model=config.model,
         )
-        if not await service.persist(sessions, job_id, attempt, memory.model_dump(), "synthesis"):
-            return "lost"
+        # The validated extraction/review cache is the resumable checkpoint.
+        # Store only counters during synthesis, not 10k+ observations duplicated
+        # by each concurrent reservation, usage callback and polling request.
+        async with sessions() as session:
+            job = await discovery.running(session, job_id, attempt)
+            if not job:
+                return "lost"
+            result = dict(job.result or {})
+            result["progress"] = {
+                **result.get("progress", {}),
+                "stage": "synthesis",
+                "processed_scenes": len(memory.processed_scene_ids),
+                "total_scenes": len(memory.scenes),
+                "observations": len(memory.observations),
+                "verified_speakers": len(memory.speaker_verifications),
+                "patterns": len(memory.patterns),
+            }
+            job.result = result
+            await session.commit()
         await scale.synthesize(memory, execute)
         memory.complete = True
         validate_memory(memory.model_dump(), require_complete=True)
@@ -435,8 +457,11 @@ async def run(
                 return "lost"
             state = (job.result or {})["compact"]
             # Keep only the cache entries actually used by this snapshot.
-            result = deepcopy(job.result or {})
-            result["compact"]["cache"] = {k: state["cache"][k] for k in state.get("used_keys", [])}
+            result = dict(job.result or {})
+            result["compact"] = {
+                **state,
+                "cache": {k: state["cache"][k] for k in state.get("used_keys", [])},
+            }
             job.result = result
             won = await jobs.finish(session, job_id, attempt, "completed")
             await session.commit()

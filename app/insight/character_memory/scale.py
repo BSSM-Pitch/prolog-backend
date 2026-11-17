@@ -5,6 +5,7 @@ including late counterexamples, before it is materialized as a book-wide pattern
 """
 
 import json
+from collections import defaultdict
 from typing import Any
 
 from prolog_ai.memory import compact
@@ -40,6 +41,28 @@ def windows(payload: dict[str, Any], byte_limit: int = SYNTHESIS_BYTES) -> list[
     return groups
 
 
+def assessment_groups(payload: dict[str, Any], candidates: list[dict[str, Any]]) -> list:
+    """Check every record of each subject, without resending unrelated subjects.
+
+    Pattern evidence validation only permits the proposed character's records.
+    Their quotes and contextual evidence still include interactions with others.
+    """
+    by_subject: dict[int, list[dict[str, Any]]] = defaultdict(list)
+    for candidate in candidates:
+        by_subject[candidate["c"]].append(candidate)
+    groups = []
+    for subject, proposals in by_subject.items():
+        parts = windows(
+            {
+                **payload,
+                "observations": [r for r in payload["observations"] if r["c"] == subject],
+            }
+        )
+        for offset in range(0, len(proposals), 16):
+            groups.append(({"proposals": proposals[offset : offset + 16]}, parts))
+    return groups
+
+
 async def synthesize(memory: Memory, execute: Any) -> None:
     payload = compact.synthesis_payload(memory)
     if len({o["order"] for o in payload["observations"]}) < 2:
@@ -66,8 +89,7 @@ async def synthesize(memory: Memory, execute: Any) -> None:
                 seen.add(key)
     records = {row["i"]: row for row in payload["observations"]}
     # Keep schema limits and seed context bounded even for books with many traits.
-    for start in range(0, len(candidates), 16):
-        group = {"proposals": candidates[start : start + 16]}
+    for group_no, (group, subject_parts) in enumerate(assessment_groups(payload, candidates), 1):
         seeds = {i for p in group["proposals"] for i in p["seeds"]}
         merged: list[dict[str, Any]] = [
             {"i": i, "support": set(), "counter": set()} for i in range(len(group["proposals"]))
@@ -80,16 +102,17 @@ async def synthesize(memory: Memory, execute: Any) -> None:
             *,
             seeds: set[int] = seeds,
             group: dict[str, Any] = group,
-            start: int = start,
+            group_no: int = group_no,
+            part_count: int = len(subject_parts),
         ) -> dict[str, Any]:
             rows = {row["i"]: row for row in part["observations"]}
             rows.update({i: records[i] for i in seeds})
             scoped = {**part, "observations": sorted(rows.values(), key=lambda r: r["i"]), **group}
             return await execute(
-                "assess", scoped, f"patterns:assess:{start // 16 + 1}:{n + 1}/{len(parts)}"
+                "assess", scoped, f"patterns:assess:{group_no}:{n + 1}/{part_count}"
             )
 
-        for assessed in await bounded_map(parts, assess, concurrency=3):
+        for assessed in await bounded_map(subject_parts, assess, concurrency=3):
             for audit in assessed.get("validation_audit", {}).get("invalid_pattern_references", []):
                 if "assessment" in audit:
                     invalid.add(audit["assessment"]["i"])
