@@ -6,6 +6,8 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from starlette.exceptions import HTTPException
 
+from app.api.media import router as media_router
+from app.api.narrative_adoption import router as adoption_router
 from app.api.nlcd import router as nlcd_forward_router
 from app.api.router import router as api_router
 from app.authoring.ass.router import router as ass_router
@@ -106,6 +108,8 @@ for _router in (
     ssm_router,
     character_memory_router,
     api_router,
+    media_router,
+    adoption_router,
     nlcd_router,
     nlcd_forward_router,
 ):

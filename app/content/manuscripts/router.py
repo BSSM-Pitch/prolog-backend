@@ -195,14 +195,20 @@ async def export_manuscript(
     project_id: ProjectId,
     manuscript_id: ManuscriptId,
     session: Session,
-    file_format: Annotated[str, Query(alias="format", description="`txt` | `docx`")] = "txt",
+    file_format: Annotated[
+        str, Query(alias="format", description="`txt` | `docx` | `pdf`")
+    ] = "txt",
+    from_chapter: Annotated[int | None, Query(ge=1)] = None,
+    to_chapter: Annotated[int | None, Query(ge=1)] = None,
 ) -> Response:
     """프로젝트의 viewer 이상. 브라우저는 응답을 그대로 내려받는다(`attachment`).
 
     챕터가 있으면 화 번호 순으로 "N장 제목" 줄 + 본문을 잇고, 없으면 원고 본문을 그대로 쓴다.
     docx 는 장 제목 줄이 제목 1 스타일이다. 원고가 `ready` 가 아니면 `MANUSCRIPT_NOT_READY` 다.
     """
-    title, data = await service.export(session, project_id, manuscript_id, file_format)
+    title, data = await service.export(
+        session, project_id, manuscript_id, file_format, from_chapter, to_chapter
+    )
     filename = quote(f"{title}.{file_format}")
     return Response(
         content=data,

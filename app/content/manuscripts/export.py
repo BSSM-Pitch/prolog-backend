@@ -11,9 +11,10 @@ from xml.sax.saxutils import escape
 
 from app.content.manuscripts.models import Chapter
 
-EXPORT_FORMATS = ("txt", "docx")
+EXPORT_FORMATS = ("txt", "docx", "pdf")
 
 CONTENT_TYPES = {
+    "pdf": "application/pdf",
     "txt": "text/plain; charset=utf-8",
     "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 }
@@ -109,4 +110,8 @@ def to_docx(parts: list[tuple[str | None, str]]) -> bytes:
 
 def render(file_format: str, chapters: list[Chapter], content: str | None) -> bytes:
     parts = sections(chapters, content)
+    if file_format == "pdf":
+        from app.content.manuscripts.pdf_export import to_pdf
+
+        return to_pdf(parts)
     return to_docx(parts) if file_format == "docx" else to_txt(parts)

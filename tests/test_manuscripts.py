@@ -395,7 +395,7 @@ async def test_export_rejects_bad_format_and_unready_manuscript(client: AsyncCli
     ms = await _manuscript(client, user, pid, source_type="upload")
     url = f"/projects/{pid}/manuscripts/{ms['manuscript_id']}/export"
 
-    bad = await client.get(url, params={"format": "pdf"}, headers=user["headers"])
+    bad = await client.get(url, params={"format": "epub"}, headers=user["headers"])
     assert bad.status_code == 400
     assert code(bad) == "UNSUPPORTED_FILE_FORMAT"
 
