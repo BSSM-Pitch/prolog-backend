@@ -17,7 +17,7 @@ from app.ai.reasoning import call_llm
 from app.ai.source_arithmetic import computed_lists
 
 VERSION = "narrative-v1"
-REVIEW_REVISION = 4
+REVIEW_REVISION = 5
 Focus = Literal["general", "activation", "cost", "matchup", "knowledge"]
 
 
@@ -110,7 +110,7 @@ class Finding(BaseModel):
 class Review(BaseModel):
     model_config = ConfigDict(extra="forbid")
     summary: str = Field(min_length=1, max_length=1000)
-    tracks: list[Track] = Field(max_length=48)
+    tracks: list[Track] = Field(max_length=80)
     findings: list[Finding] = Field(max_length=20)
     more_items: bool = Field(
         description="출력 한도 때문에 중요한 추적 항목이나 문제를 생략했으면 true"
@@ -149,6 +149,66 @@ class SourceReview(BaseModel):
     more_items: bool
 
 
+class CoverageSupplement(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    tracks: list[SourceTrack] = Field(max_length=32)
+    findings: list[SourceFinding] = Field(max_length=8)
+    more_items: bool
+
+
+class ExpandedSourceReview(SourceReview):
+    tracks: list[SourceTrack] = Field(max_length=80)
+
+
+def complete_coverage(review: SourceReview, prompt: str, timeout: int) -> SourceReview:
+    """A declared omission triggers another full-source pass, not only a warning."""
+    supplement = CoverageSupplement.model_validate(
+        call_llm(
+            prompt + "\n이전 검토가 중요한 항목을 표시 한도 때문에 생략했다고 보고했다. "
+            "아래 결과를 그대로 반복하지 말고 전체 원문에서 아직 빠진 대상을 추가 검토하라. "
+            "서로 다른 물건·능력의 구체적인 입력 조건, 비용·약점·자원 회수, 전투 상성, "
+            "인물별 지식의 획득·은폐·전달 경로를 빠짐없이 찾아 기존 목록과 대조하라. "
+            "비슷한 기능이라는 이유로 서로 다른 대상의 작동 조건을 합치지 않는다. "
+            "한 장면의 도구를 추적했다고 그 도구가 작용한 대상의 조건까지 추적한 것은 아니다. "
+            "한 인물의 추측을 추적했다고 다른 인물의 확인·공개까지 추적한 것도 아니다. "
+            "새 항목마다 본문 전체에서 처음 제시, 중간 반증·변경, 마지막 관련 상태를 검증하고 "
+            "직접 입증하는 원문 근거를 남긴다. 제목만 바꾼 중복과 "
+            "근거 없는 새 규칙은 만들지 않는다. "
+            "추가할 내용이 없으면 빈 목록을 반환한다. 새로 발견한 중요한 모순·설명 공백은 "
+            "findings에 따로 넣는다. 추가 후에도 중요한 생략이 남으면 more_items=true이다. "
+            "한국어로 설명하라.\n" + review.model_dump_json(),
+            schema=CoverageSupplement,
+            timeout=timeout,
+            max_retries=1,
+        )
+    )
+
+    def unique(items: list[Any]) -> list[Any]:
+        seen = set()
+        kept = []
+        for item in items:
+            key = (
+                item.title.strip().casefold(),
+                getattr(item, "focus", None),
+                tuple(sorted(e.source_id for e in item.evidence)),
+            )
+            if key not in seen:
+                seen.add(key)
+                kept.append(item)
+        return kept
+
+    tracks = unique([*review.tracks, *supplement.tracks])
+    findings = unique([*review.findings, *supplement.findings])
+    if len(findings) > 20:
+        findings.sort(key=lambda f: {"high": 0, "medium": 1, "low": 2}[f.severity])
+    return ExpandedSourceReview(
+        summary=review.summary,
+        tracks=tracks,
+        findings=findings[:20],
+        more_items=supplement.more_items or len(findings) > 20,
+    )
+
+
 class FindingDecision(BaseModel):
     model_config = ConfigDict(extra="forbid")
     index: int = Field(ge=0, le=19)
@@ -175,6 +235,10 @@ def audit_findings(review: SourceReview, prompt: str, *, timeout: int = 300) -> 
             "글자 하나를 숫자 일부로 읽는 경우와 문법 요소로 읽는 경우 등 합리적인 중의성이 있으면 "
             "숫자 불일치로 확정하지 않는다. "
             "시점 전환, 추측, 심리의 다른 의미, 묘사 생략도 확인한다. "
+            "거리 수치는 출발점·도착점이 실제로 같은지 확인한다. 넓은 지역과 그 안의 특정 지점은 "
+            "같은 이름으로 불려도 같은 끝점이라고 가정하지 않는다. "
+            "나이·학년·연차와 경과 기간도 구별한다. 세는 기준·달력·기산점이 확정되지 않으면 "
+            "두 수를 직접 등치하여 확정 모순으로 만들지 않는다. "
             "칭송·과장·반어적인 인물 평가는 객관적인 능력 부재나 절대 금지와 구별한다. "
             "같은 장의 앞뒤 행동과 어조가 풍자·반어를 뒷받침하면 "
             "문자 그대로의 모순으로 남기지 않는다. "
@@ -347,6 +411,9 @@ def run(payload: dict[str, Any]) -> dict[str, Any]:
                     max_retries=1,
                 )
             )
+            expanded = selected.more_items
+            if expanded:
+                selected = complete_coverage(selected, prompt, timeout)
             audit = audit_findings(selected, prompt, timeout=timeout) if selected.findings else None
             if audit:
                 retained = []
@@ -367,7 +434,8 @@ def run(payload: dict[str, Any]) -> dict[str, Any]:
             return {
                 "data": data,
                 "meta": {
-                    "review_passes": 3 if audit else 2,
+                    "review_passes": 2 + int(expanded) + int(audit is not None),
+                    "coverage_expanded": expanded,
                     "version": VERSION,
                     "review_revision": REVIEW_REVISION,
                     "finding_audit": audit.model_dump() if audit else None,

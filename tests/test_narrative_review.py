@@ -102,6 +102,59 @@ def test_arithmetic_reaches_all_passes_and_final_title_changes_with_verdict():
     assert result["meta"]["processing"]["duration_seconds"] >= 0
 
 
+@pytest.mark.parametrize("valid", [True, False])
+def test_declared_omissions_get_full_source_continuation_without_duplicate_reports(valid):
+    cs = [
+        {
+            "chapter_id": "first",
+            "chapter_no": 1,
+            "content": "두 열쇠가 필요하다. 구슬은 회수할 수 있다.",
+        },
+        {
+            "chapter_id": "last",
+            "chapter_no": 100,
+            "content": "열쇠 하나로 문이 열렸다. 구슬은 되찾았다.",
+        },
+    ]
+    draft = verdict(cs)
+    draft["more_items"] = True
+    draft["tracks"][0]["evidence"] = [{"source_id": "c1p1"}]
+    draft["findings"][0]["evidence"] = [{"source_id": "c1p1"}, {"source_id": "c2p1"}]
+    extra = {
+        "tracks": [
+            draft["tracks"][0],
+            {
+                "title": "구슬의 사용과 회수",
+                "kind": "setting",
+                "focus": "cost",
+                "status": "paid_off",
+                "explanation": "구슬은 일회용 소모품이 아니며 후반에 회수한다.",
+                "evidence": [{"source_id": "c1p1"}, {"source_id": "c2p1" if valid else "fake"}],
+            },
+        ],
+        "findings": draft["findings"],
+        "more_items": False,
+    }
+    audit = {
+        "summary": "최종 검토",
+        "decisions": [
+            {"index": 0, "decision": "contradiction", "title": "열쇠 조건", "reason": "조건 불일치"}
+        ],
+    }
+    with patch("app.ai.narrative_review.call_llm", side_effect=[draft, draft, extra, audit]) as llm:
+        result = run({"chapters": cs, "saved_rules": []})
+    assert llm.call_count == 4
+    assert all(c["content"] in llm.call_args_list[2].args[0] for c in cs)
+    if valid:
+        assert len(result["data"]["tracks"]) == 2
+        assert len(result["data"]["findings"]) == 1
+        assert not result["data"]["more_items"]
+        assert result["meta"]["coverage_expanded"]
+        assert result["meta"]["review_passes"] == 4
+    else:
+        assert "error" in result and "data" not in result
+
+
 async def book(client: AsyncClient) -> tuple[dict, str, dict, list[dict]]:
     user, pid = await _project(client, "book@example.com")
     manuscript = await _manuscript(client, user, pid)
