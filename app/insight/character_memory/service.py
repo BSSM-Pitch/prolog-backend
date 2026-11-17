@@ -340,6 +340,9 @@ async def handle(sessions: ai_jobs.Sessions, job_id: UUID, ai: AIClient) -> str:
         if getattr(ai, "supports_compact_memory", False) is True:
             from app.insight.character_memory import optimized
 
+            # Do not retain an ORM object containing the previous large memory
+            # throughout a compact resume; step checkpoints reconstruct it.
+            del previous, report, job, existing
             return await optimized.run(sessions, job_id, attempt, ai, args)
         if report:
             args = await discovery.discover(sessions, job_id, attempt, ai, args, report)
