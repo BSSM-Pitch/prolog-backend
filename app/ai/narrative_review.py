@@ -16,7 +16,7 @@ from app.ai.reasoning import call_llm
 from app.ai.source_arithmetic import computed_lists
 
 VERSION = "narrative-v1"
-REVIEW_REVISION = 3
+REVIEW_REVISION = 4
 Focus = Literal["general", "activation", "cost", "matchup", "knowledge"]
 
 
