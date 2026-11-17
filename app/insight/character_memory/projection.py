@@ -6,6 +6,18 @@ from typing import Any
 from prolog_ai.memory.source import validate_memory
 
 
+def last_recorded_orders(value: dict[str, Any]) -> dict[str, int]:
+    """Use attributed evidence, never a substring search for the full name."""
+    scenes = {s["scene_id"]: s["order"] for s in value.get("scenes", [])}
+    latest: dict[str, int] = {}
+    for record in value.get("observations", []):
+        character = record.get("character_id")
+        order = scenes.get(record.get("evidence", {}).get("scene_id"))
+        if character and order is not None and record.get("attribution") == "certain":
+            latest[character] = max(latest.get(character, 0), order)
+    return latest
+
+
 def situation_metrics(
     records: list[dict[str, Any]], scene_orders: list[int], character_id: str, window: int = 3
 ) -> dict[str, Any]:

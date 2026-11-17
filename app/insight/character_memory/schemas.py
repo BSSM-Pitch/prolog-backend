@@ -74,6 +74,7 @@ class OverviewResponse(BaseModel):
     job_stale: bool
     mode: Literal["real", "fake"] | None
     character_counts: dict[str, int]
+    character_last_records: dict[str, int] = Field(default_factory=dict)
     chapters: list[ChapterOption]
     can_analyze: bool
 

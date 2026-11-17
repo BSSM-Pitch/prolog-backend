@@ -13,7 +13,7 @@ from sqlalchemy import update
 
 from app.db.session import SessionFactory
 from app.insight.character_memory import service
-from app.insight.character_memory.projection import dossier, situation_metrics
+from app.insight.character_memory.projection import dossier, last_recorded_orders, situation_metrics
 from app.insight.character_memory.schemas import DetailsResponse
 from app.jobs import service as jobs
 from app.jobs.models import Job
@@ -135,6 +135,14 @@ def test_projection_exact_unicode_attribution_and_cutoff() -> None:
     assert past["coverage"]["patterns_hidden_by_cutoff"] == 1
     assert all(t["order"] <= 3 for t in past["metrics"]["timeline"])
     assert dossier(m, "b", {}, None)["counts"]["observations"] == 0
+
+
+def test_latest_record_uses_attribution_when_full_name_is_absent() -> None:
+    m = fixture_memory()  # Every quote uses a pronoun rather than the person's full name.
+    assert last_recorded_orders(m) == {"a": 6}
+    m["observations"][-2]["attribution"] = "uncertain"
+    assert last_recorded_orders(m) == {"a": 5}
+    assert last_recorded_orders({}) == {}
 
 
 def test_metrics_denominators_deduplication_and_missing_data() -> None:

@@ -90,6 +90,23 @@ async def _chapter(
     return chapter
 
 
+async def _same_manuscript(
+    session: AsyncSession, row: Foreshadowing, chapter: Chapter, field: str
+) -> None:
+    """Chapter numbers are local to a manuscript, including restored copies."""
+    owners = set(
+        (
+            await session.execute(
+                select(Chapter.manuscript_id)
+                .join(FC, FC.chapter_id == Chapter.id)
+                .where(FC.foreshadowing_id == row.id)
+            )
+        ).scalars()
+    )
+    if owners and owners != {chapter.manuscript_id}:
+        raise errors.InvalidInput("같은 원고의 장만 연결할 수 있습니다", field=field)
+
+
 async def _refs(session: AsyncSession, ids: Sequence[UUID]) -> dict[UUID, list[ChapterRef]]:
     out: dict[UUID, list[ChapterRef]] = {i: [] for i in ids}
     if not ids:
@@ -323,6 +340,7 @@ async def update(
         row.description = body.description
     if body.setup_chapter_id is not None:
         chapter = await _chapter(session, project_id, body.setup_chapter_id, "setup_chapter_id")
+        await _same_manuscript(session, row, chapter, "setup_chapter_id")
         payoff = await _role_no(session, row.id, "payoff")
         if payoff is not None and payoff < chapter.chapter_no:
             raise errors.InvalidPayoffChapter(
@@ -352,6 +370,7 @@ async def add_linked(
     """같은 챕터를 두 번 연결해도 한 번이다. 설치 챕터보다 앞서면 `INVALID_INPUT`(명세 §4.6)."""
     row = await _get(session, project_id, foreshadowing_id, lock=True)
     chapter = await _chapter(session, project_id, chapter_id, "chapter_id")
+    await _same_manuscript(session, row, chapter, "chapter_id")
     setup = await _role_no(session, row.id, "setup")
     if setup is not None and chapter.chapter_no < setup:
         raise errors.InvalidInput(
@@ -387,6 +406,7 @@ async def set_payoff(
     """회수 챕터를 기록(또는 교체)한다. 설치 챕터보다 앞서면 `INVALID_PAYOFF_CHAPTER`."""
     row = await _get(session, project_id, foreshadowing_id, lock=True)
     chapter = await _chapter(session, project_id, chapter_id, "payoff_chapter_id")
+    await _same_manuscript(session, row, chapter, "payoff_chapter_id")
     setup = await _role_no(session, row.id, "setup")
     if setup is not None and chapter.chapter_no < setup:
         raise errors.InvalidPayoffChapter(
