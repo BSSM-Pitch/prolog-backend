@@ -85,3 +85,8 @@ def test_quotation_is_never_guessed_from_first_sentence() -> None:
     assert edit_problem(TEXT, TEXT, QUOTE) is None
     assert edit_problem(TEXT, TEXT.replace("\n\n", "\n"), QUOTE) is None
     assert edit_problem(TEXT, TEXT.replace("격벽", "방벽"), QUOTE)
+
+
+def test_editing_a_separate_passage_does_not_invalidate_unchanged_quote() -> None:
+    revised = TEXT.replace("녹슨 손잡이", "금속 명판")
+    assert edit_problem(revised, TEXT, QUOTE) is None
