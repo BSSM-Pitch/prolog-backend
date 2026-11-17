@@ -2,6 +2,7 @@
 
 import json
 import logging
+import math
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -18,6 +19,32 @@ from app.ai.source_arithmetic import computed_lists
 VERSION = "narrative-v1"
 REVIEW_REVISION = 4
 Focus = Literal["general", "activation", "cost", "matchup", "knowledge"]
+
+
+def full_source_timeout(char_count: int) -> int:
+    """Allow long-source prefill without repeatedly restarting a healthy request.
+
+    This is an execution allowance, not an estimated finish time or a source cap.
+    The worker continues heartbeating during the request.
+    """
+    return min(900, max(300, math.ceil(char_count / 1200)))
+
+
+def summary_text(tracks: list[dict[str, Any]], findings: list[dict[str, Any]]) -> str:
+    """Summarize published facts, never an auditor's stale counts or language."""
+    contradictions = sum(f.get("category") == "contradiction" for f in findings)
+    gaps = sum(f.get("category") == "explanation_gap" for f in findings)
+    labels = {
+        "activation": "능력의 발동·해제 조건",
+        "cost": "대가와 약점",
+        "matchup": "전투의 조건과 상성",
+        "knowledge": "인물별 지식의 획득·공개 시점",
+    }
+    focused = [label for key, label in labels.items() if any(t.get("focus") == key for t in tracks)]
+    overview = f"원문 근거와 함께 주요 설정·관계·복선 {len(tracks)}개를 추적했습니다. "
+    if focused:
+        overview += ", ".join(focused) + "을 구분해 살펴봤습니다. "
+    return overview + f"최종 목록에는 충돌 후보 {contradictions}건과 설명 확인 {gaps}건이 있습니다."
 
 
 @contextmanager
@@ -136,7 +163,7 @@ class FindingAudit(BaseModel):
     decisions: list[FindingDecision] = Field(max_length=20)
 
 
-def audit_findings(review: SourceReview, prompt: str) -> FindingAudit:
+def audit_findings(review: SourceReview, prompt: str, *, timeout: int = 300) -> FindingAudit:
     """Challenge each verdict independently, against the entire source once more."""
     audit = FindingAudit.model_validate(
         call_llm(
@@ -161,7 +188,7 @@ def audit_findings(review: SourceReview, prompt: str) -> FindingAudit:
             "summary는 최종 결정과 추적 항목을 반영하여 "
             "다시 작성하고 삭제한 주장을 남기지 않는다.\n" + review.model_dump_json(),
             schema=FindingAudit,
-            timeout=300,
+            timeout=timeout,
             max_retries=1,
         )
     )
@@ -291,6 +318,7 @@ def validate_evidence(review: Review, chapters: list[dict[str, Any]]) -> None:
 def run(payload: dict[str, Any]) -> dict[str, Any]:
     # Never slice the manuscript: exceeding provider capacity is a visible failure.
     chapters, refs = indexed_source(payload["chapters"])
+    timeout = full_source_timeout(sum(len(c["content"]) for c in payload["chapters"]))
     source = {
         "chapters": chapters,
         "saved_rules": payload["saved_rules"],
@@ -300,7 +328,7 @@ def run(payload: dict[str, Any]) -> dict[str, Any]:
     try:
         with review_session(prompt) as metrics:
             draft = SourceReview.model_validate(
-                call_llm(prompt, schema=SourceReview, timeout=300, max_retries=1)
+                call_llm(prompt, schema=SourceReview, timeout=timeout, max_retries=1)
             )
             selected = SourceReview.model_validate(
                 call_llm(
@@ -315,11 +343,11 @@ def run(payload: dict[str, Any]) -> dict[str, Any]:
                     "원문 인용과 장 식별자까지 바로잡아 최종 결과만 반환하라.\n"
                     + draft.model_dump_json(),
                     schema=SourceReview,
-                    timeout=300,
+                    timeout=timeout,
                     max_retries=1,
                 )
             )
-            audit = audit_findings(selected, prompt) if selected.findings else None
+            audit = audit_findings(selected, prompt, timeout=timeout) if selected.findings else None
             if audit:
                 retained = []
                 for decision in sorted(audit.decisions, key=lambda d: d.index):
@@ -334,14 +362,17 @@ def run(payload: dict[str, Any]) -> dict[str, Any]:
                 selected.summary = audit.summary
             final = resolve_sources(selected, refs)
             validate_evidence(final, payload["chapters"])
+            data = final.model_dump()
+            data["summary"] = summary_text(data["tracks"], data["findings"])
             return {
-                "data": final.model_dump(),
+                "data": data,
                 "meta": {
                     "review_passes": 3 if audit else 2,
                     "version": VERSION,
                     "review_revision": REVIEW_REVISION,
                     "finding_audit": audit.model_dump() if audit else None,
                     "processing": metrics,
+                    "request_timeout_seconds": timeout,
                 },
             }
     except LLMTimeoutError:
