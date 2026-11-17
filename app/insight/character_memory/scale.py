@@ -5,9 +5,10 @@ including late counterexamples, before it is materialized as a book-wide pattern
 """
 
 import json
-from collections import defaultdict
+from collections import Counter, defaultdict
 from typing import Any
 
+from prolog_ai.core.llm import get_llm_config
 from prolog_ai.memory import compact, compact_wire
 from prolog_ai.memory.schema import Memory
 
@@ -67,16 +68,64 @@ def assessment_groups(payload: dict[str, Any], candidates: list[dict[str, Any]])
     return groups
 
 
+def proposal_groups(payload: dict[str, Any]) -> list[list[int]]:
+    """Partition output ownership only; every request still reads the entire corpus.
+
+    A real small-subject proposal primes the common prefix, then three balanced
+    groups run concurrently. No warm-up request, sampling, or dropped subjects.
+    """
+    counts = Counter(o["c"] for o in payload["observations"])
+    if len(payload["observations"]) < 400 or len(counts) < 4:
+        return []
+    first = min(counts, key=lambda c: (counts[c], c))
+    groups: list[list[int]] = [[], [], []]
+    loads = [0, 0, 0]
+    for subject in sorted(counts.keys() - {first}, key=lambda c: (-counts[c], c)):
+        slot = min(range(3), key=lambda i: (loads[i], i))
+        groups[slot].append(subject)
+        loads[slot] += counts[subject]
+    return [[first], *[sorted(group) for group in groups if group]]
+
+
+async def propose_shared(payload: dict, execute: Any) -> dict:
+    from app.insight.character_memory.optimized import bounded_map
+
+    config = get_llm_config(simple_query=False)
+    groups = (
+        proposal_groups(payload)
+        if (config.provider == "openai" and config.model.startswith(("gpt-6", "gpt-5.6")))
+        else []
+    )
+    if not groups:
+        return await execute("propose", payload, "patterns:propose")
+
+    async def propose(i: int, subjects: list[int]) -> dict:
+        scoped = {**payload, "requested_subjects": subjects}
+        result = await execute(
+            "propose", scoped, "patterns:propose:subjects:" + ",".join(map(str, subjects))
+        )
+        compact.check("propose", scoped, result)
+        return result
+
+    # A completed real request establishes a reusable cache before fan-out.
+    first = await propose(0, groups[0])
+    remaining = await bounded_map(groups[1:], propose, concurrency=3)
+    return {"proposals": [p for result in [first, *remaining] for p in result["proposals"]]}
+
+
 async def synthesize(memory: Memory, execute: Any) -> None:
     payload = compact.synthesis_payload(memory)
     if len({o["order"] for o in payload["observations"]}) < 2:
         return
     parts = windows(payload)
     if len(parts) == 1:
-        proposals = await execute("propose", payload, "patterns:propose")
-        if proposals["proposals"]:
-            assessments = await execute("assess", {**payload, **proposals}, "patterns:assess")
-            compact.apply_patterns(memory, proposals, assessments)
+        proposals = await propose_shared(payload, execute)
+        # More than 64 proposals can result from independently scoped requests.
+        # Assess every candidate against every observation, never truncate.
+        for start in range(0, len(proposals["proposals"]), 64):
+            group = {"proposals": proposals["proposals"][start : start + 64]}
+            assessments = await execute("assess", {**payload, **group}, "patterns:assess")
+            compact.apply_patterns(memory, group, assessments)
         return
     candidates: list[dict[str, Any]] = []
     seen: set[str] = set()
