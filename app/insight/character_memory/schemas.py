@@ -70,6 +70,7 @@ class OverviewResponse(BaseModel):
     manuscript_id: str
     job: CharacterMemoryAnalysisResponse | None
     available_analysis_id: str | None
+    patterns_pending: bool = False
     stale: bool
     job_stale: bool
     mode: Literal["real", "fake"] | None
