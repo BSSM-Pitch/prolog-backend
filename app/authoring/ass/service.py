@@ -446,25 +446,23 @@ async def _check_name(
     동시에 확정하는 두 요청이 둘 다 검사를 통과하지 않게 이름 단위 advisory lock 으로 줄 세운다
     (트랜잭션이 끝나면 풀린다).
     """
+    from prolog_ai.memory.names import name_key
+
     key = func.hashtextextended(
-        func.concat("character:", str(project_id), ":", func.lower(name)), 0
+        func.concat("character:", str(project_id), ":", func.lower(name_key(name))), 0
     )
     await session.execute(select(func.pg_advisory_xact_lock(key)))
     stmt = (
-        select(Character.id)
-        .where(
-            Character.project_id == project_id,
-            func.lower(Character.name) == func.lower(name),
-            Character.status == "active",
-        )
+        select(Character)
+        .where(Character.project_id == project_id, Character.status == "active")
         .order_by(Character.created_at, Character.id)
-        .limit(1)
     )
     if exclude is not None:
         stmt = stmt.where(Character.id != exclude)
-    candidate = (await session.execute(stmt)).scalar_one_or_none()
-    if candidate is not None:
-        raise errors.DuplicateCharacterCandidate(candidate_character_id=str(candidate))
+    for candidate in await session.scalars(stmt):
+        if name_key(name) in {name_key(n) for n in [candidate.name, *(candidate.aliases or [])]}:
+            raise errors.DuplicateCharacterCandidate(candidate_character_id=str(candidate.id))
+
 
 
 async def confirm(

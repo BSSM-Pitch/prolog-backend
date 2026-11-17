@@ -420,3 +420,43 @@ def test_memory_name_links_update_candidates_without_globalizing_relations_or_us
         {"character_id": "m", "name": "한민서"},
         {"character_id": "p", "name": "김다은"},
     ]
+
+
+async def test_registration_combines_supported_mentions_and_spacing_but_not_references(client):
+    m = await prepare(client, "discovery-generic@example.com", "원고")
+    aid = await queue(client, m)
+    candidates = [
+        person("동방승냥", "동방승냥이 문을 열었다."),
+        person("동방 승냥", "동방 승냥이 대답했다."),
+        person("구미호", "그녀의 이름은 구미호."),
+        {**person("구미호", "구미호가 말했다."), "kind": "ambiguous"},
+        {**person("유명셰프", "유명셰프에 빙의해 요리했다."), "reference_only": True},
+        person("흑룡", "그는 흑룡에 빙의했다."),
+        {**person("여행가", "여행가처럼 걸었다."), "reference_only": True},
+        person("여행가", "여행가가 직접 찾아왔다."),
+        person("승냥", "승냥이 웃었다."),
+    ]
+    async with SessionFactory() as session:
+        job = await jobs.get(session, aid)
+        await discovery.register(session, job, {"candidates": candidates})
+        await session.commit()
+        roster = await discovery.people(session, job.project_id)
+        assert {c.name for c in roster} == {"동방승냥", "구미호", "흑룡", "여행가"}
+        assert next(c for c in roster if c.name == "동방승냥").aliases == ["동방 승냥"]
+        assert candidates[4]["status"] == "dismissed"
+        assert candidates[-1]["status"] == "needs_review"
+
+
+async def test_internal_episode_sources_preserve_physical_chapter_and_offsets(client):
+    text = "서문\n1화 시작\n서윤이 걸었다.\n2화 만남\n서윤이 멈췄다.\n3화 끝\n서윤이 돌아왔다."
+    m = await prepare(client, "episodes-source@example.com", text)
+    aid = await queue(client, m)
+    async with SessionFactory() as session:
+        job = await jobs.get(session, aid)
+        scenes = job.input["scenes"]
+        assert len(scenes) == 3
+        assert "".join(s["text"] for s in scenes) == text
+        assert len({s["chapter_id"] for s in scenes}) == 1
+        assert {s["chapter_no"] for s in scenes} == {1}
+        for s in scenes:
+            assert text[s["source_start"] : s["source_start"] + len(s["text"])] == s["text"]

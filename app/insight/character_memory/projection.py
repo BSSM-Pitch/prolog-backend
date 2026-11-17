@@ -100,6 +100,8 @@ def dossier(
         return {
             **o.model_dump(),
             "order": scene.order,
+            "source_start": scene.source_start,
+            "chapter_no": scene.chapter_no or scene.order,
             "chapter_id": scene.chapter_id,
             "scene_title": titles.get(scene.scene_id) or f"장면 {scene.order}",
             "story_time": scene.story_time,

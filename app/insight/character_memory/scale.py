@@ -8,7 +8,7 @@ import json
 from collections import defaultdict
 from typing import Any
 
-from prolog_ai.memory import compact
+from prolog_ai.memory import compact, compact_wire
 from prolog_ai.memory.schema import Memory
 
 MAX_BATCHES = 256
@@ -26,6 +26,10 @@ def request_limit(batch_count: int) -> int:
 
 def windows(payload: dict[str, Any], byte_limit: int = SYNTHESIS_BYTES) -> list[dict[str, Any]]:
     """Partition at observation boundaries without changing global evidence IDs."""
+    # Size the actual deduplicated transport before splitting. Every record and
+    # counterexample still participates; repeated quote prose costs no extra window.
+    if len(compact.encode(compact_wire.synthesis_request(payload)).encode()) <= byte_limit:
+        return [payload] if payload["observations"] else []
     groups: list[dict[str, Any]] = []
     rows: list[dict[str, Any]] = []
     size = len(json.dumps(payload["characters"], ensure_ascii=False).encode())

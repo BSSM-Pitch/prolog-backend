@@ -92,6 +92,8 @@ class SpeakerCheck(BaseModel):
 
 
 class DetailRecord(Observation):
+    source_start: int = 0
+    chapter_no: int | None = None
     order: int
     chapter_id: str | None
     scene_title: str
