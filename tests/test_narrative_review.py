@@ -8,6 +8,7 @@ from httpx import AsyncClient
 from app.ai.narrative_review import (
     Review,
     SourceReview,
+    full_source_timeout,
     indexed_source,
     resolve_sources,
     review_session,
@@ -18,6 +19,11 @@ from app.db.session import SessionFactory
 from app.insight.scds.service import handle
 from tests.conftest import FakeAI
 from tests.test_manuscripts import _manuscript, _project
+
+
+@pytest.mark.parametrize("chars,seconds", [(1000, 300), (720000, 600), (5000000, 900)])
+def test_full_source_timeout_scales_with_input_but_remains_bounded(chars, seconds):
+    assert full_source_timeout(chars) == seconds
 
 
 def test_review_cache_scope_preserves_parent_budget_and_usage():
@@ -231,6 +237,27 @@ async def test_gaps_and_unresolved_threads_are_not_definite_conflicts(client: As
     assert not result["conflict_ids"]
 
 
+async def test_saved_review_summary_uses_published_counts_and_korean(client: AsyncClient):
+    user, pid, m, cs = await book(client)
+    data = verdict(cs)
+    data["summary"] = "共有十二個問題。刪除的數字仍在這裡。"
+    data["tracks"][0]["focus"] = "knowledge"
+    url = f"/projects/{pid}/manuscripts/{m['manuscript_id']}/narrative-reviews"
+    job = (await client.post(url, headers=user["headers"])).json()["data"]
+    assert (
+        await handle(SessionFactory, UUID(job["check_id"]), FakeAI({"data": data})) == "completed"
+    )
+    result = (await client.get(url + "/latest", headers=user["headers"])).json()["data"]
+    summary = result["narrative"]["summary"]
+    assert "충돌 후보 1건과 설명 확인 0건" in summary
+    assert "인물별 지식의 획득·공개 시점" in summary
+    assert "十二" not in summary
+    # Reading a saved result changes presentation only; it cannot buy another analysis.
+    reused = (await client.post(url, headers=user["headers"])).json()["data"]
+    assert reused["check_id"] == job["check_id"]
+    assert reused["narrative"]["summary"] == summary
+
+
 def test_complete_long_input_and_final_review_override():
     import json
 
@@ -252,6 +279,7 @@ def test_complete_long_input_and_final_review_override():
     ]
     # Every original passage is included in BOTH full-context model passes, without truncation.
     for call in llm.call_args_list:
+        assert call.kwargs["timeout"] == full_source_timeout(sum(len(c["content"]) for c in cs))
         assert all(
             json.dumps(p["text"], ensure_ascii=False) in call.args[0]
             for c in indexed
@@ -322,7 +350,8 @@ def test_independent_finding_audit_blocks_ambiguous_or_unreviewed_verdicts(compl
     assert all(c["content"] in llm.call_args_list[2].args[0] for c in cs)
     if complete:
         assert not result["data"]["findings"]
-        assert result["data"]["summary"] == audit["summary"]
+        assert "충돌 후보 0건과 설명 확인 0건" in result["data"]["summary"]
+        assert "열쇠 수 충돌" not in result["data"]["summary"]
         assert result["meta"]["review_passes"] == 3
     else:
         assert "error" in result and "data" not in result

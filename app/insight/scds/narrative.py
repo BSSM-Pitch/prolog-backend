@@ -8,7 +8,13 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai.narrative_review import REVIEW_REVISION, VERSION, Review, validate_evidence
+from app.ai.narrative_review import (
+    REVIEW_REVISION,
+    VERSION,
+    Review,
+    summary_text,
+    validate_evidence,
+)
 from app.content.manuscripts.models import Chapter, Manuscript
 from app.core import errors
 from app.insight.scds.models import Conflict, Event
@@ -152,7 +158,10 @@ async def result_view(session: AsyncSession, job: Job) -> dict[str, Any]:
         "chapter_count": job.input["chapter_count"],
         "char_count": job.input["char_count"],
         "stale": await is_stale(session, job),
-        "summary": data.get("summary", ""),
+        # Apply the same presentation to saved reviews without buying a new model run.
+        "summary": summary_text(data.get("tracks", []), data.get("findings", []))
+        if job.status == "completed"
+        else "",
         "tracks": data.get("tracks", []),
         "findings": [{k: v for k, v in f.items() if k != "key"} for f in data.get("findings", [])],
         "more_items": data.get("more_items", False),
