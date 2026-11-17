@@ -725,6 +725,7 @@ async def test_cold_first_upload_links_short_name_across_batches_without_extra_c
                         {
                             "name": n,
                             "alias": -1,
+                            "kind": "named_person" if n == "한민서" else "ambiguous",
                             "u": next(u["id"] for u in units if n in u["text"]),
                         }
                         for n in names
@@ -775,7 +776,7 @@ async def test_cold_first_upload_links_short_name_across_batches_without_extra_c
     assert await service.handle(SessionFactory, aid, ai) == "completed"
     result = await saved(aid)
     assert result["compact"]["seed_characters"] == []
-    assert Counter(ai.calls) == {"extract": 2, "verify": 3, "propose": 1, "assess": 1}
+    assert Counter(ai.calls) == {"extract": 2, "verify": 2, "propose": 1, "assess": 1}
     assert result["compact"]["requests"] == 6
     memory = result["memory"]
     assert [p["name"] for p in memory["characters"]] == ["한민서"]
