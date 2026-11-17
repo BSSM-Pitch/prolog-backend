@@ -104,7 +104,12 @@ async def get(session: AsyncSession, project_id: UUID, manuscript_id: UUID) -> M
 
 
 async def export(
-    session: AsyncSession, project_id: UUID, manuscript_id: UUID, file_format: str
+    session: AsyncSession,
+    project_id: UUID,
+    manuscript_id: UUID,
+    file_format: str,
+    from_chapter: int | None = None,
+    to_chapter: int | None = None,
 ) -> tuple[str, bytes]:
     """(파일 이름 줄기, 파일 바이트). 형식 검사를 먼저 한다 — 없는 원고라도 형식이 틀리면 400."""
     if file_format not in export_file.EXPORT_FORMATS:
@@ -113,7 +118,15 @@ async def export(
     if manuscript.status != "ready":
         raise errors.ManuscriptNotReady()
     chapters = await repo.chapters_of(session, manuscript_id)
-    return manuscript.title, export_file.render(file_format, chapters, manuscript.content)
+    if from_chapter is not None or to_chapter is not None:
+        if from_chapter is None or to_chapter is None or from_chapter > to_chapter:
+            raise errors.InvalidInput("내보낼 시작 장과 마지막 장을 확인해 주세요.")
+        numbers = {c.chapter_no for c in chapters}
+        if from_chapter not in numbers or to_chapter not in numbers:
+            raise errors.InvalidInput("원고에 있는 장 범위를 선택해 주세요.")
+        chapters = [c for c in chapters if from_chapter <= c.chapter_no <= to_chapter]
+    data = await asyncio.to_thread(export_file.render, file_format, chapters, manuscript.content)
+    return manuscript.title, data
 
 
 async def list_manuscripts(
