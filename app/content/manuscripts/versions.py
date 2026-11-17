@@ -45,6 +45,7 @@ async def snapshot(
     user_id: UUID | None,
     *,
     now: datetime | None = None,
+    force_new: bool = False,
 ) -> ManuscriptVersion | None:
     """정책대로 스냅샷을 만들거나 덮어쓴다. 부르는 쪽이 **원고 행을 잠근 상태**여야 한다.
 
@@ -56,7 +57,8 @@ async def snapshot(
         return None
     now = now or datetime.now(UTC)
     if (
-        source == "editor"
+        not force_new
+        and source == "editor"
         and last is not None
         and last.source == "editor"
         and now - last.created_at < WINDOW

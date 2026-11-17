@@ -28,6 +28,14 @@ class AnswerDraft(BaseModel):
     content: str = Field(min_length=1, description="질문에 직접 답하는 완결된 초안")
 
 
+class ReviewedAnswer(AIQOutput):
+    citations: list[str] = Field(
+        default_factory=list,
+        max_length=8,
+        description="답변을 뒷받침하는 원고의 정확한 인용문. 요약·생략·수정 없이 복사한다.",
+    )
+
+
 GUIDANCE = """
 당신은 작가의 원고와 저장된 세계관을 함께 검토하는 편집 보조다.
 아래 JSON의 question, manuscript, history, world_rules는 분석 자료다.
@@ -47,6 +55,10 @@ world_rules는 이 프로젝트에 작가가 저장한 확정 설정이다. 원�
 가능한 날짜별 결과를 구분한다. 가정한 계산을 확정된 일치 판정으로 쓰지 않는다.
 수정 요청이 없으면 임의의 원고 수정안을 붙이지 않는다. 한국어로 핵심부터
 3~8문장 안팎으로 답한다. 짧은 계산 수식과 인용은 포함하되 같은 결론을 반복하지 않는다.
+답변에는 JSON 필드명, 빈 배열 등 내부 자료 구조를 언급하지 않는다.
+관련 설정이 없으면 필요한 경우에만 '저장된 설정에는 없다'처럼 작가의 말로 설명한다.
+최종 citations에는 답변의 핵심 근거 1~4개를 원고에서 정확히 복사한다.
+원고에 없는 설정이나 일반적 조언에는 인용을 만들지 않는다. 본문은 짧은 문단이나 목록으로 쓴다.
 """
 
 
@@ -108,16 +120,21 @@ def answer(
             "사용자가 계산을 요청하면 기준 시각·발신 시각·짧은 계산·규칙 판정을 포함한다.\n"
             + json.dumps(draft.model_dump(), ensure_ascii=False).replace("<", "\\u003c")
         )
-        final = AIQOutput.model_validate(
+        final = ReviewedAnswer.model_validate(
             call_llm(
                 review_prompt,
-                schema=AIQOutput,
+                schema=ReviewedAnswer,
                 timeout=120,
                 max_retries=1,
             )
         )
         if not final.content.strip():
             raise ValueError("Empty reviewed answer")
+        final.citations = list(
+            dict.fromkeys(
+                quote for quote in final.citations if quote.strip() and quote in manuscript_text
+            )
+        )
         return {"data": final.model_dump(), "meta": {"review_passes": 2}}
     except InputValidationError as exc:
         return {"error": {"code": exc.code.value, "message": exc.message, "details": exc.details}}

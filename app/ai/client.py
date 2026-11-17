@@ -92,6 +92,7 @@ class PrologAI:
 
     def __init__(self) -> None:
         for key, value in {
+            "OPENAI_API_KEY": settings.openai_api_key,
             "NVIDIA_API_KEY": settings.nvidia_api_key,
             "PROLOG_AI_PROVIDER": settings.prolog_ai_provider,
             "PROLOG_AI_REASONING_EFFORT": settings.prolog_ai_reasoning_effort,
@@ -102,6 +103,16 @@ class PrologAI:
             os.environ.setdefault("OPENROUTER_API_KEY", settings.openrouter_api_key)
         if settings.prolog_ai_model:
             os.environ.setdefault("PROLOG_AI_MODEL", settings.prolog_ai_model)
+
+    @property
+    def supports_compact_memory(self) -> bool:
+        # Larger output budgets are verified for the OpenAI route only.
+        return os.environ.get("PROLOG_AI_PROVIDER") == "openai"
+
+    def run_compact_memory_step(self, stage: str, payload: dict[str, Any]) -> dict[str, Any]:
+        from prolog_ai.memory.compact import run_step
+
+        return run_step(stage, payload)
 
     def run_rule_duplicates(
         self, candidates: list[dict[str, Any]], rules: list[dict[str, Any]]
@@ -149,6 +160,7 @@ class PrologAI:
             chunk_chars=3000,
             batch_chars=12000,
             max_llm_calls=10,
+            economy=True,
         )
 
     def run_rex(self, manuscript_text: str) -> Result:

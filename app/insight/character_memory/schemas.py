@@ -16,6 +16,9 @@ class Progress(BaseModel):
     patterns: int
     completed_requests: int
     stage: str
+    http_requests: int = 0
+    request_limit: int | None = None
+    planned_requests: int | None = None
 
 
 class AnalysisError(BaseModel):

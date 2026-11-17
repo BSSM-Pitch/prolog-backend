@@ -21,6 +21,7 @@ from app.ai import jobs as ai_jobs
 from app.ai.client import AIClient, Result
 from app.authoring.rex.models import WorldRule
 from app.content.manuscripts import service as manuscripts
+from app.content.manuscripts.models import Chapter
 from app.core import errors
 from app.core.response import ErrorBody
 from app.insight.aiq.models import QaMessage, QaThread
@@ -54,6 +55,11 @@ async def _errors_of(session: AsyncSession, rows: Sequence[QaMessage]) -> dict[U
 
 async def to_messages(session: AsyncSession, rows: Sequence[QaMessage]) -> list[MessageResponse]:
     failures = await _errors_of(session, rows)
+    ids = [m.job_id for m in rows if m.job_id and m.status == "completed"]
+    results: dict[UUID, Any] = {}
+    if ids:
+        found = await session.execute(select(Job.id, Job.result).where(Job.id.in_(ids)))
+        results = {i: result for i, result in found}
     out = []
     for m in rows:
         error = failures.get(m.job_id) if m.job_id else None
@@ -74,6 +80,7 @@ async def to_messages(session: AsyncSession, rows: Sequence[QaMessage]) -> list[
                     else None
                 ),
                 created_at=m.created_at,
+                citations=(results.get(m.job_id) or {}).get("citations", []) if m.job_id else [],
             )
         )
     return out
@@ -345,6 +352,28 @@ async def _prepare(session: AsyncSession, job: Job) -> dict[str, Any]:
     assert thread is not None and thread.manuscript_id is not None
     manuscript = await manuscripts.get(session, thread.project_id, thread.manuscript_id)
     text = manuscript.content or ""
+    chapters = list(
+        (
+            await session.scalars(
+                select(Chapter).where(
+                    Chapter.manuscript_id == thread.manuscript_id,
+                    Chapter.project_id == thread.project_id,
+                )
+            )
+        ).all()
+    )
+    job.input = {
+        **job.input,
+        "citation_sources": [
+            {
+                "chapter_id": str(c.id),
+                "chapter_no": c.chapter_no,
+                "chapter_title": c.title,
+                "content": c.content,
+            }
+            for c in chapters
+        ],
+    }
     question = await session.get(QaMessage, UUID(str(job.input["question_message_id"])))
     if question is None or not question.content:
         raise errors.QaMessageNotFound()
@@ -410,6 +439,18 @@ async def _answered(session: AsyncSession, job: Job, data: dict[str, Any]) -> No
     answer = await session.get(QaMessage, cast(UUID, job.target_id))
     if answer is not None:
         answer.content, answer.status = str(data["content"]), "completed"
+        citations = []
+        for quote in data.get("citations", []):
+            if not isinstance(quote, str) or not quote.strip():
+                continue
+            matches = [c for c in job.input.get("citation_sources", []) if quote in c["content"]]
+            if len(matches) == 1 and matches[0]["content"].count(quote) == 1:
+                citations.append(
+                    {k: v for k, v in matches[0].items() if k != "content"} | {"quote": quote}
+                )
+        job.result = {**(job.result or {}), "citations": citations}
+        # Retain locations and verified quotations, not another full manuscript copy.
+        job.input = {k: v for k, v in job.input.items() if k != "citation_sources"}
 
 
 async def mark_failed(session: AsyncSession, job: Job, error: dict[str, Any] | None = None) -> None:

@@ -69,3 +69,18 @@ def test_invalid_selection_does_not_call_model() -> None:
         result = answer(QUESTION, TEXT, "selection", {"start": 0, "end": 10000}, [], RULES)
     assert result["error"]["code"] == "INVALID_SELECTION_RANGE"
     model.assert_not_called()
+
+
+def test_review_only_returns_literal_source_citations() -> None:
+    with patch(
+        "app.ai.grounded_qa.call_llm",
+        side_effect=[
+            DRAFT,
+            {
+                "content": "다음 날 오전 아홉 시입니다.",
+                "citations": [TEXT, "없는 인용문", TEXT, ""],
+            },
+        ],
+    ):
+        result = answer(QUESTION, TEXT, "project", None, [], RULES)
+    assert result["data"]["citations"] == [TEXT]

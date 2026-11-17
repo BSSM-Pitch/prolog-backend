@@ -28,7 +28,8 @@ from app.ai import jobs as ai_jobs
 from app.ai.client import AIClient, Result
 from app.authoring.ass.models import Character, CharacterAttribute
 from app.authoring.rex.models import WorldRule
-from app.content.manuscripts.models import Chapter
+from app.content.manuscripts import versions
+from app.content.manuscripts.models import Chapter, Manuscript
 from app.core import errors
 from app.insight.scds.models import Conflict, ConflictSuppression, Event, EventCharacter
 from app.insight.scds.schemas import (
@@ -42,6 +43,7 @@ from app.insight.scds.schemas import (
     HistoryItem,
     RuleResult,
 )
+from app.insight.scds.source import edit_problem, revision
 from app.jobs import service as jobs
 from app.jobs.models import Job
 
@@ -202,16 +204,14 @@ async def _event_response(session: AsyncSession, event: Event) -> EventResponse:
 
 async def to_conflicts(session: AsyncSession, rows: Sequence[Conflict]) -> list[ConflictResponse]:
     events: dict[UUID, Event] = {}
-    numbers: dict[UUID, int] = {}
+    chapters: dict[UUID, Chapter] = {}
     if rows:
         found = await session.execute(select(Event).where(Event.id.in_([c.event_id for c in rows])))
         events = {e.id: e for e in found.scalars()}
         chapter_ids = {c.chapter_id for c in rows if c.chapter_id}
         if chapter_ids:
-            pairs = await session.execute(
-                select(Chapter.id, Chapter.chapter_no).where(Chapter.id.in_(chapter_ids))
-            )
-            numbers = {i: n for i, n in pairs}
+            pairs = await session.execute(select(Chapter).where(Chapter.id.in_(chapter_ids)))
+            chapters = {ch.id: ch for ch in pairs.scalars()}
     return [
         ConflictResponse(
             conflict_id=c.id,
@@ -220,7 +220,20 @@ async def to_conflicts(session: AsyncSession, rows: Sequence[Conflict]) -> list[
             character_id=c.character_id,
             rule_id=c.rule_id,
             chapter_id=c.chapter_id,
-            chapter=numbers.get(c.chapter_id) if c.chapter_id else None,
+            chapter=chapters[c.chapter_id].chapter_no if c.chapter_id in chapters else None,
+            manuscript_id=chapters[c.chapter_id].manuscript_id
+            if c.chapter_id in chapters
+            else None,
+            source_hash=revision(chapters[c.chapter_id].content)
+            if c.chapter_id in chapters
+            else None,
+            edit_unavailable_reason=edit_problem(
+                chapters[c.chapter_id].content,
+                events[c.event_id].description,
+                c.matched_keyword,
+            )
+            if c.chapter_id in chapters and c.event_id in events
+            else "원문을 찾을 수 없어요.",
             conflict_target=c.conflict_target,
             matched_keyword=c.matched_keyword,
             input_event=events[c.event_id].description if c.event_id in events else "",
@@ -570,6 +583,8 @@ async def resolve(
         raise errors.InvalidInput(
             "modified 에는 modified_content 가 필요합니다", field="modified_content"
         )
+    if body.action == "modified":
+        await _edit_source(session, row, body, user_id)
     row.status = body.action
     row.modified_content = body.modified_content if body.action == "modified" else None
     row.resolved_at = datetime.now(UTC)
@@ -582,6 +597,53 @@ async def resolve(
     await session.flush()
     await session.refresh(row)
     return (await to_conflicts(session, [row]))[0]
+
+
+async def _edit_source(
+    session: AsyncSession, conflict: Conflict, body: ConflictAction, user_id: UUID
+) -> None:
+    chapter = await session.get(Chapter, conflict.chapter_id) if conflict.chapter_id else None
+    if chapter is None:
+        raise errors.InvalidInput("원문을 찾을 수 없어요.")
+    manuscript = await session.get(Manuscript, chapter.manuscript_id, with_for_update=True)
+    if manuscript is None:
+        raise errors.InvalidInput("원고를 찾을 수 없어요.")
+    chapter = await session.get(Chapter, chapter.id, with_for_update=True, populate_existing=True)
+    if chapter is None:
+        raise errors.InvalidInput("원문을 찾을 수 없어요.")
+    if not body.source_hash or body.source_hash != revision(chapter.content):
+        raise errors.InvalidInput("원고가 바뀌었어요. 검토 화면을 새로 열어 원문을 확인해 주세요.")
+    event = await session.get(Event, conflict.event_id)
+    problem = edit_problem(
+        chapter.content, event.description if event else "", conflict.matched_keyword
+    )
+    if problem:
+        raise errors.InvalidInput(problem)
+    chapters = list(
+        (
+            await session.scalars(
+                select(Chapter)
+                .where(Chapter.manuscript_id == manuscript.id)
+                .order_by(Chapter.chapter_no)
+            )
+        ).all()
+    )
+
+    def joined() -> str:
+        return "\n\n".join(
+            f"{c.chapter_no}장"
+            + (f" {c.title}" if c.title and c.title != f"{c.chapter_no}장" else "")
+            + f"\n{c.content}"
+            for c in chapters
+        )
+
+    manuscript.content = joined()
+    await versions.snapshot(session, manuscript, "editor", user_id, force_new=True)
+    await session.flush()
+    assert conflict.matched_keyword and body.modified_content
+    chapter.content = chapter.content.replace(conflict.matched_keyword, body.modified_content, 1)
+    manuscript.content = joined()
+    await versions.snapshot(session, manuscript, "editor", user_id, force_new=True)
 
 
 async def history(

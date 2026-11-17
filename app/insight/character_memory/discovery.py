@@ -20,6 +20,49 @@ VERSION = 1
 CHUNK_CHARS = 12000
 
 
+def apply_memory_links(report: dict | None, memory: dict) -> dict | None:
+    """Reflect evidence-overlapping identity links in this snapshot's candidates.
+
+    Relationship-scoped labels must never become a project-wide character alias.
+    This changes analysis candidates, not author-owned Character aliases.
+    """
+    if not report or not report.get("complete"):
+        return report
+    characters = {c["character_id"]: c["name"] for c in memory["characters"]}
+    links = [
+        link
+        for observation in memory["observations"]
+        for link in observation.get("identity_links", [])
+        if link["evidence"] and characters.get(link["character_id"]) == link["canonical"]
+    ]
+    updated = deepcopy(report)
+    for candidate in updated.get("candidates", []):
+        source = candidate["evidence"]
+        ids = {
+            link["character_id"]
+            for link in links
+            if link["reference"].casefold() == candidate["name"].casefold()
+            and (
+                link["relative_to"] is None
+                or any(
+                    ev["scene_id"] == source["scene_id"]
+                    and ev["revision"] == source["revision"]
+                    and ev["start"] < source["end"]
+                    and source["start"] < ev["end"]
+                    for ev in link["evidence"]
+                )
+            )
+        }
+        if candidate["status"] == "needs_review" and len(ids) == 1:
+            cid = next(iter(ids))
+            candidate.update(
+                status="existing",
+                character_id=cid,
+                reason=f"이 장면에서 {characters[cid]}에 연결. 전체 별칭은 유지해요.",
+            )
+    return updated
+
+
 def chunks(args: dict[str, Any]) -> list[dict[str, Any]]:
     return [
         {
@@ -144,7 +187,6 @@ async def discover(
     report: dict[str, Any],
 ) -> dict[str, Any]:
     """Every chunk is durable; final registration and the new memory snapshot are atomic."""
-    from app.insight.character_memory import service
 
     if report["complete"]:
         return args
@@ -180,6 +222,19 @@ async def discover(
                 raise DiscoveryFailure("DISCOVERY_ATTEMPT_LOST")
             job.result = {**(job.result or {}), "discovery": report}
             await session.commit()
+    return await finalize(sessions, job_id, attempt, args, report)
+
+
+async def finalize(
+    sessions: ai_jobs.Sessions,
+    job_id: UUID,
+    attempt: int,
+    args: dict[str, Any],
+    report: dict[str, Any],
+) -> dict[str, Any]:
+    """Register validated candidates atomically, shared by legacy and compact extraction."""
+    from app.insight.character_memory import service
+
     async with sessions() as session:
         # Acquire the same manuscript lock as request/retry, before locking the job.
         current = await service.source(
@@ -188,11 +243,21 @@ async def discover(
         job = await running(session, job_id, attempt)
         if not job:
             raise DiscoveryFailure("DISCOVERY_ATTEMPT_LOST")
-        if current["scenes"] != args["scenes"] or current["titles"] != args["titles"]:
-            raise DiscoveryFailure("DISCOVERY_SOURCE_CHANGED")
         await register(session, job, report)
         current = await service.source(session, job.project_id, UUID(args["manuscript_id"]))
-        updated = {**args, **current, "discovery_version": VERSION}
+        # Writers can keep editing while this snapshot is analyzed. Refresh only
+        # registered people; never mix new scenes into an in-flight analysis.
+        from prolog_ai.memory.source import digest
+
+        updated = {**args, "characters": current["characters"], "discovery_version": VERSION}
+        # JSONB reorders object keys; recreate the source's canonical field order
+        # before hashing, rather than hashing a round-tripped job object.
+        scenes = [
+            {key: scene[key] for key in ("scene_id", "chapter_id", "order", "revision", "text")}
+            for scene in args["scenes"]
+        ]
+        titles = {scene["scene_id"]: args["titles"][scene["scene_id"]] for scene in scenes}
+        updated["fingerprint"] = digest([scenes, current["characters"], titles])
         job.input = updated
         report["complete"] = True
         job.result = {**(job.result or {}), "discovery": report}

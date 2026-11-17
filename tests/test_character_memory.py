@@ -319,3 +319,107 @@ async def test_empty_source_is_rejected(client: AsyncClient, content: str) -> No
         code(await client.post(f"{m['base']}/character-memory", headers=m["h"]))
         == "MANUSCRIPT_TOO_SHORT"
     )
+
+
+def test_disputed_action_is_visible_for_both_candidates_without_entering_metrics():
+    memory = fixture_memory()
+    original = dossier(memory, "a", {}, None)
+    record = deepcopy(memory["observations"][5])
+    record.update(
+        observation_id="disputed-action", character_id=None, attribution="uncertain", kind="action"
+    )
+    record["attribution_checks"] = [
+        {
+            "stage": stage,
+            "name": name,
+            "character_id": cid,
+            "attribution": "certain",
+            "reason": "원문을 읽은 단계별 후보",
+            "evidence": [record["evidence"]],
+        }
+        for stage, name, cid in [("extract", "서진", "a"), ("verify", "동료", "b")]
+    ]
+    memory["observations"].append(record)
+    for cid in ["a", "b"]:
+        value = dossier(memory, cid, {}, None)
+        value.update(
+            analysis_id="analysis",
+            generated_at=datetime.now(UTC),
+            stale=False,
+            manuscript_id="manuscript",
+            manuscript_title="원고",
+        )
+        response = DetailsResponse.model_validate(value).model_dump()
+        restored = next(
+            o
+            for o in response["uncertain_observations"]
+            if o["observation_id"] == "disputed-action"
+        )
+        assert restored["attribution_checks"] == record["attribution_checks"]
+        assert restored["speaker_check"] is None
+        assert not any(o["observation_id"] == "disputed-action" for o in response["observations"])
+        assert not any(
+            o["observation_id"] == "disputed-action"
+            for o in dossier(memory, cid, {}, 5)["uncertain_observations"]
+        )
+    assert dossier(memory, "a", {}, None)["metrics"] == original["metrics"]
+
+
+def test_context_inferred_perceiver_appears_as_unconfirmed_without_inflating_metrics():
+    from prolog_ai.memory.perception_context import infer_perception_contexts
+
+    quotes = [
+        "민서는 전에 들었던 음성을 떠올렸다.",
+        "발소리는 없었다.",
+        "저 음성은 이름부터 불렀다.",
+    ]
+    text = quotes[0] + "\n\n" + " ".join(quotes[1:])
+    data = memory_for(
+        "p",
+        [{"scene_id": "s", "order": 1, "revision": "r", "text": text}],
+        [{"character_id": "a", "name": "민서"}, {"character_id": "b", "name": "행인"}],
+    )
+    for i, quote in enumerate(quotes):
+        confirmed = i != 1
+        evidence = {
+            "scene_id": "s",
+            "revision": "r",
+            "start": text.index(quote),
+            "end": text.index(quote) + len(quote),
+            "quote": quote,
+        }
+        data["observations"].append(
+            {
+                "observation_id": f"o{i}",
+                "character_id": "a" if confirmed else None,
+                "attribution": "certain" if confirmed else "uncertain",
+                "kind": "inner_thought" if confirmed else "narration",
+                "presentation": "thought" if confirmed else "narrator_claim",
+                "behavior_role": "awareness" if confirmed else "other",
+                "summary": quote,
+                "context": "인지 문맥",
+                "interlocutor_ids": [],
+                "evidence": evidence,
+                "attribution_checks": [
+                    {
+                        "stage": stage,
+                        "name": "민서" if confirmed else None,
+                        "character_id": "a" if confirmed else None,
+                        "attribution": "certain" if confirmed else "uncertain",
+                        "reason": "원문 검증",
+                        "evidence": [evidence],
+                    }
+                    for stage in ["extract", "verify"]
+                ],
+            }
+        )
+    memory = Memory.model_validate(data)
+    links = infer_perception_contexts(memory)
+    memory.observations[1].perception_context = links["o1"]
+    data = memory.model_dump()
+    view = dossier(data, "a", {"s": "1장"}, None)
+    assert view["counts"]["observations"] == 2
+    assert view["counts"]["uncertain"] == 1
+    assert view["uncertain_observations"][0]["perception_context"]["basis"] == "context_inference"
+    assert view["uncertain_observations"][0]["character_id"] is None
+    assert dossier(data, "b", {"s": "1장"}, None)["uncertain_observations"] == []

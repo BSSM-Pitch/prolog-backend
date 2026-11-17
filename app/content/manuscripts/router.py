@@ -153,6 +153,26 @@ async def list_versions(
     return ok(service.to_version_responses(page), meta)
 
 
+@router.post(
+    "/{projectId}/manuscripts/{manuscriptId}/versions/{versionId}/restore",
+    status_code=status.HTTP_201_CREATED,
+    summary="과거 원고를 새 복사본으로 복원한다",
+    response_model=Envelope[ManuscriptResponse],
+    responses=raises(errors.ManuscriptNotFound, errors.InvalidInput),
+)
+async def restore_version(
+    project_id: ProjectId,
+    manuscript_id: ManuscriptId,
+    version_id: Annotated[UUID, Path(alias="versionId")],
+    session: Session,
+    ctx: EditorCtx,
+) -> dict[str, Any]:
+    """선택한 스냅샷의 본문으로 새 원고를 만든다. 현재 원고와 편집 이력은 보관한다."""
+    return ok(
+        await service.restore_copy(session, project_id, manuscript_id, version_id, ctx.user.id)
+    )
+
+
 @router.get(
     "/{projectId}/manuscripts/{manuscriptId}/export",
     dependencies=[Viewer],

@@ -28,6 +28,13 @@ class MessageCreate(BaseModel):
     content: Question
 
 
+class Citation(BaseModel):
+    chapter_id: UUID
+    chapter_no: int
+    chapter_title: str | None
+    quote: str
+
+
 class MessageResponse(BaseModel):
     message_id: UUID
     thread_id: UUID
@@ -37,6 +44,7 @@ class MessageResponse(BaseModel):
     # 화면 36 "응답 시간이 너무 길어져 중단됐어요" — 실패 사유. 명세에 없다(제안 목록).
     error: ErrorBody | None
     created_at: datetime
+    citations: list[Citation] = Field(default_factory=list)
 
 
 class ThreadResponse(BaseModel):
