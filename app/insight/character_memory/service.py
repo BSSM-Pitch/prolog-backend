@@ -8,6 +8,7 @@ from uuid import UUID
 
 from prolog_ai.memory.schema import Character as CharacterRef
 from prolog_ai.memory.schema import Scene
+from prolog_ai.memory.sections import sections
 from prolog_ai.memory.source import digest, snapshot_id, validate_memory
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -60,23 +61,36 @@ async def source(
     ]
     if not chapters:
         rows = [(str(manuscript.id), 1, manuscript.title, manuscript.content or "", None)]
+    logical_order = 0
+    expanded = any(len(sections(text)) > 1 for _, _, _, text, _ in rows if text.strip())
     for sid, order, title, text, chapter_id in rows:
         if not text.strip():
             continue
-        scenes.append(
-            {
-                "scene_id": sid,
+        parts = sections(text)
+        for part in parts:
+            logical_order += 1
+            virtual = len(parts) > 1
+            scene_id = f"{sid}@{part['start']}" if virtual else sid
+            body = text[part["start"] : part["end"]]
+            scene = {
+                "scene_id": scene_id,
                 "chapter_id": chapter_id,
-                "order": order,
-                "revision": sha256(text.encode()).hexdigest(),
-                "text": text,
+                "order": logical_order if expanded else order,
+                "revision": sha256(body.encode()).hexdigest(),
+                "text": body,
             }
-        )
-        titles[sid] = (
-            f"{order}장 · {title}"
-            if chapter_id and title
-            else (f"{order}장" if chapter_id else manuscript.title)
-        )
+            if expanded:
+                scene.update(source_start=part["start"], chapter_no=order)
+            scenes.append(scene)
+            titles[scene_id] = (
+                part["title"]
+                if virtual
+                else (
+                    f"{order}장 · {title}"
+                    if chapter_id and title
+                    else (f"{order}장" if chapter_id else manuscript.title)
+                )
+            )
     characters = [
         {"character_id": str(c.id), "name": c.name, **({"aliases": c.aliases} if c.aliases else {})}
         for c in people

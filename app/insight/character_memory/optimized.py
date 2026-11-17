@@ -7,6 +7,7 @@ registration survive retries; no automatic fallback to the legacy paid pipeline.
 
 import asyncio
 import logging
+import time
 from copy import deepcopy
 from typing import Any
 from uuid import UUID
@@ -99,7 +100,12 @@ async def reserve(sessions: ai_jobs.Sessions, job_id: UUID, attempt: int, key: s
 
 
 async def record_usage(
-    sessions: ai_jobs.Sessions, job_id: UUID, attempt: int, usage: dict[str, Any], model: str
+    sessions: ai_jobs.Sessions,
+    job_id: UUID,
+    attempt: int,
+    usage: dict[str, Any],
+    model: str,
+    key: str | None = None,
 ) -> None:
     from app.jobs.models import Job
 
@@ -124,9 +130,11 @@ async def record_usage(
                 "reasoning_tokens", 0
             ),
         }
+        step_total = state.setdefault("usage_by_request", {}).setdefault(key or "unknown", {})
         for name, value in values.items():
             total[name] = total.get(name, 0) + (value or 0)
             model_total[name] = model_total.get(name, 0) + (value or 0)
+            step_total[name] = step_total.get(name, 0) + (value or 0)
         job.result = result
         await session.commit()
 
@@ -205,7 +213,11 @@ async def run(
                 state = result["compact"]
                 if cache_only and key not in state["cache"]:
                     raise CacheMiss()
-                state.setdefault("request_meta", {})[key] = {"stage": stage, "model": config.model}
+                state.setdefault("request_meta", {})[key] = {
+                    "stage": stage,
+                    "label": label,
+                    "model": config.model,
+                }
                 result["progress"] = {
                     **result.get("progress", service.progress(None)),
                     "stage": label,
@@ -218,6 +230,7 @@ async def run(
                 cached = state["cache"].get(key)
                 job.result = result
                 await session.commit()
+            started = time.monotonic()
             if cached is not None:
                 output = compact.check(stage, payload, checkpoints.decode(cached))
             else:
@@ -236,7 +249,7 @@ async def run(
                     policy = RequestPolicy(
                         before_attempt=lambda: wait(reserve_if_running()),
                         on_usage=lambda usage: wait(
-                            record_usage(sessions, job_id, attempt, usage, config.model)
+                            record_usage(sessions, job_id, attempt, usage, config.model, key)
                         ),
                     )
                     with request_policy(policy):
@@ -254,6 +267,14 @@ async def run(
                 result = deepcopy(job.result or {})
                 state = result["compact"]
                 state["cache"][key] = checkpoints.encode(output)
+                state["request_meta"][key].update(
+                    elapsed_seconds=round(time.monotonic() - started, 3), cached=cached is not None
+                )
+                if stage == "extract" and label.startswith("extract:"):
+                    state.setdefault("extracted_counts", {})[label] = len(
+                        output.get("observations", [])
+                    )
+                    result["progress"]["observations"] = sum(state["extracted_counts"].values())
                 state["used_keys"] = list(dict.fromkeys([*state.get("used_keys", []), key]))
                 result["progress"]["completed_requests"] = len(state["used_keys"])
                 job.result = result

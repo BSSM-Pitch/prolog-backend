@@ -6,6 +6,7 @@ from hashlib import sha256
 from typing import Any
 from uuid import UUID
 
+from prolog_ai.memory.names import name_key, reference_mention
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -97,7 +98,7 @@ async def running(session: AsyncSession, job_id: UUID, attempt: int) -> Job | No
 async def lock_name(session: AsyncSession, project_id: UUID, name: str) -> None:
     # Same lock key as ASS's manual confirm, so manual and automatic creation serialize.
     key = func.hashtextextended(
-        func.concat("character:", str(project_id), ":", func.lower(name)), 0
+        func.concat("character:", str(project_id), ":", func.lower(name_key(name))), 0
     )
     await session.execute(select(func.pg_advisory_xact_lock(key)))
 
@@ -116,7 +117,7 @@ def matching(characters: list[Character], name: str) -> list[Character]:
     return [
         c
         for c in characters
-        if name.casefold() in {n.casefold() for n in [c.name, *(c.aliases or [])]}
+        if name_key(name) in {name_key(n) for n in [c.name, *(c.aliases or [])]}
     ]
 
 
@@ -142,33 +143,53 @@ async def create_person(
 
 async def register(session: AsyncSession, job: Job, report: dict[str, Any]) -> None:
     candidates = report["candidates"]
-    for name in sorted({c["name"] for c in candidates}, key=str.casefold):
+    for name in sorted({name_key(c["name"]) for c in candidates}):
         await lock_name(session, job.project_id, name)
     characters = await people(session, job.project_id)
     grouped: dict[str, list[dict[str, Any]]] = {}
     for candidate in candidates:
-        grouped.setdefault(candidate["name"].casefold(), []).append(candidate)
-    all_names = set(grouped) | {c.name.casefold() for c in characters}
+        grouped.setdefault(name_key(candidate["name"]), []).append(candidate)
+    all_names = set(grouped) | {name_key(c.name) for c in characters}
     for group in grouped.values():
-        candidate = group[0]
+        # Resolve evidence across chunks. An uncertain later mention must not
+        # veto a directly named person, nor turn an external reference into one.
+        eligible = [
+            c
+            for c in group
+            if not c.get("reference_only")
+            and not reference_mention(
+                c["name"], c.get("evidence", {}).get("quote", c.get("quote", ""))
+            )
+        ]
+        if not eligible:
+            for item in group:
+                item.update(
+                    status="dismissed" if item.get("reference_only") else "needs_review",
+                    character_id=None,
+                )
+            continue
+        candidate = min(eligible, key=lambda c: (c["name"].count(" "), len(c["name"])))
         found = matching(characters, candidate["name"])
-        name_key = candidate["name"].casefold()
-        longer_names = [n for n in all_names if n != name_key and n.endswith(name_key)]
+        surface = name_key(candidate["name"])
+        longer_names = [n for n in all_names if n != surface and n.endswith(surface)]
         status = "needs_review"
         character = None
         if len(found) == 1 and not any(
-            c.get("alias_of") and c["alias_of"].casefold() != found[0].name.casefold()
-            for c in group
+            c.get("alias_of") and name_key(c["alias_of"]) != name_key(found[0].name) for c in group
         ):
             character, status = found[0], "existing"
         elif (
             not found
             and not longer_names
-            and all(c["kind"] == "named_person" and not c["alias_of"] for c in group)
+            and any(c["kind"] == "named_person" and not c["alias_of"] for c in eligible)
+            and not any(c.get("alias_of") and name_key(c["alias_of"]) != surface for c in group)
         ):
             character = await create_person(session, job, candidate)
             characters.append(character)
             status = "added"
+        if character:
+            variants = {c["name"] for c in eligible if c["name"] != character.name}
+            character.aliases = sorted(set(character.aliases or []) | variants)
         for item in group:
             item.update(status=status, character_id=str(character.id) if character else None)
 
@@ -253,7 +274,19 @@ async def finalize(
         # JSONB reorders object keys; recreate the source's canonical field order
         # before hashing, rather than hashing a round-tripped job object.
         scenes = [
-            {key: scene[key] for key in ("scene_id", "chapter_id", "order", "revision", "text")}
+            {
+                key: scene[key]
+                for key in (
+                    "scene_id",
+                    "chapter_id",
+                    "order",
+                    "revision",
+                    "text",
+                    "source_start",
+                    "chapter_no",
+                )
+                if key in scene
+            }
             for scene in args["scenes"]
         ]
         titles = {scene["scene_id"]: args["titles"][scene["scene_id"]] for scene in scenes}

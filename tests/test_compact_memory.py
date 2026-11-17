@@ -21,6 +21,8 @@ from tests.test_character_discovery import overview, prepare, queue
 
 @pytest.fixture(autouse=True)
 def offline_provider(monkeypatch):
+    # Small fixtures still exercise multi-batch concurrency, repair and reuse.
+    monkeypatch.setattr(compact, "BATCH_CHARS", 40)
     monkeypatch.setenv("PROLOG_AI_PROVIDER", "openai")
     monkeypatch.delenv("PROLOG_AI_MODEL", raising=False)
 
@@ -249,10 +251,10 @@ async def test_changed_chapter_reuses_unaffected_batches(client: AsyncClient):
     fourth = await queue(client, m)
     ai = CompactAI()
     assert await service.handle(SessionFactory, fourth, ai) == "completed"
-    # Changing the actual neighboring context invalidates that dependent batch.
-    assert Counter(ai.calls) == {"extract": 2, "verify": 3, "propose": 1, "assess": 1}
+    # Growing beyond the byte budget adds one batch; the unaffected tail still reuses extraction.
+    assert Counter(ai.calls) == {"extract": 3, "verify": 4, "propose": 1, "assess": 1}
     assert ai.calls[-2:] == ["propose", "assess"]
-    assert (await saved(fourth))["compact"]["requests"] == 7
+    assert (await saved(fourth))["compact"]["requests"] == 9
 
 
 async def test_oversized_plan_fails_before_any_paid_request(client: AsyncClient, monkeypatch):
@@ -883,7 +885,19 @@ async def test_pattern_synthesis_reads_late_counterexamples_across_windows(monke
 def test_synthesis_windows_preserve_every_global_record_once():
     payload = {
         "characters": [{"i": 8, "name": "주인공"}],
-        "observations": [{"i": i * 7, "c": 8, "quote": "가" * 150} for i in range(40)],
+        "observations": [
+            {
+                "i": i * 7,
+                "c": 8,
+                "order": i + 1,
+                "k": "speech",
+                "p": "depicted",
+                "b": "other",
+                "context": "문맥",
+                "quote": "가" * 150,
+            }
+            for i in range(40)
+        ],
     }
     parts = scale.windows(payload, byte_limit=1200)
     assert len(parts) > 1
@@ -939,7 +953,19 @@ async def test_synthesis_resume_keeps_records_out_of_hot_checkpoints(client, mon
 def test_pattern_assessment_keeps_all_subject_records_without_unrelated_people():
     payload = {
         "characters": [{"i": i, "name": str(i)} for i in range(3)],
-        "observations": [{"i": i, "c": i % 3, "order": i + 1} for i in range(126)],
+        "observations": [
+            {
+                "i": i,
+                "c": i % 3,
+                "order": i + 1,
+                "k": "speech",
+                "p": "depicted",
+                "b": "other",
+                "context": "문맥",
+                "quote": "원문",
+            }
+            for i in range(126)
+        ],
     }
     candidates = [{"c": i, "seeds": [i]} for i in range(3)]
     groups = scale.assessment_groups(payload, candidates)
