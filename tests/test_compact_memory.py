@@ -154,6 +154,17 @@ async def test_resume_reuses_extraction_and_registers_once_after_review(client: 
     result = await saved(aid)
     assert result["compact"]["requests"] == 2
     assert not result["discovery"]["complete"]
+    # Simulate checkpoints written before compression was deployed.
+    from app.insight.character_memory import checkpoints
+
+    async with SessionFactory() as session:
+        job = await jobs.get(session, aid)
+        legacy = deepcopy(job.result)
+        legacy["compact"]["cache"] = {
+            k: checkpoints.decode(v) for k, v in legacy["compact"]["cache"].items()
+        }
+        job.result = legacy
+        await session.commit()
     assert (
         await client.post(f"{m['base']}/character-memory/{aid}/retry", headers=m["h"])
     ).status_code == 202
@@ -877,3 +888,21 @@ def test_synthesis_windows_preserve_every_global_record_once():
     parts = scale.windows(payload, byte_limit=1200)
     assert len(parts) > 1
     assert [r for p in parts for r in p["observations"]] == payload["observations"]
+
+
+def test_checkpoints_preserve_all_evidence_and_accept_legacy_json():
+    import json
+
+    from app.insight.character_memory import checkpoints
+
+    original = {
+        "observations": [
+            {"quote": "아주 오래전 약속과 마지막 반례", "order": i} for i in range(126)
+        ],
+        "validation_audit": {"uncertain": [1, 125]},
+    }
+    encoded = checkpoints.encode(original)
+    assert len(json.dumps(encoded)) < len(json.dumps(original)) / 4
+    assert checkpoints.decode(encoded) == original
+    assert checkpoints.decode(original) == original
+    assert checkpoints.encode(encoded) == encoded
