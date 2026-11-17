@@ -19,8 +19,9 @@ _SINO_KOREAN = str.maketrans("영공일이삼사오육칠팔구십백천만억",
 _NUMERALS = "零〇一二三四五六七八九十百千萬億两兩万亿壹貳贰參叁肆伍陸陆柒捌玖拾佰仟"
 _KOREAN = "영공일이삼사오육칠팔구십백천만억"
 _LIST_LINE = re.compile(
-    r"(?:\.{2,}|…{2,}|[\t|])|^[^:：。！？!?.]{1,80}[:：]\s*[^:：。！？!?「」『』]{1,40}$"
+    r"(?:\.{2,}|…{2,}|[\t|])|^[^:：。！？!?.]{1,80}[:：]\s*[^:：。「」『』]{1,40}$"
 )
+_APPROXIMATION = re.compile(r"^[餘余多來来幾几여]|(?:이상|이하|정도|가량|남짓|쯤)$")
 _ROW = re.compile(
     r"(?P<label>.+?)(?:\s*(?:\.{2,}|…{2,}|[:：\t|])\s*)"
     rf"(?P<number>[0-9][0-9,.]*|[{_NUMERALS}]+|[{_KOREAN}]+)"
@@ -51,7 +52,7 @@ def quantity(text: str) -> Decimal | None:
             if digit_pending and number != 0:
                 return None
             # In conventional prose, trailing 'two' after 'a thousand' is ambiguous.
-            if i == len(text) - 1 and value and last_small >= 100 and not last_zero:
+            if not korean and i == len(text) - 1 and value and last_small >= 100 and not last_zero:
                 return None
             number = value
             digit_pending = True
@@ -101,7 +102,11 @@ def computed_lists(chapters: list[dict[str, Any]]) -> list[dict[str, Any]]:
             terms: list[dict[str, Any]] = []
             for line, start in block:
                 match = _ROW.fullmatch(line.strip())
-                if not match or (value := quantity(match["number"])) is None:
+                if (
+                    not match
+                    or _APPROXIMATION.search(match["unit"])
+                    or (value := quantity(match["number"])) is None
+                ):
                     return
                 terms.append(
                     {

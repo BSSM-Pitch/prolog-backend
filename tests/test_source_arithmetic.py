@@ -17,6 +17,9 @@ from app.ai.source_arithmetic import computed_lists, quantity
         ("兩百", "200"),
         ("천이백삼십사", "1234"),
         ("천백", "1100"),
+        ("백일", "101"),
+        ("백이", "102"),
+        ("백삼", "103"),
         ("一千二", None),
         ("12,34", None),
         ("三四百", None),
@@ -58,7 +61,9 @@ def test_chinese_lists_and_distinct_inventory_boundaries():
     assert [r["sum"] for r in result] == ["2169", "600"]
 
 
-@pytest.mark.parametrize("bad", ["丁 …… 一千二卷", "丁 …… 未知卷", "丁 …… 一百斤"])
+@pytest.mark.parametrize(
+    "bad", ["丁 …… 一千二卷", "丁 …… 未知卷", "丁 …… 一百斤", "丁: ?卷", "丁: ？卷"]
+)
 def test_unparsed_or_mixed_unit_row_invalidates_whole_block(bad):
     result, _ = lists("甲 …… 一百卷\n乙 …… 二百卷\n丙 …… 三百卷\n" + bad)
     assert result == []
@@ -71,3 +76,14 @@ def test_dialogue_is_not_a_numeric_list_or_part_of_an_adjacent_list():
         "그는 말했다：「그것은 모두 내 물건이 아니다。」"
     )
     assert len(result) == 1 and result[0]["sum"] == "600"
+
+
+@pytest.mark.parametrize("value", ["一百餘卷", "100여개", "100개가량", "100개이상"])
+def test_approximate_suffix_cannot_masquerade_as_a_unit(value):
+    result, _ = lists(f"甲: {value}\n乙: {value}\n丙: {value}")
+    assert result == []
+
+
+def test_korean_trailing_digits_are_exact_not_chinese_shorthand():
+    result, _ = lists("첫째: 백일개\n둘째: 백이개\n셋째: 백삼개")
+    assert len(result) == 1 and result[0]["sum"] == "306"
