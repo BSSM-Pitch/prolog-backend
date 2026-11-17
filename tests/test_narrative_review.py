@@ -408,3 +408,132 @@ def test_independent_finding_audit_blocks_ambiguous_or_unreviewed_verdicts(compl
         assert result["meta"]["review_passes"] == 3
     else:
         assert "error" in result and "data" not in result
+
+
+def test_localization_preserves_verdicts_sources_and_parent_usage():
+    from prolog_ai.core.request_policy import RequestPolicy, current_policy, request_policy
+
+    from app.ai.narrative_review import localize_review
+
+    original = Review.model_validate(
+        verdict(
+            [
+                {"chapter_id": "first", "chapter_no": 1, "content": "PRIVATE SOURCE ONE"},
+                {"chapter_id": "last", "chapter_no": 100, "content": "PRIVATE SOURCE TWO"},
+            ]
+        )
+    )
+    original.tracks[0].title = "Shield condition"
+    original.tracks[0].explanation = "The shield needs a charged gem."
+    original.findings[0].title = "Missing charge"
+    original.findings[0].reason = "The same shield works without the required charge."
+    before = original.model_dump()
+    reservations = []
+    usages = []
+
+    def translate(prompt, **kwargs):
+        assert "PRIVATE SOURCE" not in prompt
+        policy = current_policy.get()
+        assert policy and policy.prompt_cache_prefix == prompt
+        policy.before_attempt()
+        policy.on_usage({"input_tokens": 12})
+        return {
+            "items": [
+                {
+                    "key": "findings:0",
+                    "title": "충전 조건 누락",
+                    "description": "같은 방패가 필요한 충전 없이 작동합니다.",
+                },
+                {
+                    "key": "tracks:0",
+                    "title": "방패 발동 조건",
+                    "description": "방패에는 충전된 보석이 필요합니다.",
+                },
+            ]
+        }
+
+    parent = RequestPolicy(
+        before_attempt=lambda: reservations.append(True),
+        on_usage=usages.append,
+        max_output_tokens=32768,
+    )
+    with request_policy(parent), patch("app.ai.narrative_review.call_llm", side_effect=translate):
+        localized, count = localize_review(original)
+        assert current_policy.get() is parent
+    assert count == 2 and len(reservations) == len(usages) == 1
+    assert original.model_dump() == before
+    after = localized.model_dump()
+    for group, field in [("tracks", "explanation"), ("findings", "reason")]:
+        for old, new in zip(before[group], after[group], strict=True):
+            assert {k: v for k, v in old.items() if k not in ("title", field)} == {
+                k: v for k, v in new.items() if k not in ("title", field)
+            }
+    with patch("app.ai.narrative_review.call_llm") as llm:
+        assert localize_review(localized) == (localized, 0)
+        llm.assert_not_called()
+
+
+@pytest.mark.parametrize("bad", ["missing", "duplicate", "unknown", "untranslated"])
+def test_localization_rejects_invalid_item_mapping_or_language(bad):
+    from app.ai.narrative_review import localize_review
+
+    review = Review.model_validate(
+        verdict(
+            [
+                {"chapter_id": "first", "chapter_no": 1, "content": "앞부분"},
+                {"chapter_id": "last", "chapter_no": 100, "content": "뒷부분"},
+            ]
+        )
+    )
+    review.tracks[0].title = "A rule"
+    review.tracks[0].explanation = "A gem is required."
+    item = {"key": "tracks:0", "title": "발동 조건", "description": "보석이 필요합니다."}
+    items = [item]
+    if bad == "missing":
+        items = []
+    if bad == "duplicate":
+        items = [item, item]
+    if bad == "unknown":
+        item["key"] = "tracks:9"
+    if bad == "untranslated":
+        item["description"] = "A gem is required."
+    with patch("app.ai.narrative_review.call_llm", return_value={"items": items}):
+        with pytest.raises(ValueError):
+            localize_review(review)
+
+
+def test_localization_bounds_batches_without_dropping_items():
+    import json
+
+    from app.ai.narrative_review import localize_review
+
+    review = Review.model_validate(
+        verdict(
+            [
+                {"chapter_id": "first", "chapter_no": 1, "content": "앞부분"},
+                {"chapter_id": "last", "chapter_no": 100, "content": "뒷부분"},
+            ]
+        )
+    )
+    review.tracks = [review.tracks[0].model_copy(deep=True) for _ in range(21)]
+    for item in review.tracks:
+        item.explanation = "A resource is recovered."
+    sizes = []
+
+    def translate(prompt, **kwargs):
+        batch = json.loads(prompt.split("\n", 1)[1])
+        sizes.append(len(batch))
+        return {
+            "items": [
+                {
+                    "key": item["key"],
+                    "title": "자원 회수",
+                    "description": "사용 후 자원을 회수합니다.",
+                }
+                for item in batch
+            ]
+        }
+
+    with patch("app.ai.narrative_review.call_llm", side_effect=translate):
+        localized, count = localize_review(review)
+    assert sizes == [20, 1] and count == len(localized.tracks) == 21
