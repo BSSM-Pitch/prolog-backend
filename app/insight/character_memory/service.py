@@ -315,7 +315,7 @@ async def persist(
             job.result["progress"].update(
                 completed_requests=len(compact_state.get("used_keys", [])),
                 http_requests=compact_state.get("requests", 0),
-                request_limit=40,
+                request_limit=compact_state.get("request_limit", 40),
                 planned_requests=compact_state.get("planned_steps", 0),
             )
         await session.commit()

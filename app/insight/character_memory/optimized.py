@@ -17,7 +17,7 @@ from prolog_ai.memory.source import digest, validate_memory
 
 from app.ai import jobs as ai_jobs
 from app.core.config import settings
-from app.insight.character_memory import discovery
+from app.insight.character_memory import discovery, scale
 from app.jobs import service as jobs
 
 MAX_CONCURRENCY = 9
@@ -85,13 +85,12 @@ async def reserve(sessions: ai_jobs.Sessions, job_id: UUID, attempt: int, key: s
         state = result.setdefault("compact", {})
         attempts = state.setdefault("attempts", {})
         used = state.get("requests", 0)
-        if used >= compact.MAX_REQUESTS or attempts.get(key, 0) >= 2:
+        limit = state.get("request_limit", compact.MAX_REQUESTS)
+        if used >= limit or attempts.get(key, 0) >= 2:
             raise BudgetExceeded()
         state["requests"] = used + 1
         attempts[key] = attempts.get(key, 0) + 1
-        result.setdefault("progress", {}).update(
-            http_requests=used + 1, request_limit=compact.MAX_REQUESTS
-        )
+        result.setdefault("progress", {}).update(http_requests=used + 1, request_limit=limit)
         job.result = result
         await session.commit()
 
@@ -137,7 +136,7 @@ async def run(
     try:
         batches = compact.plan(args["scenes"])
         planned = 2 * len(batches) + 2
-        if planned > compact.MAX_STEPS:
+        if len(batches) > scale.MAX_BATCHES:
             raise ValueError("PLAN_EXCEEDS_BUDGET")
         loop = asyncio.get_running_loop()
         async with sessions() as session:
@@ -149,6 +148,7 @@ async def run(
             if state.get("version") != compact.VERSION:
                 state["used_keys"] = []
             state.update(version=compact.VERSION, cache=cache, planned_steps=planned)
+            state.setdefault("request_limit", scale.request_limit(len(batches)))
             state.setdefault("seed_characters", args["characters"])
             # Keep request reservations even if code/model versions changed.
             job.result = {**(job.result or {}), "compact": state}
@@ -200,7 +200,7 @@ async def run(
                     "total_scenes": len(args["scenes"]),
                     "completed_requests": len(state.get("used_keys", [])),
                     "http_requests": state.get("requests", 0),
-                    "request_limit": compact.MAX_REQUESTS,
+                    "request_limit": state["request_limit"],
                     "planned_requests": planned,
                 }
                 cached = state["cache"].get(key)
@@ -292,12 +292,18 @@ async def run(
                 if not pending:
                     return
                 local = [request(i, missing) for i, missing in pending]
-                combined, mappings = repairs.pack(stage, local)
-                fixed = await execute(stage, combined, f"{stage}-repair:combined:{turn + 1}")
-                for (i, _), output in zip(
-                    pending, repairs.unpack(stage, local, fixed, mappings), strict=True
-                ):
-                    values[i] = merge(payloads[i], values[i], output, require_complete=False)
+                for offset in range(0, len(local), scale.REPAIR_BATCHES):
+                    subset = local[offset : offset + scale.REPAIR_BATCHES]
+                    combined, mappings = repairs.pack(stage, subset)
+                    fixed = await execute(
+                        stage, combined, f"{stage}-repair:combined:{turn + 1}:{offset}"
+                    )
+                    for (i, _), output in zip(
+                        pending[offset : offset + scale.REPAIR_BATCHES],
+                        repairs.unpack(stage, subset, fixed, mappings),
+                        strict=True,
+                    ):
+                        values[i] = merge(payloads[i], values[i], output, require_complete=False)
             if any(missing_for(p, values[i]) for i, p in enumerate(payloads)):
                 if stage == "extract":
                     raise ValueError("Coverage incomplete after two bounded combined repairs")
@@ -411,12 +417,7 @@ async def run(
         )
         if not await service.persist(sessions, job_id, attempt, memory.model_dump(), "synthesis"):
             return "lost"
-        payload = compact.synthesis_payload(memory)
-        if len({o["order"] for o in payload["observations"]}) >= 2:
-            proposals = await execute("propose", payload, "patterns:propose")
-            if proposals["proposals"]:
-                assessments = await execute("assess", {**payload, **proposals}, "patterns:assess")
-                compact.apply_patterns(memory, proposals, assessments)
+        await scale.synthesize(memory, execute)
         memory.complete = True
         validate_memory(memory.model_dump(), require_complete=True)
         if not await service.persist(sessions, job_id, attempt, memory.model_dump(), "completed"):

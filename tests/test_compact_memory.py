@@ -14,7 +14,7 @@ from prolog_ai.memory import compact
 
 from app.content.manuscripts.models import Chapter
 from app.db.session import SessionFactory
-from app.insight.character_memory import optimized, service
+from app.insight.character_memory import optimized, scale, service
 from app.jobs import service as jobs
 from tests.test_character_discovery import overview, prepare, queue
 
@@ -247,7 +247,7 @@ async def test_changed_chapter_reuses_unaffected_batches(client: AsyncClient):
 async def test_oversized_plan_fails_before_any_paid_request(client: AsyncClient, monkeypatch):
     m = await prepare(client, "compact-size@example.com", "서윤은 말했다. “괜찮아.”")
     aid = await queue(client, m)
-    monkeypatch.setattr(compact, "MAX_STEPS", 1)
+    monkeypatch.setattr(scale, "MAX_BATCHES", 0)
     ai = CompactAI()
     assert await service.handle(SessionFactory, aid, ai) == "failed"
     assert not ai.calls
@@ -804,3 +804,76 @@ async def service_details_for_test(m, person):
             UUID(person),
             None,
         )
+
+
+async def test_126_chapter_book_keeps_first_middle_and_last_records(client: AsyncClient):
+    m = await prepare(client, "long-book@example.com", "서윤은 말했다. “괜찮아.”")
+    await chapters(m, 126)
+    aid = await queue(client, m)
+    ai = CompactAI()
+    assert await service.handle(SessionFactory, aid, ai) == "completed"
+    result = await saved(aid)
+    memory = result["memory"]
+    assert len(memory["processed_scene_ids"]) == 126
+    orders = {s["scene_id"]: s["order"] for s in memory["scenes"]}
+    assert {orders[o["evidence"]["scene_id"]] for o in memory["observations"]} == set(range(1, 127))
+    assert result["compact"]["request_limit"] == scale.request_limit(63)
+    assert result["compact"]["requests"] > 40
+    assert result["progress"]["request_limit"] == result["compact"]["request_limit"]
+
+
+async def test_pattern_synthesis_reads_late_counterexamples_across_windows(monkeypatch):
+    from types import SimpleNamespace
+
+    payload = {
+        "characters": [{"i": 0, "name": "서윤"}],
+        "observations": [{"i": i, "c": 0, "order": i + 1, "quote": f"원문{i}"} for i in range(4)],
+    }
+    monkeypatch.setattr(compact, "synthesis_payload", lambda _: payload)
+    monkeypatch.setattr(
+        scale,
+        "windows",
+        lambda p: [
+            {**p, "observations": p["observations"][:2]},
+            {**p, "observations": p["observations"][2:]},
+        ],
+    )
+    applied = []
+    monkeypatch.setattr(compact, "apply_patterns", lambda m, p, a: applied.append((p, a)))
+    visited = []
+
+    async def execute(stage, scoped, label):
+        ids = {r["i"] for r in scoped["observations"]}
+        if stage == "propose":
+            result = {"proposals": []}
+            if 0 in ids:
+                result["proposals"] = [
+                    {
+                        "c": 0,
+                        "description": "조건부 반복",
+                        "condition": "위험할 때",
+                        "seeds": [0, 1],
+                        "hypothesis": None,
+                        "alternatives": [],
+                    }
+                ]
+        else:
+            visited.append(ids)
+            result = {
+                "assessments": [{"i": 0, "support": [0, 1], "counter": [3] if 3 in ids else []}]
+            }
+        return compact.check(stage, scoped, result)
+
+    await scale.synthesize(SimpleNamespace(), execute)
+    assert visited == [{0, 1}, {0, 1, 2, 3}]
+    assert applied[0][1]["assessments"][0]["counter"] == [3]
+
+
+def test_synthesis_windows_preserve_every_global_record_once():
+    payload = {
+        "characters": [{"i": 8, "name": "주인공"}],
+        "observations": [{"i": i * 7, "c": 8, "quote": "가" * 150} for i in range(40)],
+    }
+    parts = scale.windows(payload, byte_limit=1200)
+    assert len(parts) > 1
+    assert [r for p in parts for r in p["observations"]] == payload["observations"]
