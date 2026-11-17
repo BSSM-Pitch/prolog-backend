@@ -131,6 +131,7 @@ async def record_usage(
                 "reasoning_tokens", 0
             ),
         }
+        state.setdefault("usage_reports", []).append({"key": key, "model": model, "usage": usage})
         step_total = state.setdefault("usage_by_request", {}).setdefault(key or "unknown", {})
         for name, value in values.items():
             total[name] = total.get(name, 0) + (value or 0)
