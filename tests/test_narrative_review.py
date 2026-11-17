@@ -220,3 +220,30 @@ def test_evidence_cannot_be_invented_or_misattributed(bad: str):
         data["tracks"][0]["status"] = "paid_off"
     with pytest.raises(ValueError):
         validate_evidence(Review.model_validate(data), cs)
+
+
+@pytest.mark.parametrize("complete", [True, False])
+def test_independent_finding_audit_blocks_ambiguous_or_unreviewed_verdicts(complete: bool):
+    cs = [
+        {"chapter_id": str(uuid4()), "chapter_no": n, "content": text}
+        for n, text in [(1, "수사의 표기는 문맥을 보아야 한다."), (120, "그 뜻은 같았다.")]
+    ]
+    draft = verdict(cs)
+    draft["tracks"][0]["evidence"] = [{"source_id": "c1p1"}]
+    draft["findings"][0]["evidence"] = [{"source_id": "c1p1"}, {"source_id": "c2p1"}]
+    audit = {
+        "summary": "문법상 정상 해석이 가능하므로 충돌에서 제외했습니다.",
+        "decisions": [{"index": 0, "decision": "omit", "reason": "표기의 중의성"}]
+        if complete
+        else [],
+    }
+    with patch("app.ai.narrative_review.call_llm", side_effect=[draft, draft, audit]) as llm:
+        result = run({"chapters": cs, "saved_rules": []})
+    assert llm.call_count == 3
+    assert all(c["content"] in llm.call_args_list[2].args[0] for c in cs)
+    if complete:
+        assert not result["data"]["findings"]
+        assert result["data"]["summary"] == audit["summary"]
+        assert result["meta"]["review_passes"] == 3
+    else:
+        assert "error" in result and "data" not in result
