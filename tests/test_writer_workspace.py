@@ -1,6 +1,6 @@
 import asyncio
 from io import BytesIO
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pytest
 from PIL import Image
@@ -145,6 +145,10 @@ async def test_adoption_atomic_idempotent_and_manuscript_scoped(client):
     draft["payoff_chapter_id"] = s["chapters"][1][3]
     assert (await client.post(path + "/0", headers=s["h"], json=draft)).status_code == 404
     draft["payoff_chapter_id"] = s["chapters"][0][3]
+    draft["foreshadowing"]["linked_character_ids"] = [str(uuid4())]
+    missing_person = await client.post(path + "/0", headers=s["h"], json=draft)
+    assert missing_person.status_code == 404
+    draft["foreshadowing"]["linked_character_ids"] = []
     a, b = await asyncio.gather(
         *[client.post(path + "/0", headers=s["h"], json=draft) for _ in range(2)]
     )

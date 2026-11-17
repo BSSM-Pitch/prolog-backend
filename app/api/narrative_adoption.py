@@ -77,6 +77,7 @@ async def adopted(project_id: ProjectId, check_id: JobId, session: Session) -> d
         errors.DuplicateChapterRecord,
         errors.RelationshipNotFound,
         errors.InvalidPayoffChapter,
+        errors.LinkTargetNotFound,
     ),
 )
 async def adopt(
