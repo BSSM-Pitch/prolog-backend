@@ -537,3 +537,29 @@ def test_localization_bounds_batches_without_dropping_items():
     with patch("app.ai.narrative_review.call_llm", side_effect=translate):
         localized, count = localize_review(review)
     assert sizes == [20, 1] and count == len(localized.tracks) == 21
+
+
+@pytest.mark.parametrize("failure", ["quota", "timeout", "invalid_translation"])
+def test_translation_failure_keeps_completed_source_verified_review(failure):
+    from prolog_ai.core.llm import LLMFailedError, LLMTimeoutError
+
+    cs = [{"chapter_id": "first", "chapter_no": 1, "content": "The shield requires a charged gem."}]
+    draft = verdict(cs)
+    draft["findings"] = []
+    draft["tracks"][0].update(
+        title="Shield",
+        explanation="The shield requires a charged gem.",
+        evidence=[{"source_id": "c1p1"}],
+    )
+    response = {
+        "quota": LLMFailedError("insufficient quota"),
+        "timeout": LLMTimeoutError("timeout"),
+        "invalid_translation": {"items": []},
+    }[failure]
+    with patch("app.ai.narrative_review.call_llm", side_effect=[draft, draft, response]):
+        result = run({"chapters": cs, "saved_rules": []})
+    assert "error" not in result
+    assert result["meta"]["localization_pending"] is True
+    assert result["data"]["tracks"][0]["evidence"][0]["quote"] == cs[0]["content"]
+    assert result["data"]["tracks"][0]["explanation"] == draft["tracks"][0]["explanation"]
+    assert "원문 언어로 표시" in result["data"]["summary"]
