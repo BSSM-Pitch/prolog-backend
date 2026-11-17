@@ -263,6 +263,9 @@ class FakeAI:
     def run_rule_review(self, event: Any, rules: Any, characters: Any) -> dict[str, Any]:
         return self._next("run_rule_review", event, rules, characters, default={"assessments": []})
 
+    def run_narrative_review(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return self._next("run_narrative_review", payload)
+
     def run_rex(self, manuscript_text: str) -> dict[str, Any]:
         return self._next("run_rex", manuscript_text)
 
