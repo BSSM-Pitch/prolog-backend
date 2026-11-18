@@ -21,12 +21,12 @@ from app.platform_.projects.models import Project
 router = APIRouter(prefix="/projects", tags=["media"])
 ProjectId = Annotated[UUID, Path(alias="projectId")]
 TargetId = Annotated[UUID, Path(alias="targetId")]
-Kind = Literal["cover", "portrait"]
+Kind = Literal["portrait"]
 Store = Annotated[ImageStorage, Depends(image_storage)]
 Viewer = Depends(require_project_role("viewer"))
 Editor = Depends(require_project_role("editor"))
 ALL = "/{projectId}/media"
-ONE = ALL + "/{kind}/{targetId}"
+ONE = ALL + "/portrait/{targetId}"
 logger = logging.getLogger(__name__)
 
 
@@ -52,31 +52,31 @@ def view(row: ProjectImage, store: ImageStorage) -> dict[str, Any]:
     ALL,
     dependencies=[Viewer],
     response_model=Envelope[list[ImageResponse]],
-    summary="작품 표지와 인물 사진 목록",
+    summary="인물 사진 목록",
 )
 async def images(project_id: ProjectId, session: Session, store: Store) -> dict[str, Any]:
     """viewer 이상. URL은 한 시간 동안 유효하며 목록을 다시 읽으면 갱신된다."""
-    rows = await session.scalars(select(ProjectImage).where(ProjectImage.project_id == project_id))
+    rows = await session.scalars(
+        select(ProjectImage).where(
+            ProjectImage.project_id == project_id, ProjectImage.kind == "portrait"
+        )
+    )
     return ok([view(row, store) for row in rows])
 
 
-async def target(session: Session, project_id: UUID, kind: Kind, target_id: UUID) -> None:
+async def target(session: Session, project_id: UUID, target_id: UUID) -> None:
     # Serialize writes, including the first upload when no image row exists yet.
     await session.scalar(select(Project).where(Project.id == project_id).with_for_update())
-    if kind == "cover":
-        if target_id != project_id:
-            raise errors.InvalidInput("표지는 현재 작품에만 등록할 수 있어요.")
-    else:
-        person = await session.scalar(
-            select(Character)
-            .where(
-                Character.id == target_id,
-                Character.project_id == project_id,
-            )
-            .with_for_update()
+    person = await session.scalar(
+        select(Character)
+        .where(
+            Character.id == target_id,
+            Character.project_id == project_id,
         )
-        if person is None:
-            raise errors.CharacterNotFound()
+        .with_for_update()
+    )
+    if person is None:
+        raise errors.CharacterNotFound()
 
 
 async def discard(store: ImageStorage, key: str) -> None:
@@ -88,7 +88,7 @@ async def discard(store: ImageStorage, key: str) -> None:
 
 @router.put(
     ONE,
-    summary="작품 표지 또는 인물 사진 저장",
+    summary="인물 사진 저장",
     openapi_extra={
         "requestBody": {
             "required": True,
@@ -104,7 +104,6 @@ async def discard(store: ImageStorage, key: str) -> None:
 )
 async def upload(
     project_id: ProjectId,
-    kind: Kind,
     target_id: TargetId,
     request: Request,
     session: Session,
@@ -117,20 +116,20 @@ async def upload(
         if len(data) > MAX_BYTES:
             raise errors.InvalidInput("이미지는 5MB 이하로 선택해 주세요.")
     normalized, width, height = await asyncio.to_thread(normalize, bytes(data))
-    await target(session, project_id, kind, target_id)
+    await target(session, project_id, target_id)
     row = await session.scalar(
         select(ProjectImage).where(
             ProjectImage.project_id == project_id,
-            ProjectImage.kind == kind,
+            ProjectImage.kind == "portrait",
             ProjectImage.target_id == target_id,
         )
     )
     old_key = row.storage_key if row else None
-    new_key = f"images/{project_id}/{kind}/{target_id}/{uuid4()}.webp"
+    new_key = f"images/{project_id}/portrait/{target_id}/{uuid4()}.webp"
     await asyncio.to_thread(store.put, new_key, normalized)
     try:
         if row is None:
-            row = ProjectImage(project_id=project_id, kind=kind, target_id=target_id)
+            row = ProjectImage(project_id=project_id, kind="portrait", target_id=target_id)
             session.add(row)
         row.storage_key, row.width, row.height = new_key, width, height
         result = view(row, store)
@@ -148,17 +147,17 @@ async def upload(
     dependencies=[Editor],
     status_code=204,
     responses=raises(errors.CharacterNotFound),
-    summary="작품 이미지를 기본 표시로 되돌린다",
+    summary="인물 사진을 기본 표시로 되돌린다",
 )
 async def remove(
-    project_id: ProjectId, kind: Kind, target_id: TargetId, session: Session, store: Store
+    project_id: ProjectId, target_id: TargetId, session: Session, store: Store
 ) -> None:
     """editor 이상. 기존 이미지가 없어도 성공하며, 원본 작품이나 인물은 유지된다."""
-    await target(session, project_id, kind, target_id)
+    await target(session, project_id, target_id)
     row = await session.scalar(
         select(ProjectImage).where(
             ProjectImage.project_id == project_id,
-            ProjectImage.kind == kind,
+            ProjectImage.kind == "portrait",
             ProjectImage.target_id == target_id,
         )
     )

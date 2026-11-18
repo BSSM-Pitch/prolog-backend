@@ -4002,10 +4002,7 @@
             "type": "integer"
           },
           "kind": {
-            "enum": [
-              "cover",
-              "portrait"
-            ],
+            "const": "portrait",
             "title": "Kind",
             "type": "string"
           },
@@ -25215,16 +25212,16 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "작품 표지와 인물 사진 목록",
+        "summary": "인물 사진 목록",
         "tags": [
           "media"
         ]
       }
     },
-    "/v1/projects/{projectId}/media/{kind}/{targetId}": {
+    "/v1/projects/{projectId}/media/portrait/{targetId}": {
       "delete": {
         "description": "editor 이상. 기존 이미지가 없어도 성공하며, 원본 작품이나 인물은 유지된다.",
-        "operationId": "remove_v1_projects__projectId__media__kind___targetId__delete",
+        "operationId": "remove_v1_projects__projectId__media_portrait__targetId__delete",
         "parameters": [
           {
             "in": "path",
@@ -25233,19 +25230,6 @@
             "schema": {
               "format": "uuid",
               "title": "Projectid",
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "kind",
-            "required": true,
-            "schema": {
-              "enum": [
-                "cover",
-                "portrait"
-              ],
-              "title": "Kind",
               "type": "string"
             }
           },
@@ -25368,14 +25352,14 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "작품 이미지를 기본 표시로 되돌린다",
+        "summary": "인물 사진을 기본 표시로 되돌린다",
         "tags": [
           "media"
         ]
       },
       "put": {
         "description": "editor 이상. 최대 5MB의 이미지 원본을 요청 본문으로 보낸다. WebP로 정규화한다.",
-        "operationId": "upload_v1_projects__projectId__media__kind___targetId__put",
+        "operationId": "upload_v1_projects__projectId__media_portrait__targetId__put",
         "parameters": [
           {
             "in": "path",
@@ -25384,19 +25368,6 @@
             "schema": {
               "format": "uuid",
               "title": "Projectid",
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "kind",
-            "required": true,
-            "schema": {
-              "enum": [
-                "cover",
-                "portrait"
-              ],
-              "title": "Kind",
               "type": "string"
             }
           },
@@ -25549,7 +25520,7 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "작품 표지 또는 인물 사진 저장",
+        "summary": "인물 사진 저장",
         "tags": [
           "media"
         ]

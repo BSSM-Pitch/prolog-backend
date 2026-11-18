@@ -8,6 +8,7 @@ from pypdf import PdfReader
 from sqlalchemy import func
 
 from app.content.media.images import ImageStorage, image_storage, normalize
+from app.content.media.models import ProjectImage
 from app.core import errors
 from app.db.session import SessionFactory
 from app.jobs.models import Job
@@ -88,7 +89,7 @@ async def viewer(client, s):
 
 async def test_images_persist_normalize_replace_and_enforce_ownership(client, images):
     s = await setup(client)
-    path = f"{s['base']}/media/cover/{s['pid']}"
+    path = f"{s['base']}/media/portrait/{s['people'][0]}"
     made = await client.put(path, headers=s["h"], content=png())
     assert made.status_code == 200, made.text
     assert made.json()["data"]["width"] == 80
@@ -109,12 +110,41 @@ async def test_images_persist_normalize_replace_and_enforce_ownership(client, im
         await client.put(path, headers=s["h"], content=b'<svg onload="alert(1)"/>')
     ).status_code == 400
     assert len(images.objects) == 1
-    portrait = f"{s['base']}/media/portrait/{s['people'][0]}"
+    portrait = f"{s['base']}/media/portrait/{s['people'][1]}"
     assert (await client.put(portrait, headers=s["h"], content=png())).status_code == 200
     assert (await client.delete(path, headers=s["h"])).status_code == 204
     assert len(images.objects) == 1
     assert (await client.delete(portrait, headers=s["h"])).status_code == 204
     assert not images.objects
+
+
+async def test_cover_api_removed_and_legacy_covers_excluded(client, images):
+    s = await setup(client)
+    async with SessionFactory() as session:
+        session.add(
+            ProjectImage(
+                project_id=UUID(s["pid"]),
+                target_id=UUID(s["pid"]),
+                kind="cover",
+                storage_key="images/legacy-cover.webp",
+                width=80,
+                height=120,
+            )
+        )
+        await session.commit()
+    path = f"{s['base']}/media/cover/{s['pid']}"
+    assert (await client.put(path, headers=s["h"], content=png())).status_code == 404
+    assert (await client.delete(path, headers=s["h"])).status_code == 404
+    portrait = f"{s['base']}/media/portrait/{s['people'][0]}"
+    made = await client.put(portrait, headers=s["h"], content=png())
+    assert made.status_code == 200
+    listed = await client.get(s["base"] + "/media", headers=s["h"])
+    assert listed.status_code == 200
+    assert listed.json()["data"] == [made.json()["data"]]
+    assert len(images.objects) == 1
+    paths = app.openapi()["paths"]
+    assert "/v1/projects/{projectId}/media/{kind}/{targetId}" not in paths
+    assert "/v1/projects/{projectId}/media/portrait/{targetId}" in paths
 
 
 def test_image_limits_and_invalid_files():
