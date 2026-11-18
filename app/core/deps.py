@@ -45,16 +45,28 @@ class CurrentUser:
 
 async def current_user(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
+    session: Session,
 ) -> CurrentUser:
     if credentials is None:
         raise errors.Unauthorized()
     payload = decode_access_token(credentials.credentials)
-    # ponytail: 액세스 토큰만 검증하고 DB 를 치지 않는다. 즉시 차단이 필요해지면
-    # refresh_tokens 폐기 + TTL 단축으로 먼저 해결하고, 그래도 부족하면 여기에 캐시된 조회를 넣는다.
-    return CurrentUser(id=UUID(payload["sub"]), email=payload.get("email"))
+    user_id = UUID(payload["sub"])
+    # Check committed account state on every authenticated request so an already
+    # issued access token cannot bypass a ban until its JWT expires.
+    row = (
+        await session.execute(
+            text("SELECT banned_at FROM platform.users WHERE id = :user_id"),
+            {"user_id": user_id},
+        )
+    ).first()
+    if row is None:
+        raise errors.Unauthorized()
+    if row.banned_at is not None:
+        raise errors.AccountBanned()
+    return CurrentUser(id=user_id, email=payload.get("email"))
 
 
-DEPENDENCY_RAISES[current_user] = (errors.Unauthorized,)
+DEPENDENCY_RAISES[current_user] = (errors.Unauthorized, errors.AccountBanned)
 
 User = Annotated[CurrentUser, Depends(current_user)]
 

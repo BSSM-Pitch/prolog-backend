@@ -55,7 +55,15 @@ def _user_response(user: User) -> UserResponse:
     )
 
 
+async def _lock_session_user(session: AsyncSession, user: User) -> None:
+    # Serialize session issuance against moderation, re-reading stale ORM state.
+    await session.refresh(user, ["banned_at"], with_for_update=True)
+    if user.banned_at is not None:
+        raise errors.AccountBanned()
+
+
 async def _issue(session: AsyncSession, user: User) -> TokenResponse:
+    await _lock_session_user(session, user)
     plain, token_hash = new_opaque_token()
     expires_at = datetime.now(UTC) + timedelta(seconds=settings.refresh_token_ttl_seconds)
     await repo.add_refresh_token(session, user.id, token_hash, expires_at)
@@ -138,6 +146,12 @@ async def refresh(session: AsyncSession, refresh_token: str) -> TokenResponse:
         raise errors.RefreshTokenInvalid()
     user = await repo.get_user(session, row.user_id)
     if user is None:
+        raise errors.RefreshTokenInvalid()
+    # Match moderation's user -> refresh-token lock order. Recheck the token
+    # after waiting so concurrent refreshes cannot both rotate the same token.
+    await _lock_session_user(session, user)
+    await session.refresh(row)
+    if row.revoked_at is not None or row.expires_at <= datetime.now(UTC):
         raise errors.RefreshTokenInvalid()
     await repo.revoke_refresh_token(session, row.token_hash)  # 로테이션: 재사용은 거부된다
     return await _issue(session, user)

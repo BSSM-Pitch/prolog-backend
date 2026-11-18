@@ -17,6 +17,7 @@ QUESTION = (
     "시간 차이를 계산해 설명해 줘."
 )
 DRAFT = {
+    "scope_allowed": True,
     "source_facts": ["새벽 두 시", "내일 오전 아홉 시"],
     "applicable_rules": ["rule-7"],
     "calculation_summary": "7시간",
@@ -28,7 +29,10 @@ DRAFT = {
 def test_review_receives_original_sources_and_can_correct_bad_arithmetic() -> None:
     with patch(
         "app.ai.grounded_qa.call_llm",
-        side_effect=[DRAFT, {"content": "31시간이므로 7시간 규칙과 충돌합니다."}],
+        side_effect=[
+            DRAFT,
+            {"scope_allowed": True, "content": "31시간이므로 7시간 규칙과 충돌합니다."},
+        ],
     ) as model:
         result = answer(QUESTION, TEXT, "project", None, [], RULES)
     assert result["data"]["content"].startswith("31시간")
@@ -56,7 +60,8 @@ def test_selection_and_history_preserved_without_mutating_manuscript() -> None:
         {"role": "assistant", "content": "이전 답변"},
     ]
     with patch(
-        "app.ai.grounded_qa.call_llm", side_effect=[DRAFT, {"content": "완성 답변"}]
+        "app.ai.grounded_qa.call_llm",
+        side_effect=[DRAFT, {"scope_allowed": True, "content": "완성 답변"}],
     ) as model:
         answer(QUESTION, TEXT, "selection", {"start": 0, "end": 12}, history, RULES)
     prompt = model.call_args_list[0].args[0]
@@ -78,6 +83,7 @@ def test_review_only_returns_literal_source_citations() -> None:
         side_effect=[
             DRAFT,
             {
+                "scope_allowed": True,
                 "content": "다음 날 오전 아홉 시입니다.",
                 "citations": [TEXT, "없는 인용문", TEXT, ""],
             },
@@ -90,10 +96,47 @@ def test_review_only_returns_literal_source_citations() -> None:
 def test_long_book_review_uses_long_deadline_without_truncating_sources() -> None:
     text = "시작의 규칙.\n" + "중간 장면. " * 12_000 + "\n마지막 반례."
     with patch(
-        "app.ai.grounded_qa.call_llm", side_effect=[DRAFT, {"content": "검토 완료"}]
+        "app.ai.grounded_qa.call_llm",
+        side_effect=[DRAFT, {"scope_allowed": True, "content": "검토 완료"}],
     ) as model:
         result = answer("처음과 끝을 비교", text, "project", None, [], [])
     assert "data" in result
     for call in model.call_args_list:
         assert call.kwargs["timeout"] == 300
         assert "시작의 규칙" in call.args[0] and "마지막 반례" in call.args[0]
+
+
+@pytest.mark.parametrize("stage", ["draft", "review"])
+def test_out_of_scope_never_publishes_generated_content(stage):
+    refused = {**DRAFT, "scope_allowed": False, "content": "not-for-publication"}
+    outputs = (
+        [refused]
+        if stage == "draft"
+        else [DRAFT, {"scope_allowed": False, "content": "not-for-publication"}]
+    )
+    with patch("app.ai.grounded_qa.call_llm", side_effect=outputs) as model:
+        result = answer("소설과 무관한 요청", TEXT, "project", None, [], [])
+    assert result["error"]["code"] == "AI_SCOPE_RESTRICTED"
+    assert "data" not in result and "not-for-publication" not in str(result)
+    assert model.call_count == len(outputs)
+
+
+@pytest.mark.parametrize("decision", [None, "true", 1])
+def test_missing_or_non_boolean_scope_verdict_fails_closed(decision):
+    draft = {**DRAFT, "scope_allowed": decision}
+    if decision is None:
+        del draft["scope_allowed"]
+    with patch("app.ai.grounded_qa.call_llm", return_value=draft) as model:
+        result = answer(QUESTION, TEXT, "project", None, [], [])
+    assert "error" in result and "data" not in result
+    assert model.call_count == 1
+
+
+def test_allowed_response_does_not_expose_scope_metadata():
+    with patch(
+        "app.ai.grounded_qa.call_llm",
+        side_effect=[DRAFT, {"scope_allowed": True, "content": "창작 제안입니다."}],
+    ):
+        result = answer("이 장면의 갈등을 심화할 방법은?", TEXT, "project", None, [], [])
+    assert result["data"] == {"content": "창작 제안입니다.", "citations": []}
+    assert result["meta"]["scope_checked"]

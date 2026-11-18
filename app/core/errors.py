@@ -48,6 +48,8 @@ UserNotFound = _err("USER_NOT_FOUND", 404, "사용자를 찾을 수 없습니다
 # 일반 로그인. 아이디가 없는지 비밀번호가 틀렸는지 구분하지 않는다.
 InvalidCredentials = _err("INVALID_CREDENTIALS", 401, "아이디 또는 비밀번호가 올바르지 않습니다")
 EmailTaken = _err("EMAIL_TAKEN", 409, "이미 가입된 이메일입니다")
+# Operator account suspension; identity and authored content remain intact.
+AccountBanned = _err("ACCOUNT_BANNED", 403, "이용이 정지된 계정입니다")
 
 # --- TEAM ---------------------------------------------------------------
 # 멤버·초대 관련 코드는 PRJ 와 이름이 다르다. 공통 처리로 뭉개지 않는다 (CLAUDE.md §5.1).
