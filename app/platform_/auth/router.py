@@ -37,7 +37,7 @@ Naver = Annotated[NaverOAuth, Depends(naver_oauth)]
     "/oauth/google",
     summary="Google 로 로그인하거나 가입을 시작한다",
     response_model=OAuthGoogleResponse,
-    responses=raises(errors.OAuthProviderError),
+    responses=raises(errors.OAuthProviderError, errors.AccountBanned),
 )
 async def oauth_google(
     body: OAuthGoogleRequest, session: Session, google: Google
@@ -57,7 +57,7 @@ async def oauth_google(
     "/oauth/naver",
     summary="네이버로 로그인하거나 가입을 시작한다",
     response_model=OAuthNaverResponse,
-    responses=raises(errors.OAuthProviderError),
+    responses=raises(errors.OAuthProviderError, errors.AccountBanned),
 )
 async def oauth_naver(body: OAuthNaverRequest, session: Session, naver: Naver) -> dict[str, Any]:
     """네이버가 준 authorization code 와 인가 요청 때 보낸 `state` 를 넘긴다.
@@ -99,7 +99,7 @@ async def signup(body: SignupRequest, session: Session) -> dict[str, Any]:
     "/login",
     summary="아이디·비밀번호로 로그인한다",
     response_model=Envelope[SessionResponse],
-    responses=raises(errors.InvalidCredentials),
+    responses=raises(errors.InvalidCredentials, errors.AccountBanned),
 )
 async def login(body: LoginRequest, session: Session) -> dict[str, Any]:
     """`login_id` 는 아이디 또는 이메일. Google 로 가입한 계정은 이 경로로 로그인할 수 없다
@@ -112,7 +112,7 @@ async def login(body: LoginRequest, session: Session) -> dict[str, Any]:
     "/token/refresh",
     summary="액세스 토큰을 재발급한다",
     response_model=Envelope[TokenResponse],
-    responses=raises(errors.RefreshTokenInvalid),
+    responses=raises(errors.RefreshTokenInvalid, errors.AccountBanned),
 )
 async def refresh(body: RefreshRequest, session: Session) -> dict[str, Any]:
     """리프레시 토큰을 새 액세스·리프레시 토큰 쌍으로 바꾼다.

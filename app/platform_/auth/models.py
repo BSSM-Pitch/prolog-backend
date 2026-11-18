@@ -29,6 +29,8 @@ class User(Base, Timestamps):
     role: Mapped[str] = mapped_column(String(20))
     # ASSUMPTION: 명세 미정의. 요금제 도입 시 CHECK 값만 확장 (CLAUDE.md §5).
     plan: Mapped[str] = mapped_column(String(20), default="free")
+    banned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    ban_reason: Mapped[str | None] = mapped_column(String(500))
 
 
 class RefreshToken(Base, Timestamps):

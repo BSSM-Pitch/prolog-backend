@@ -9272,6 +9272,28 @@
               }
             },
             "description": "- `INVALID_CREDENTIALS` — 아이디 또는 비밀번호가 올바르지 않습니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다"
           }
         },
         "summary": "아이디·비밀번호로 로그인한다",
@@ -9374,6 +9396,28 @@
             },
             "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다"
+          },
           "502": {
             "content": {
               "application/json": {
@@ -9449,6 +9493,28 @@
               }
             },
             "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다"
           },
           "502": {
             "content": {
@@ -9665,6 +9731,28 @@
               }
             },
             "description": "- `REFRESH_TOKEN_INVALID` — 리프레시 토큰이 유효하지 않습니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다"
           }
         },
         "summary": "액세스 토큰을 재발급한다",
@@ -9817,6 +9905,28 @@
               }
             },
             "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다"
           }
         },
         "security": [
@@ -9866,6 +9976,28 @@
               }
             },
             "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다"
           }
         },
         "security": [
@@ -9942,6 +10074,28 @@
               }
             },
             "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다"
           },
           "404": {
             "content": {
@@ -10045,6 +10199,28 @@
               }
             },
             "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다"
           },
           "404": {
             "content": {
@@ -10158,6 +10334,28 @@
               }
             },
             "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다"
           },
           "404": {
             "content": {
@@ -10326,6 +10524,28 @@
               }
             },
             "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다"
           }
         },
         "security": [
@@ -10410,6 +10630,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "NOT_TEAM_MEMBER": {
                     "summary": "해당 팀의 멤버가 아닙니다",
                     "value": {
@@ -10426,7 +10656,7 @@
                 }
               }
             },
-            "description": "- `NOT_TEAM_MEMBER` — 해당 팀의 멤버가 아닙니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `NOT_TEAM_MEMBER` — 해당 팀의 멤버가 아닙니다"
           },
           "404": {
             "content": {
@@ -10530,6 +10760,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -10546,7 +10786,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -10655,6 +10895,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -10671,7 +10921,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -10790,6 +11040,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -10806,7 +11066,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -10968,6 +11228,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -10984,7 +11254,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -11103,6 +11373,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -11119,7 +11399,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -11243,6 +11523,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -11259,7 +11549,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -11388,6 +11678,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -11404,7 +11704,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -11543,6 +11843,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -11559,7 +11869,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -11700,6 +12010,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -11716,7 +12036,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -11879,6 +12199,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -11895,7 +12225,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -12059,6 +12389,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -12075,7 +12415,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -12194,6 +12534,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -12210,7 +12560,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -12331,6 +12681,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -12347,7 +12707,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -12486,6 +12846,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -12502,7 +12872,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -12685,6 +13055,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -12701,7 +13081,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -12874,6 +13254,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -12890,7 +13280,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -13094,6 +13484,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -13110,7 +13510,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -13251,6 +13651,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -13267,7 +13677,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -13423,6 +13833,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -13439,7 +13859,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -13620,6 +14040,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -13636,7 +14066,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -13821,6 +14251,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -13837,7 +14277,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -13951,6 +14391,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -13967,7 +14417,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -14118,6 +14568,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -14134,7 +14594,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -14273,6 +14733,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -14289,7 +14759,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -14474,6 +14944,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -14490,7 +14970,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -14621,6 +15101,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -14637,7 +15127,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -14768,6 +15258,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -14784,7 +15284,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -14945,6 +15445,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -14961,7 +15471,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -15164,6 +15674,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -15180,7 +15700,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -15432,6 +15952,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -15448,7 +15978,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -15642,6 +16172,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -15658,7 +16198,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -15779,6 +16319,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -15795,7 +16345,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -15934,6 +16484,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -15950,7 +16510,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -16152,6 +16712,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -16168,7 +16738,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -16404,6 +16974,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -16420,7 +17000,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -16539,6 +17119,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -16555,7 +17145,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -16702,6 +17292,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -16718,7 +17318,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -16841,6 +17441,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -16857,7 +17467,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -16971,6 +17581,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -16987,7 +17607,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -17116,6 +17736,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -17132,7 +17762,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -17281,6 +17911,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -17297,7 +17937,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -17438,6 +18078,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -17454,7 +18104,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -17588,6 +18238,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -17604,7 +18264,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -17755,6 +18415,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -17771,7 +18441,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -17915,6 +18585,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -17931,7 +18611,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -18062,6 +18742,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -18078,7 +18768,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -18249,6 +18939,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -18265,7 +18965,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -18406,6 +19106,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -18422,7 +19132,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -18553,6 +19263,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -18569,7 +19289,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -18715,6 +19435,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -18731,7 +19461,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -18889,6 +19619,28 @@
               }
             },
             "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다"
           },
           "404": {
             "content": {
@@ -19085,6 +19837,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -19101,7 +19863,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -19220,6 +19982,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -19236,7 +20008,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -19350,6 +20122,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -19366,7 +20148,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -19495,6 +20277,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -19511,7 +20303,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -19650,6 +20442,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -19666,7 +20468,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -19819,6 +20621,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -19835,7 +20647,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -19964,6 +20776,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -19980,7 +20802,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -20164,6 +20986,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -20180,7 +21012,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -20341,6 +21173,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -20357,7 +21199,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -20547,6 +21389,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -20563,7 +21415,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -20751,6 +21603,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -20767,7 +21629,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -20957,6 +21819,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -20973,7 +21845,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -21205,6 +22077,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -21221,7 +22103,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -21394,6 +22276,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -21410,7 +22302,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -21541,6 +22433,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -21557,7 +22459,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -21688,6 +22590,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -21704,7 +22616,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -21835,6 +22747,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -21851,7 +22773,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -22014,6 +22936,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -22030,7 +22962,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -22179,6 +23111,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -22195,7 +23137,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -22329,6 +23271,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -22345,7 +23297,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -22484,6 +23436,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -22500,7 +23462,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -22651,6 +23613,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -22667,7 +23639,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -22818,6 +23790,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -22834,7 +23816,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -22995,6 +23977,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -23011,7 +24003,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -23174,6 +24166,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -23190,7 +24192,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -23331,6 +24333,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -23347,7 +24359,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -23498,6 +24510,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -23514,7 +24536,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -23677,6 +24699,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -23693,7 +24725,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -23846,6 +24878,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -23862,7 +24904,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -24025,6 +25067,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -24041,7 +25093,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -24182,6 +25234,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -24198,7 +25260,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -24351,6 +25413,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -24367,7 +25439,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -24508,6 +25580,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -24524,7 +25606,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -24683,6 +25765,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -24699,7 +25791,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -24872,6 +25964,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -24888,7 +25990,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -25029,6 +26131,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -25045,7 +26157,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -25166,6 +26278,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -25182,7 +26304,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -25296,6 +26418,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -25312,7 +26444,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -25464,6 +26596,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -25480,7 +26622,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -25633,6 +26775,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -25649,7 +26801,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -25763,6 +26915,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -25779,7 +26941,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -25940,6 +27102,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -25956,7 +27128,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -26169,6 +27341,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -26185,7 +27367,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -26304,6 +27486,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -26320,7 +27512,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -26451,6 +27643,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -26467,7 +27669,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -26598,6 +27800,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -26614,7 +27826,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -26777,6 +27989,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -26793,7 +28015,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -26973,6 +28195,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -26989,7 +28221,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -27176,6 +28408,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -27192,7 +28434,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -27321,6 +28563,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -27337,7 +28589,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -27503,6 +28755,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -27519,7 +28781,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -27665,6 +28927,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -27681,7 +28953,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -27842,6 +29114,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -27858,7 +29140,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -28024,6 +29306,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -28040,7 +29332,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -28201,6 +29493,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -28217,7 +29519,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -28388,6 +29690,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -28404,7 +29716,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -28567,6 +29879,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -28583,7 +29905,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -28702,6 +30024,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -28718,7 +30050,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -28832,6 +30164,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -28848,7 +30190,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -28987,6 +30329,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -29003,7 +30355,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -29141,6 +30493,28 @@
               }
             },
             "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다"
           }
         },
         "security": [
@@ -29220,6 +30594,28 @@
               }
             },
             "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다"
           }
         },
         "security": [
@@ -29301,6 +30697,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -29317,7 +30723,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -29448,6 +30854,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -29464,7 +30880,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -29583,6 +30999,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -29599,7 +31025,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -29742,6 +31168,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -29758,7 +31194,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -29877,6 +31313,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -29893,7 +31339,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -30039,6 +31485,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -30055,7 +31511,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -30213,6 +31669,28 @@
               }
             },
             "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다"
           },
           "404": {
             "content": {
@@ -30409,6 +31887,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -30425,7 +31913,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -30539,6 +32027,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -30555,7 +32053,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -30716,6 +32214,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -30732,7 +32240,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -30907,6 +32415,16 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  },
                   "FORBIDDEN": {
                     "summary": "권한이 없습니다",
                     "value": {
@@ -30923,7 +32441,7 @@
                 }
               }
             },
-            "description": "- `FORBIDDEN` — 권한이 없습니다"
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다"
           },
           "404": {
             "content": {
@@ -31053,6 +32571,28 @@
             },
             "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -31154,6 +32694,28 @@
             },
             "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -31224,6 +32786,28 @@
               }
             },
             "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다"
           }
         },
         "security": [
@@ -31273,6 +32857,28 @@
               }
             },
             "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다"
           }
         },
         "security": [
@@ -31352,6 +32958,28 @@
               }
             },
             "description": "- `UNAUTHORIZED` — 인증이 필요합니다"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "details": {},
+                        "message": "이용이 정지된 계정입니다"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다"
           }
         },
         "security": [
