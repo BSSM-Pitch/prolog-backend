@@ -45,6 +45,8 @@ class MessageResponse(BaseModel):
     error: ErrorBody | None
     created_at: datetime
     citations: list[Citation] = Field(default_factory=list)
+    progress_stage: str | None = None
+    preview_content: str | None = None
 
 
 class ThreadResponse(BaseModel):

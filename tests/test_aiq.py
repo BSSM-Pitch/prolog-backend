@@ -324,3 +324,20 @@ async def test_citations_are_verified_and_survive_reload(client: AsyncClient) ->
             "quote": "하린은 통신실 문을 잠갔다.",
         }
     ]
+
+
+async def test_events_reconnect_returns_saved_answer_and_enforces_project_access(client):
+    m = await _manuscript(client, "sse-owner@example.com")
+    created = await _ask(client, m)
+    await _run(_job_of(created), FakeAI(answer("검토한 **최종 답변**")))
+    tid = created["thread"]["thread_id"]
+    mid = created["messages"][-1]["message_id"]
+    url = f"{m['base']}/{tid}/messages/{mid}/events"
+    response = await client.get(url, headers=m["h"])
+    assert response.status_code == 200
+    assert "text/event-stream" in response.headers["content-type"]
+    assert "검토한 **최종 답변**" in response.text
+    assert '"status": "completed"' in response.text
+    other = await signup(client, "sse-other@example.com")
+    denied = await client.get(url, headers=other["headers"])
+    assert denied.status_code in (403, 404)

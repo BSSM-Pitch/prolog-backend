@@ -55,7 +55,7 @@ async def _errors_of(session: AsyncSession, rows: Sequence[QaMessage]) -> dict[U
 
 async def to_messages(session: AsyncSession, rows: Sequence[QaMessage]) -> list[MessageResponse]:
     failures = await _errors_of(session, rows)
-    ids = [m.job_id for m in rows if m.job_id and m.status == "completed"]
+    ids = [m.job_id for m in rows if m.job_id]
     results: dict[UUID, Any] = {}
     if ids:
         found = await session.execute(select(Job.id, Job.result).where(Job.id.in_(ids)))
@@ -80,6 +80,12 @@ async def to_messages(session: AsyncSession, rows: Sequence[QaMessage]) -> list[
                     else None
                 ),
                 created_at=m.created_at,
+                progress_stage=((results.get(m.job_id) or {}).get("stream") or {}).get("stage")
+                if m.status == "pending"
+                else None,
+                preview_content=((results.get(m.job_id) or {}).get("stream") or {}).get("content")
+                if m.status == "pending"
+                else None,
                 citations=(results.get(m.job_id) or {}).get("citations", []) if m.job_id else [],
             )
         )
@@ -448,7 +454,7 @@ async def _answered(session: AsyncSession, job: Job, data: dict[str, Any]) -> No
                 citations.append(
                     {k: v for k, v in matches[0].items() if k != "content"} | {"quote": quote}
                 )
-        job.result = {**(job.result or {}), "citations": citations}
+        job.result = {"citations": citations, "meta": data.get("meta", {})}
         # Retain locations and verified quotations, not another full manuscript copy.
         job.input = {k: v for k, v in job.input.items() if k != "citation_sources"}
 
@@ -458,6 +464,7 @@ async def mark_failed(session: AsyncSession, job: Job, error: dict[str, Any] | N
     answer = await session.get(QaMessage, cast(UUID, job.target_id))
     if answer is not None:
         answer.status = "failed"
+        job.result = {k: v for k, v in (job.result or {}).items() if k != "stream"}
 
 
 async def handle(sessions: Any, job_id: UUID, ai: AIClient) -> ai_jobs.Outcome:

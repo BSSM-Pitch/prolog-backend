@@ -2,14 +2,18 @@
 
 import json
 import logging
+import time
+from dataclasses import replace
 from typing import Any
 
-from prolog_ai.core.llm import LLMTimeoutError
+from prolog_ai.core.llm import LLMTimeoutError, get_llm_config
+from prolog_ai.core.request_policy import RequestPolicy, request_policy
 from prolog_ai.core.runner import InputValidationError
 from prolog_ai.modules.aiq.module import _validate
 from prolog_ai.modules.aiq.schema import AIQOutput
 from pydantic import BaseModel, ConfigDict, Field, StrictBool
 
+from app.ai import qa_progress
 from app.ai.reasoning import call_llm
 
 log = logging.getLogger(__name__)
@@ -35,6 +39,8 @@ class AnswerDraft(ScopeDecision):
     content: str = Field(
         description="허용된 창작 질문에 직접 답하는 완결된 초안. 범위 밖이면 빈 문자열"
     )
+
+    citations: list[str] = Field(default_factory=list, max_length=16)
 
 
 class ReviewedAnswer(AIQOutput, ScopeDecision):
@@ -114,26 +120,46 @@ def answer(
         # records separate, so saved settings never change manuscript offsets.
         source = {
             "question": question,
-            "manuscript": manuscript_text,
             "scope": scope,
             "selection_range": selection_range,
             "history": validated["messages"],
-            "world_rules": world_rules,
         }
         if scope == "selection" and selection_range:
             source["selection"] = manuscript_text[selection_range["start"] : selection_range["end"]]
-        prompt = GUIDANCE + "\n" + json.dumps(source, ensure_ascii=False).replace("<", "\\u003c")
+        prefix = (
+            GUIDANCE
+            + "\n"
+            + json.dumps(
+                {"manuscript": manuscript_text, "world_rules": world_rules}, ensure_ascii=False
+            ).replace("<", "\\u003c")
+        )
+        prompt = prefix + "\n" + json.dumps(source, ensure_ascii=False).replace("<", "\\u003c")
+        metrics = []
+        phase = "drafting"
+        policy = RequestPolicy(
+            before_attempt=lambda: None,
+            prompt_cache_prefix=prefix,
+            on_usage=lambda usage: metrics.append({"stage": phase, "usage": usage}),
+        )
+        started = time.monotonic()
+        qa_progress.emit("drafting")
         # Long-book reviews can read hundreds of chapters in each independent pass.
         # Keep the shorter interactive deadline for ordinary manuscripts.
         timeout = 300 if len(manuscript_text) > 80_000 else 120
-        draft = AnswerDraft.model_validate(
-            call_llm(
-                prompt,
-                schema=AnswerDraft,
-                timeout=timeout,
-                max_retries=1,
+        with request_policy(policy):
+            draft = AnswerDraft.model_validate(
+                call_llm(
+                    prompt
+                    + "\n이번 단계는 검토용 메모다. source_facts에 필요한 근거를 "
+                    "빠짐없이 짧게 모으고 "
+                    "content에는 결론과 검토 항목만 간결히 적는다. "
+                    "최종 답변 문장을 중복 작성하지 않는다. citations는 비워 둔다.",
+                    schema=AnswerDraft,
+                    timeout=timeout,
+                    max_retries=1,
+                )
             )
-        )
+        draft_seconds = round(time.monotonic() - started, 3)
         if not draft.scope_allowed:
             return scope_rejection()
         review_prompt = (
@@ -149,14 +175,21 @@ def answer(
             "사용자가 계산을 요청하면 기준 시각·발신 시각·짧은 계산·규칙 판정을 포함한다.\n"
             + json.dumps(draft.model_dump(), ensure_ascii=False).replace("<", "\\u003c")
         )
-        final = ReviewedAnswer.model_validate(
-            call_llm(
-                review_prompt,
-                schema=ReviewedAnswer,
-                timeout=timeout,
-                max_retries=1,
+        phase = "reviewing"
+        qa_progress.emit(phase)
+        review_started = time.monotonic()
+        with request_policy(replace(policy, on_arguments=qa_progress.review_arguments)):
+            final = ReviewedAnswer.model_validate(
+                call_llm(
+                    review_prompt + "\n최종 단계: source_facts와 applicable_rules는 빈 배열, "
+                    "calculation_summary와 uncertainty는 빈 문자열로 두고 "
+                    "필요한 설명은 content에 통합한다. "
+                    "citations에는 실제 원문 인용만 넣는다.",
+                    schema=AnswerDraft,
+                    timeout=timeout,
+                    max_retries=1,
+                )
             )
-        )
         if not final.scope_allowed:
             return scope_rejection()
         if not final.content.strip():
@@ -168,7 +201,14 @@ def answer(
         )
         return {
             "data": final.model_dump(exclude={"scope_allowed"}),
-            "meta": {"review_passes": 2, "scope_checked": True},
+            "meta": {
+                "review_passes": 2,
+                "scope_checked": True,
+                "model": get_llm_config().model,
+                "draft_seconds": draft_seconds,
+                "review_seconds": round(time.monotonic() - review_started, 3),
+                "usage_reports": metrics,
+            },
         }
     except InputValidationError as exc:
         return {"error": {"code": exc.code.value, "message": exc.message, "details": exc.details}}

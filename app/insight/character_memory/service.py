@@ -140,18 +140,34 @@ def progress(memory: dict[str, Any] | None, stage: str = "") -> dict[str, Any]:
 
 def job_view(job: Job) -> dict[str, Any]:
     saved = job.result or {}
+    state = saved.get("compact", {})
+    base_total = max(0, state.get("planned_steps", 0) - 2)
+    base_done = sum(
+        1
+        for key, meta in state.get("request_meta", {}).items()
+        if key in state.get("cache", {})
+        and meta.get("label", "").startswith(("extract:", "verify:"))
+    )
     return {
         "analysis_id": str(job.id),
         "status": job.status,
         "created_at": job.created_at,
         "finished_at": job.finished_at,
-        "progress": saved.get("progress")
-        or {**progress(None), "total_scenes": len(job.input["scenes"])},
+        "progress": {
+            **(
+                saved.get("progress")
+                or {**progress(None), "total_scenes": len(job.input["scenes"])}
+            ),
+            "base_completed": base_done,
+            "base_total": base_total,
+        },
         "error": {
             "code": job.error.get("code"),
             "message": (
                 "호출 예산을 사용했어요. 저장된 결과는 유지되며 추가 요청은 보내지 않아요."
                 if job.error.get("code") == "AI_MEMORY_BUDGET_EXCEEDED"
+                else "일부 검증 단계의 재시도 한도에 도달했어요. 완료한 검토는 보관됩니다."
+                if job.error.get("code") == "AI_MEMORY_STEP_ATTEMPTS_EXCEEDED"
                 else "원고가 이번 분석의 처리 한도를 넘어요. 원고 범위를 줄여 주세요."
                 if job.error.get("code") == "AI_MEMORY_PLAN_TOO_LARGE"
                 else "분석이 중단됐어요. 저장된 결과에서 이어서 시도할 수 있어요."
@@ -295,8 +311,39 @@ async def retry(
         raise errors.InvalidInput("원고나 인물이 바뀌었어요. 현재 원고로 새로 분석해 주세요.")
     if job.status != "failed":
         raise errors.InvalidStatusTransition(status=job.status)
-    if (job.error or {}).get("code") == "AI_MEMORY_BUDGET_EXCEEDED":
-        raise errors.InvalidInput("호출 예산을 사용했어요. 재시도로 예산이 초기화되지 않습니다.")
+    from copy import deepcopy
+
+    from app.insight.character_memory.optimized import VERIFICATION_REVISION
+
+    saved = deepcopy(job.result or {})
+    state = saved.get("compact", {})
+    if state and state.get("requests", 0) >= state.get("request_limit", 40):
+        raise errors.InvalidInput(
+            "전체 호출 한도를 사용했어요. 재시도로 한도가 초기화되지 않습니다."
+        )
+    # A schema upgrade may recover a previously exhausted verification once.
+    # Retain every reservation and checkpoint; repeated retries cannot add credit.
+    grants = state.setdefault("recovery_allowances", {}) if state else {}
+    granted = False
+    for key, count in state.get("attempts", {}).items():
+        meta = state.get("request_meta", {}).get(key, {})
+        if (
+            count >= 2
+            and key not in state.get("cache", {})
+            and meta.get("stage") == "verify"
+            and meta.get("verification_revision") != VERIFICATION_REVISION
+            and key not in grants
+        ):
+            grants[key] = 1
+            granted = True
+    if (job.error or {}).get("code") in {
+        "AI_MEMORY_BUDGET_EXCEEDED",
+        "AI_MEMORY_STEP_ATTEMPTS_EXCEEDED",
+    } and not granted:
+        raise errors.InvalidInput(
+            "실패한 검증 단계의 재시도 한도에 도달했어요. 완료한 결과는 보관됩니다."
+        )
+    job.result = saved
     active = (
         await session.execute(
             query(project_id, manuscript_id).where(Job.status.in_(["queued", "running"])).limit(1)
