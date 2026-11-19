@@ -97,13 +97,13 @@ async def signup(body: SignupRequest, session: Session) -> dict[str, Any]:
 
 @router.post(
     "/login",
-    summary="아이디·비밀번호로 로그인한다",
+    summary="이메일·비밀번호로 로그인한다",
     response_model=Envelope[SessionResponse],
     responses=raises(errors.InvalidCredentials, errors.AccountBanned),
 )
 async def login(body: LoginRequest, session: Session) -> dict[str, Any]:
-    """`login_id` 는 아이디 또는 이메일. Google 로 가입한 계정은 이 경로로 로그인할 수 없다
-    (`INVALID_CREDENTIALS`) — 아이디가 없는지 비밀번호가 틀렸는지 구분하지 않는다.
+    """`login_id` 는 이메일이다(아이디 로그인은 없다). 소셜로 가입한 계정은 이 경로로 로그인할 수
+    없다(`INVALID_CREDENTIALS`) — 계정이 없는지 비밀번호가 틀렸는지 구분하지 않는다.
     """
     return ok(await service.login(session, body.login_id, body.password))
 

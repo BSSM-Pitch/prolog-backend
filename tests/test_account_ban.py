@@ -87,7 +87,7 @@ async def test_banned_local_login_and_unrevoked_refresh_are_denied(client):
         user.banned_at = datetime.now(UTC)
         await session.commit()
     login = await client.post(
-        "/auth/login", json={"login_id": "localban", "password": "password123"}
+        "/auth/login", json={"login_id": "localban@example.com", "password": "password123"}
     )
     assert login.status_code == 403 and code(login) == "ACCOUNT_BANNED"
     refresh = await client.post(
