@@ -26,6 +26,7 @@ from app.jobs import service as jobs
 log = logging.getLogger(__name__)
 
 MAX_CONCURRENCY = 9
+VERIFICATION_REVISION = "bounded-proof-v1"
 
 
 async def bounded_map(
@@ -73,6 +74,12 @@ class BudgetExceeded(Exception):
     pass
 
 
+class StepAttemptsExceeded(Exception):
+    def __init__(self, key: str):
+        self.key = key
+        super().__init__("Per-step request attempts exhausted")
+
+
 class CacheMiss(Exception):
     pass
 
@@ -91,8 +98,11 @@ async def reserve(sessions: ai_jobs.Sessions, job_id: UUID, attempt: int, key: s
         attempts = state.setdefault("attempts", {})
         used = state.get("requests", 0)
         limit = state.get("request_limit", compact.MAX_REQUESTS)
-        if used >= limit or attempts.get(key, 0) >= 2:
+        if used >= limit:
             raise BudgetExceeded()
+        allowance = state.get("recovery_allowances", {}).get(key, 0)
+        if attempts.get(key, 0) >= 2 + allowance:
+            raise StepAttemptsExceeded(key)
         state["requests"] = used + 1
         attempts[key] = attempts.get(key, 0) + 1
         result.setdefault("progress", {}).update(http_requests=used + 1, request_limit=limit)
@@ -219,6 +229,7 @@ async def run(
                     "stage": stage,
                     "label": label,
                     "model": config.model,
+                    "verification_revision": VERIFICATION_REVISION if stage == "verify" else None,
                 }
                 result["progress"] = {
                     **result.get("progress", service.progress(None)),
@@ -521,7 +532,11 @@ async def run(
     except Exception as exc:
         log.exception("Compact character analysis failed: job=%s attempt=%s", job_id, attempt)
         code = (
-            "AI_MEMORY_BUDGET_EXCEEDED" if isinstance(exc, BudgetExceeded) else "AI_ANALYSIS_FAILED"
+            "AI_MEMORY_BUDGET_EXCEEDED"
+            if isinstance(exc, BudgetExceeded)
+            else "AI_MEMORY_STEP_ATTEMPTS_EXCEEDED"
+            if isinstance(exc, StepAttemptsExceeded)
+            else "AI_ANALYSIS_FAILED"
         )
         if isinstance(exc, ValueError) and str(exc) == "PLAN_EXCEEDS_BUDGET":
             code = "AI_MEMORY_PLAN_TOO_LARGE"
@@ -532,7 +547,17 @@ async def run(
                 attempt,
                 {
                     "code": code,
-                    "message": "분석이 중단되었습니다. 저장된 결과와 호출 예산은 유지됩니다.",
+                    "message": (
+                        "전체 호출 한도를 사용했습니다. 저장된 결과는 유지됩니다."
+                        if isinstance(exc, BudgetExceeded)
+                        else "일부 검증 단계의 재시도 한도에 도달했습니다. "
+                        "저장된 결과는 유지됩니다."
+                        if isinstance(exc, StepAttemptsExceeded)
+                        else "분석이 중단되었습니다. 저장된 결과와 호출 예산은 유지됩니다."
+                    ),
+                    "details": {"step_key": exc.key}
+                    if isinstance(exc, StepAttemptsExceeded)
+                    else {},
                 },
                 retryable=False,
             )

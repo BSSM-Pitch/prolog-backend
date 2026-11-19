@@ -1021,3 +1021,45 @@ async def test_sparse_verification_repairs_preserve_each_paid_source_prefix(clie
     result = await saved(aid)
     assert not result["compact"]["deferred_verifications"]
     assert len(result["memory"]["processed_scene_ids"]) == 6
+
+
+async def test_schema_upgrade_recovery_preserves_cache_budget_and_is_one_time(client):
+    m = await prepare(client, "recovery@example.com", "서윤은 말했다. “괜찮아.”")
+    aid = await queue(client, m)
+    cache = {f"saved-{i}": {"kept": i} for i in range(17)}
+    async with SessionFactory() as session:
+        job = await jobs.claim(session, aid)
+        job.result = {
+            "compact": {
+                "requests": 20,
+                "request_limit": 40,
+                "attempts": {"failed-step": 2},
+                "cache": cache,
+                "request_meta": {"failed-step": {"stage": "verify", "label": "verify:5/9"}},
+            }
+        }
+        await jobs.fail(
+            session, aid, job.attempt, {"code": "AI_MEMORY_BUDGET_EXCEEDED"}, retryable=False
+        )
+        await session.commit()
+    response = await client.post(f"{m['base']}/character-memory/{aid}/retry", headers=m["h"])
+    assert response.status_code == 202, response.text
+    state = (await saved(aid))["compact"]
+    assert state["cache"] == cache and state["requests"] == 20
+    assert state["attempts"]["failed-step"] == 2
+    async with SessionFactory() as session:
+        job = await jobs.claim(session, aid)
+        attempt = job.attempt
+        await session.commit()
+    await optimized.reserve(SessionFactory, aid, attempt, "failed-step")
+    with pytest.raises(optimized.StepAttemptsExceeded):
+        await optimized.reserve(SessionFactory, aid, attempt, "failed-step")
+    state = (await saved(aid))["compact"]
+    assert state["requests"] == 21 and state["cache"] == cache
+    async with SessionFactory() as session:
+        await jobs.fail(
+            session, aid, attempt, {"code": "AI_MEMORY_STEP_ATTEMPTS_EXCEEDED"}, retryable=False
+        )
+        await session.commit()
+    response = await client.post(f"{m['base']}/character-memory/{aid}/retry", headers=m["h"])
+    assert response.status_code == 400

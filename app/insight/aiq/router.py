@@ -170,3 +170,48 @@ async def delete_thread(
 ) -> None:
     """메시지도 함께 지워진다."""
     await service.delete_thread(session, project_id, manuscript_id, thread_id)
+
+
+@router.get(MESSAGE + "/events", dependencies=[Viewer], summary="답변 생성 상태와 본문 스트림")
+async def message_events(
+    project_id: ProjectId,
+    manuscript_id: ManuscriptId,
+    thread_id: ThreadId,
+    message_id: MessageId,
+    session: Session,
+):
+    import asyncio
+    import json
+
+    from fastapi.responses import StreamingResponse
+
+    from app.db.session import SessionFactory
+
+    # Authorize the entire project/manuscript/thread/message path before opening SSE.
+    await service.get_message(session, project_id, manuscript_id, thread_id, message_id)
+
+    async def events():
+        previous = None
+        for _ in range(1600):
+            async with SessionFactory() as current:
+                message = await service.get_message(
+                    current, project_id, manuscript_id, thread_id, message_id
+                )
+                payload = json.dumps(message.model_dump(mode="json"), ensure_ascii=False)
+            if payload != previous:
+                yield f"event: message\ndata: {payload}\n\n"
+                previous = payload
+            else:
+                yield ": keep-alive\n\n"
+            if message.status != "pending":
+                return
+            await asyncio.sleep(0.75)
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "X-Accel-Buffering": "no",
+        },
+    )

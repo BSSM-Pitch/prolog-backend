@@ -140,3 +140,43 @@ def test_allowed_response_does_not_expose_scope_metadata():
         result = answer("이 장면의 갈등을 심화할 방법은?", TEXT, "project", None, [], [])
     assert result["data"] == {"content": "창작 제안입니다.", "citations": []}
     assert result["meta"]["scope_checked"]
+
+
+def test_shared_cache_prefix_and_schema_keep_full_context_in_both_passes():
+    from prolog_ai.core.request_policy import current_policy
+
+    observed = []
+
+    def model(prompt, **kwargs):
+        policy = current_policy.get()
+        observed.append((prompt, kwargs["schema"], policy))
+        return DRAFT if len(observed) == 1 else {"scope_allowed": True, "content": "검토 완료"}
+
+    with patch("app.ai.grounded_qa.call_llm", side_effect=model):
+        result = answer(QUESTION, TEXT, "project", None, [], RULES)
+    assert "data" in result
+    assert observed[0][1] is observed[1][1]
+    assert observed[0][2].prompt_cache_prefix == observed[1][2].prompt_cache_prefix
+    for prompt, _, policy in observed:
+        assert prompt.startswith(policy.prompt_cache_prefix)
+        assert TEXT in policy.prompt_cache_prefix
+        assert QUESTION not in policy.prompt_cache_prefix
+    assert observed[0][2].on_arguments is None
+    assert observed[1][2].on_arguments is not None
+
+
+def test_partial_review_preview_requires_positive_scope_and_decodes_escaped_text():
+    from app.ai import qa_progress
+
+    events = []
+    token = qa_progress.listener.set(events.append)
+    try:
+        qa_progress.review_arguments('{"content":"검토 전 초안"')
+        qa_progress.review_arguments('{"scope_allowed":false,"content":"차단 답변"')
+        assert not events
+        qa_progress.review_arguments('{"scope_allowed":true,"content":"첫 줄\\n둘째 줄')
+        assert events[-1]["content"] == "첫 줄\n둘째 줄"
+        qa_progress.review_arguments("")
+        assert events[-1] == {"stage": "reviewing", "content": ""}
+    finally:
+        qa_progress.listener.reset(token)

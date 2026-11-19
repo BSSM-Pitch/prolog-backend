@@ -16,6 +16,7 @@ MSU 추출 핸들러와 같은 **두 트랜잭션**이다.
 
 import asyncio
 import logging
+import time
 from collections.abc import Awaitable, Callable
 from typing import Any, Literal
 from uuid import UUID
@@ -83,7 +84,46 @@ async def run(
 
     beat = asyncio.create_task(_heartbeat(sessions, job_id, attempt))
     try:
-        result = await asyncio.to_thread(call, ai, args)
+        if job_type == "qa_answer":
+            from sqlalchemy import update
+
+            from app.ai import qa_progress
+
+            loop = asyncio.get_running_loop()
+            last_stage, last_write = None, 0.0
+
+            async def persist_preview(value: dict[str, Any]) -> None:
+                async with sessions() as preview_session:
+                    await preview_session.execute(
+                        update(Job)
+                        .where(Job.id == job_id, Job.status == "running", Job.attempt == attempt)
+                        .values(result={"stream": {**value, "attempt": attempt}})
+                    )
+                    await preview_session.commit()
+
+            def preview(value: dict[str, Any]) -> None:
+                nonlocal last_stage, last_write
+                now = time.monotonic()
+                if value["stage"] == last_stage and now - last_write < 0.5:
+                    return
+                last_stage, last_write = value["stage"], now
+                try:
+                    asyncio.run_coroutine_threadsafe(persist_preview(value), loop).result(
+                        timeout=10
+                    )
+                except Exception:
+                    log.warning("QA preview unavailable: job=%s", job_id)
+
+            def streamed_call() -> Result:
+                token = qa_progress.listener.set(preview)
+                try:
+                    return call(ai, args)
+                finally:
+                    qa_progress.listener.reset(token)
+
+            result = await asyncio.to_thread(streamed_call)
+        else:
+            result = await asyncio.to_thread(call, ai, args)
     finally:
         beat.cancel()
 
