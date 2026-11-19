@@ -1063,3 +1063,47 @@ async def test_schema_upgrade_recovery_preserves_cache_budget_and_is_one_time(cl
         await session.commit()
     response = await client.post(f"{m['base']}/character-memory/{aid}/retry", headers=m["h"])
     assert response.status_code == 400
+
+
+async def test_synthesis_plan_counts_only_uncached_steps_and_never_refills(client):
+    m = await prepare(client, "synthesis-budget@example.com", "서윤은 말했다. “괜찮아.”")
+    aid = await queue(client, m)
+    steps = [("propose", {"part": 1}), ("assess", {"part": 2}), ("assess", {"part": 3})]
+    keys = [optimized.step_key(stage, payload) for stage, payload in steps]
+    async with SessionFactory() as session:
+        job = await jobs.claim(session, aid)
+        attempt = job.attempt
+        job.result = {
+            "compact": {
+                "requests": 40,
+                "request_limit": 40,
+                "attempts": {},
+                "cache": {keys[0]: {"saved": True}},
+            }
+        }
+        await session.commit()
+    await optimized.plan_synthesis(SessionFactory, aid, attempt, steps, 9)
+    state = (await saved(aid))["compact"]
+    assert state["requests"] == 40 and state["request_limit"] == 44
+    assert state["cache"][keys[0]] == {"saved": True}
+    assert next(iter(state["synthesis_plans"].values()))["uncached_steps"] == 2
+    await optimized.reserve(SessionFactory, aid, attempt, keys[1])
+    await optimized.plan_synthesis(SessionFactory, aid, attempt, steps, 9)
+    state = (await saved(aid))["compact"]
+    assert state["requests"] == 41 and state["request_limit"] == 44
+    assert len(state["synthesis_plans"]) == 1
+
+
+async def test_synthesis_plan_rejects_excessive_fanout_before_any_paid_call(client):
+    m = await prepare(client, "synthesis-limit@example.com", "서윤은 말했다. “괜찮아.”")
+    aid = await queue(client, m)
+    async with SessionFactory() as session:
+        job = await jobs.claim(session, aid)
+        attempt = job.attempt
+        job.result = {"compact": {"requests": 40, "request_limit": 40, "attempts": {}, "cache": {}}}
+        await session.commit()
+    with pytest.raises(ValueError, match="PLAN_EXCEEDS_BUDGET"):
+        await optimized.plan_synthesis(
+            SessionFactory, aid, attempt, [("assess", {"part": i}) for i in range(100)], 9
+        )
+    assert (await saved(aid))["compact"]["requests"] == 40
