@@ -194,3 +194,85 @@ async def test_in_app_off_suppresses_that_type(client: AsyncClient, db: AsyncSes
     assert await relay_once(db, queue, batch=10) == 1
     assert await notify_from_event(db, queue.sent[0][1]) is None
     assert (await client.get("/notifications", headers=invitee["headers"])).json()["data"] == []
+
+
+async def test_invite_notification_carries_parent_and_current_status(
+    client: AsyncClient, db: AsyncSession
+) -> None:
+    """알림에서 바로 수락하려면 수락 경로의 teamId 와 초대가 아직 유효한지가 필요하다."""
+    owner = await signup(client, "np@example.com")
+    guest = await signup(client, "npg@example.com")
+    await _invite_and_notify(client, db, owner, guest["email"])
+
+    def ref(res: object) -> dict:
+        return res.json()["data"][0]["related_ref"]  # type: ignore[attr-defined]
+
+    listed = ref(await client.get("/notifications", headers=guest["headers"]))
+    assert listed["status"] == "pending"
+    team_id, invitation_id = listed["parent_id"], listed["id"]
+    teams = (await client.get("/teams", headers=owner["headers"])).json()["data"]
+    assert team_id == teams[0]["team_id"]
+
+    # 알림에 있는 값만으로(토큰 없이) 수락할 수 있다.
+    accepted = await client.post(
+        f"/teams/{team_id}/invitations/{invitation_id}/accept",
+        json={},
+        headers=guest["headers"],
+    )
+    assert accepted.status_code == 200
+
+    # 알림 자체는 그대로지만 상태는 지금 값이다.
+    after = ref(await client.get("/notifications", headers=guest["headers"]))
+    assert (after["parent_id"], after["status"]) == (team_id, "accepted")
+    nid = (await client.get("/notifications", headers=guest["headers"])).json()["data"][0][
+        "notification_id"
+    ]
+    read = await client.patch(
+        f"/notifications/{nid}", json={"read": True}, headers=guest["headers"]
+    )
+    assert read.json()["data"]["related_ref"]["status"] == "accepted"
+    detail = await client.get(f"/notifications/{nid}", headers=guest["headers"])
+    assert detail.json()["data"]["related_ref"]["status"] == "accepted"
+
+
+async def test_revoked_project_invite_notification_shows_revoked(
+    client: AsyncClient, db: AsyncSession
+) -> None:
+    owner = await signup(client, "npr@example.com")
+    guest = await signup(client, "nprg@example.com")
+    project = (
+        await client.post(
+            "/projects", json={"title": "P", "owner_type": "personal"}, headers=owner["headers"]
+        )
+    ).json()["data"]
+    inv = (
+        await client.post(
+            f"/projects/{project['project_id']}/invitations",
+            json={"invited_email": guest["email"], "role": "editor"},
+            headers=owner["headers"],
+        )
+    ).json()["data"]
+    queue = FakeQueue()
+    await relay_once(db, queue, batch=10)
+    for _, event in queue.sent:
+        await notify_from_event(db, event)
+    await db.commit()
+
+    ref = (await client.get("/notifications", headers=guest["headers"])).json()["data"][0][
+        "related_ref"
+    ]
+    assert ref == {
+        "type": "project_invitation",
+        "id": inv["invitation_id"],
+        "parent_id": project["project_id"],
+        "status": "pending",
+    }
+
+    await client.delete(
+        f"/projects/{project['project_id']}/invitations/{inv['invitation_id']}",
+        headers=owner["headers"],
+    )
+    ref = (await client.get("/notifications", headers=guest["headers"])).json()["data"][0][
+        "related_ref"
+    ]
+    assert ref["status"] == "revoked"

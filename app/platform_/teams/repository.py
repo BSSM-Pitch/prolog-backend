@@ -87,6 +87,15 @@ async def get_invitation(session: AsyncSession, invitation_id: UUID) -> TeamInvi
     return await session.get(TeamInvitation, invitation_id)
 
 
+async def get_invitations(
+    session: AsyncSession, invitation_ids: Sequence[UUID]
+) -> list[TeamInvitation]:
+    if not invitation_ids:
+        return []
+    stmt = select(TeamInvitation).where(TeamInvitation.id.in_(invitation_ids))
+    return list((await session.execute(stmt)).scalars())
+
+
 async def list_invitations(
     session: AsyncSession, team_id: UUID, limit: int, cursor: tuple[datetime, UUID] | None
 ) -> list[TeamInvitation]:
