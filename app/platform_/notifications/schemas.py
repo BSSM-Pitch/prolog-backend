@@ -12,11 +12,30 @@ NotificationType = Literal["team_invite", "project_invite", "team_joined", "ment
 NOTIFICATION_TYPES: tuple[NotificationType, ...] = get_args(NotificationType)
 
 
+InvitationStatus = Literal["pending", "accepted", "expired", "revoked"]
+INVITATION_REF_TYPES = ("team_invitation", "project_invitation")
+
+
 class RelatedRef(BaseModel):
     """명세 §2.1 의 `related_ref`. DB 는 resource_type · resource_id 두 컬럼으로 갖는다."""
 
     type: str
     id: UUID
+    # ASSUMPTION: 명세에 없는 두 필드다. 알림에서 바로 초대를 수락하려면 수락 경로
+    # `/teams/{teamId}/invitations/{invitationId}/accept` 의 teamId(또는 projectId)와
+    # 초대가 아직 수락 가능한지가 필요하다. 초대 알림(`team_invitation` ·
+    # `project_invitation`)에만 채운다 — 초대가 사라졌으면 둘 다 null 이다.
+    parent_id: UUID | None = Field(
+        default=None,
+        description="초대가 속한 팀(team_invitation) 또는 프로젝트(project_invitation)의 ID",
+    )
+    status: InvitationStatus | None = Field(
+        default=None,
+        description=(
+            "초대의 **지금** 상태. 저장 상태가 pending 이어도 기한이 지났으면 expired. "
+            "pending 일 때만 수락할 수 있다"
+        ),
+    )
 
 
 class NotificationResponse(BaseModel):

@@ -21,6 +21,13 @@ from app.core.pagination import DEFAULT_LIMIT, Cursor, Limit, decode_cursor, nex
 from app.core.response import Envelope, Page, ok, raises
 from app.db.session import Session
 from app.platform_.auth import service as auth
+from app.platform_.notifications import service as notifications
+from app.platform_.notifications.schemas import (
+    INVITATION_REF_TYPES,
+    NotificationPage,
+    NotificationRead,
+    NotificationResponse,
+)
 from app.platform_.projects import service as projects
 from app.platform_.projects.schemas import (
     OwnerType,
@@ -386,3 +393,83 @@ async def update_project(
 ) -> dict[str, Any]:
     """프로젝트의 editor 이상. 보낸 필드만 바뀐다."""
     return ok(await _with_count(session, await projects.update_project(session, project_id, body)))
+
+
+# ── NOTI: 초대 알림에 초대가 속한 팀·프로젝트와 지금 상태를 붙인다 ──────────────
+# 알림은 보낸 순간에 만들어지고 그 뒤로 바뀌지 않는다. 수락 · 취소 · 만료는 TEAM · PRJ 소관이라
+# 알림 모듈이 볼 수 없다(규칙 3). 그래서 알림을 돌려주는 엔드포인트는 여기서 합친다.
+
+NotificationId = Annotated[UUID, Path(alias="notificationId")]
+
+
+async def _with_invitation_refs(
+    session: Session, rows: list[NotificationResponse]
+) -> list[NotificationResponse]:
+    refs = [n.related_ref for n in rows if n.related_ref is not None]
+    team_ids = [r.id for r in refs if r.type == INVITATION_REF_TYPES[0]]
+    project_ids = [r.id for r in refs if r.type == INVITATION_REF_TYPES[1]]
+    states = {
+        INVITATION_REF_TYPES[0]: await teams.invitation_states(session, team_ids),
+        INVITATION_REF_TYPES[1]: await projects.invitation_states(session, project_ids),
+    }
+    for ref in refs:
+        found = states.get(ref.type, {}).get(ref.id)
+        if found is not None:
+            ref.parent_id, ref.status = found[0], cast(Any, found[1])
+    return rows
+
+
+@router.get(
+    "/notifications", tags=["NOTI"], summary="내 알림 목록", response_model=NotificationPage
+)
+async def list_notifications(
+    session: Session,
+    user: User,
+    limit: Limit = DEFAULT_LIMIT,
+    cursor: Cursor = None,
+    unread_only: Annotated[bool, Query(description="true 면 안읽은 알림만")] = False,
+    type: Annotated[str | None, Query(description="알림 종류로 거른다. 예: team_invite")] = None,
+) -> dict[str, Any]:
+    """최근 알림부터. 커서 페이지네이션이다.
+
+    `meta.unread_count` 는 필터와 무관하게 내 안읽은 알림 전체 개수다(배지용).
+    초대 알림의 `related_ref` 에는 `parent_id`(팀 · 프로젝트 ID)와 초대의 지금 `status` 가 붙는다.
+    `status` 가 `pending` 이면 `.../invitations/{related_ref.id}/accept` 에 토큰 없이
+    수락할 수 있다.
+    """
+    rows = await notifications.list_notifications(
+        session, user.id, limit, decode_cursor(cursor) if cursor else None, unread_only, type
+    )
+    page, meta = next_cursor(rows, limit)
+    meta["unread_count"] = await notifications.unread_count(session, user.id)
+    return ok(await _with_invitation_refs(session, notifications.to_responses(page)), meta)
+
+
+@router.get(
+    "/notifications/{notificationId}",
+    tags=["NOTI"],
+    summary="알림을 조회한다",
+    response_model=Envelope[NotificationResponse],
+    responses=raises(errors.NotificationNotFound),
+)
+async def get_notification(
+    notification_id: NotificationId, session: Session, user: User
+) -> dict[str, Any]:
+    """내 알림만 볼 수 있다. 남의 알림은 존재하지 않는 것으로 답한다."""
+    row = await notifications.get(session, notification_id, user.id)
+    return ok((await _with_invitation_refs(session, [row]))[0])
+
+
+@router.patch(
+    "/notifications/{notificationId}",
+    tags=["NOTI"],
+    summary="알림의 읽음 상태를 바꾼다",
+    response_model=Envelope[NotificationResponse],
+    responses=raises(errors.NotificationNotFound),
+)
+async def set_notification_read(
+    notification_id: NotificationId, body: NotificationRead, session: Session, user: User
+) -> dict[str, Any]:
+    """`read = false` 로 다시 안읽음으로 되돌릴 수 있다."""
+    row = await notifications.set_read(session, notification_id, user.id, body.read)
+    return ok((await _with_invitation_refs(session, [row]))[0])

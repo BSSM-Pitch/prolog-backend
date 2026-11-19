@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from secrets import compare_digest
 from uuid import UUID
@@ -259,3 +260,21 @@ async def received_invitations(
 ) -> list[tuple[ProjectInvitation, str]]:
     """이 주소로 온, 아직 수락할 수 있는 초대와 project 이름."""
     return await repo.received_invitations(session, email)
+
+
+async def invitation_states(
+    session: AsyncSession, invitation_ids: Sequence[UUID]
+) -> dict[UUID, tuple[UUID, str]]:
+    """초대 id → (project_id, 지금 상태). 알림에 초대의 현재 상태를 붙일 때 쓴다.
+
+    저장된 상태가 pending 이어도 기한이 지났으면 `expired` 다 — 수락하면
+    `INVITATION_EXPIRED` 가 나는 초대에 참가 버튼을 띄우지 않게. 없는 id 는 빠진다.
+    """
+    now = datetime.now(UTC)
+    return {
+        i.id: (
+            i.project_id,
+            "expired" if i.status == "pending" and i.expires_at <= now else i.status,
+        )
+        for i in await repo.get_invitations(session, invitation_ids)
+    }

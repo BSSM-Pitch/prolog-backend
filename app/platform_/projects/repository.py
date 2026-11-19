@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from datetime import datetime
 from uuid import UUID
 
@@ -77,6 +78,15 @@ async def add_member(
 
 async def get_invitation(session: AsyncSession, invitation_id: UUID) -> ProjectInvitation | None:
     return await session.get(ProjectInvitation, invitation_id)
+
+
+async def get_invitations(
+    session: AsyncSession, invitation_ids: Sequence[UUID]
+) -> list[ProjectInvitation]:
+    if not invitation_ids:
+        return []
+    stmt = select(ProjectInvitation).where(ProjectInvitation.id.in_(invitation_ids))
+    return list((await session.execute(stmt)).scalars())
 
 
 async def received_invitations(
