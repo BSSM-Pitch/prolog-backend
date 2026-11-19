@@ -110,6 +110,68 @@ async def reserve(sessions: ai_jobs.Sessions, job_id: UUID, attempt: int, key: s
         await session.commit()
 
 
+def step_key(stage: str, payload: dict[str, Any]) -> str:
+    config = get_llm_config(simple_query=stage in {"extract", "verify"})
+    return digest(
+        [
+            compact.VERSION,
+            *([stage, compact.SYNTHESIS_VERSION] if stage in {"propose", "assess"} else [stage]),
+            config.provider,
+            config.base_url,
+            config.model,
+            config.reasoning_effort,
+            32768,
+            {k: v for k, v in payload.items() if k != "allow_partial"}
+            if stage == "verify"
+            else payload,
+        ]
+    )
+
+
+SYNTHESIS_PLANNER_VERSION = "exact-synthesis-v1"
+
+
+async def plan_synthesis(
+    sessions: ai_jobs.Sessions,
+    job_id: UUID,
+    attempt: int,
+    steps: list[tuple[str, dict]],
+    batch_count: int,
+) -> None:
+    """Reserve a finite plan once, based on actual uncached synthesis requests.
+
+    No paid request is sent here. Retries reuse the recorded allowance, including
+    its spent reservations; a repeated plan can never replenish its budget.
+    """
+    keys = sorted({step_key(stage, payload) for stage, payload in steps})
+    plan_id = digest([SYNTHESIS_PLANNER_VERSION, keys])
+    async with sessions() as session:
+        job = await discovery.running(session, job_id, attempt)
+        if not job:
+            raise AttemptLost()
+        result = deepcopy(job.result or {})
+        state = result["compact"]
+        plans = state.setdefault("synthesis_plans", {})
+        state["synthesis_planner_version"] = SYNTHESIS_PLANNER_VERSION
+        if plan_id not in plans:
+            missing = [key for key in keys if key not in state.get("cache", {})]
+            remaining = sum(max(0, 2 - state.get("attempts", {}).get(key, 0)) for key in missing)
+            required = max(state["request_limit"], state["requests"] + remaining)
+            if required > max(compact.MAX_REQUESTS, batch_count * 8 + 32):
+                raise ValueError("PLAN_EXCEEDS_BUDGET")
+            plans[plan_id] = {
+                "keys": keys,
+                "uncached_steps": len(missing),
+                "physical_allowance": remaining,
+                "requests_at_plan": state["requests"],
+                "request_limit": required,
+            }
+            state["request_limit"] = required
+        result.setdefault("progress", {})["request_limit"] = state["request_limit"]
+        job.result = result
+        await session.commit()
+
+
 async def record_usage(
     sessions: ai_jobs.Sessions,
     job_id: UUID,
@@ -199,24 +261,7 @@ async def run(
             stage: str, payload: dict[str, Any], label: str, *, cache_only: bool = False
         ) -> dict[str, Any]:
             config = get_llm_config(simple_query=stage in {"extract", "verify"})
-            key = digest(
-                [
-                    compact.VERSION,
-                    *(
-                        [stage, compact.SYNTHESIS_VERSION]
-                        if stage in {"propose", "assess"}
-                        else [stage]
-                    ),
-                    config.provider,
-                    config.base_url,
-                    config.model,
-                    config.reasoning_effort,
-                    32768,
-                    {k: v for k, v in payload.items() if k != "allow_partial"}
-                    if stage == "verify"
-                    else payload,
-                ]
-            )
+            key = step_key(stage, payload)
             async with sessions() as session:
                 job = await discovery.running(session, job_id, attempt)
                 if not job:
@@ -506,7 +551,11 @@ async def run(
             result["records_ready_at"] = datetime.now(UTC).isoformat()
             job.result = result
             await session.commit()
-        await scale.synthesize(memory, execute)
+
+        async def plan(steps: list[tuple[str, dict]]) -> None:
+            await plan_synthesis(sessions, job_id, attempt, steps, len(batches))
+
+        await scale.synthesize(memory, execute, plan=plan)
         memory.complete = True
         validate_memory(memory.model_dump(), require_complete=True)
         if not await service.persist(sessions, job_id, attempt, memory.model_dump(), "completed"):

@@ -313,11 +313,18 @@ async def retry(
         raise errors.InvalidStatusTransition(status=job.status)
     from copy import deepcopy
 
-    from app.insight.character_memory.optimized import VERIFICATION_REVISION
+    from app.insight.character_memory.optimized import (
+        SYNTHESIS_PLANNER_VERSION,
+        VERIFICATION_REVISION,
+    )
 
     saved = deepcopy(job.result or {})
     state = saved.get("compact", {})
-    if state and state.get("requests", 0) >= state.get("request_limit", 40):
+    can_replan = (
+        bool(saved.get("record_snapshot"))
+        and state.get("synthesis_planner_version") != SYNTHESIS_PLANNER_VERSION
+    )
+    if state and state.get("requests", 0) >= state.get("request_limit", 40) and not can_replan:
         raise errors.InvalidInput(
             "전체 호출 한도를 사용했어요. 재시도로 한도가 초기화되지 않습니다."
         )
@@ -336,10 +343,15 @@ async def retry(
         ):
             grants[key] = 1
             granted = True
-    if (job.error or {}).get("code") in {
-        "AI_MEMORY_BUDGET_EXCEEDED",
-        "AI_MEMORY_STEP_ATTEMPTS_EXCEEDED",
-    } and not granted:
+    if (
+        (job.error or {}).get("code")
+        in {
+            "AI_MEMORY_BUDGET_EXCEEDED",
+            "AI_MEMORY_STEP_ATTEMPTS_EXCEEDED",
+        }
+        and not granted
+        and not can_replan
+    ):
         raise errors.InvalidInput(
             "실패한 검증 단계의 재시도 한도에 도달했어요. 완료한 결과는 보관됩니다."
         )
