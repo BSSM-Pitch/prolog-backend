@@ -158,7 +158,7 @@ async def test_logout_revokes_refresh_token(client: AsyncClient) -> None:
     assert code(dead) == "REFRESH_TOKEN_INVALID"
 
 
-# --- 일반(아이디·비밀번호) 가입·로그인 ------------------------------------
+# --- 일반(이메일·비밀번호) 가입·로그인 ------------------------------------
 
 
 async def local_signup(client: AsyncClient, username: str = "local", **over: str):  # type: ignore[no-untyped-def]
@@ -166,11 +166,11 @@ async def local_signup(client: AsyncClient, username: str = "local", **over: str
     return await client.post("/auth/signup", json={**body, "role": "writer", **over})
 
 
-async def test_local_signup_then_login_by_username_and_email(client: AsyncClient) -> None:
+async def test_local_signup_then_login_by_email(client: AsyncClient) -> None:
     res = await local_signup(client)
     assert res.status_code == 201
     assert res.json()["data"]["user"]["auth_provider"] == "local"
-    for login_id in ("local", "LOCAL@ex.com"):
+    for login_id in ("local@ex.com", "LOCAL@ex.com"):
         res = await client.post("/auth/login", json={"login_id": login_id, "password": "abc12345"})
         assert res.status_code == 200, login_id
         tokens = res.json()["data"]["tokens"]
@@ -183,7 +183,13 @@ async def test_local_signup_then_login_by_username_and_email(client: AsyncClient
 async def test_login_wrong_password_or_unknown_or_google_is_401(client: AsyncClient) -> None:
     await local_signup(client)
     await signup(client, "g@ex.com", username="googler")
-    for login_id, password in (("local", "wrong1234"), ("nobody", "abc12345"), ("googler", "x")):
+    cases = (
+        ("local@ex.com", "wrong1234"),
+        ("nobody@ex.com", "abc12345"),
+        ("g@ex.com", "x"),
+        ("local", "abc12345"),  # username(닉네임)으로는 로그인할 수 없다
+    )
+    for login_id, password in cases:
         res = await client.post("/auth/login", json={"login_id": login_id, "password": password})
         assert res.status_code == 401
         assert code(res) == "INVALID_CREDENTIALS"

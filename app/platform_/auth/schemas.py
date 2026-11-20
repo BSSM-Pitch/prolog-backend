@@ -33,7 +33,7 @@ class SignupRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    # 아이디 또는 이메일 (`@` 가 있으면 이메일로 찾는다).
+    # 이메일. 필드 이름은 기존 클라이언트 호환을 위해 그대로 둔다.
     login_id: str = Field(min_length=1, max_length=255)
     password: str = Field(min_length=1, max_length=128)
 
