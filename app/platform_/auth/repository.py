@@ -45,11 +45,6 @@ async def get_usernames(session: AsyncSession, user_ids: Sequence[UUID]) -> dict
     return {row.id: row.username for row in (await session.execute(stmt))}
 
 
-async def username_exists(session: AsyncSession, username: str) -> bool:
-    stmt = select(User.id).where(User.username == username).limit(1)
-    return (await session.execute(stmt)).first() is not None
-
-
 async def add_user(session: AsyncSession, user: User) -> User:
     session.add(user)
     await session.flush()

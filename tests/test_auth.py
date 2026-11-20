@@ -1,7 +1,13 @@
 """AUTH v0.2 — Google 단일, 2단계 가입."""
 
-from httpx import AsyncClient
+import asyncio
 
+import pytest
+from httpx import AsyncClient
+from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
+
+from app.db.session import engine
 from tests.conftest import code, google_ticket, oauth_code, signup
 
 
@@ -49,14 +55,14 @@ async def test_signup_without_username_is_username_required(client: AsyncClient)
     assert code(res) == "USERNAME_REQUIRED"
 
 
-async def test_signup_duplicate_username_is_409(client: AsyncClient) -> None:
+async def test_signup_duplicate_nickname_is_allowed(client: AsyncClient) -> None:
     await signup(client, "first@ex.com", username="taken")
     ticket = await google_ticket(client, "second@ex.com")
     res = await client.post(
         "/auth/signup", json={"signup_ticket": ticket, "username": "taken", "role": "writer"}
     )
-    assert res.status_code == 409
-    assert code(res) == "USERNAME_TAKEN"
+    assert res.status_code == 201
+    assert res.json()["data"]["user"]["username"] == "taken"
 
 
 async def test_forged_signup_ticket_is_401(client: AsyncClient) -> None:
@@ -144,7 +150,7 @@ async def test_check_username_needs_no_auth(client: AsyncClient) -> None:
     await signup(client, "dup@ex.com", username="dup")
     taken = await client.get("/users/check-username?username=dup")
     assert taken.status_code == 200
-    assert taken.json()["data"] == {"username": "dup", "available": False}
+    assert taken.json()["data"] == {"username": "dup", "available": True}
     assert (await client.get("/users/check-username?username=free")).json()["data"][
         "available"
     ] is True
@@ -204,11 +210,11 @@ async def test_local_signup_rejects_weak_password_and_missing_fields(client: Asy
     assert code(res) == "INVALID_INPUT"
 
 
-async def test_local_signup_duplicates_are_409(client: AsyncClient) -> None:
+async def test_local_signup_allows_duplicate_nickname_but_not_email(client: AsyncClient) -> None:
     await local_signup(client)
     res = await local_signup(client, email="other@ex.com")
-    assert code(res) == "USERNAME_TAKEN"
-    res = await local_signup(client, username="other", email="local@ex.com")
+    assert res.status_code == 201
+    res = await local_signup(client, username="other", email="LOCAL@ex.com")
     assert res.status_code == 409
     assert code(res) == "EMAIL_TAKEN"
 
@@ -219,7 +225,7 @@ async def test_local_signup_duplicates_are_409(client: AsyncClient) -> None:
 async def test_naver_signup_then_login_is_separate_from_google(client: AsyncClient) -> None:
     # 같은 식별자라도 공급자가 다르면 다른 계정이다 — (auth_provider, provider_user_id) 로 판별한다.
     await signup(client, "g@ex.com", username="googler")
-    naver_code = oauth_code("n@ex.com")
+    naver_code = "sub-g@ex.com|n@ex.com"  # Google 과 같은 sub 여도 공급자가 다르면 별도 계정.
     res = await client.post("/auth/oauth/naver", json={"oauth_code": naver_code, "state": "s"})
     assert res.json()["meta"]["is_new_user"] is True
     ticket = res.json()["data"]["signup_ticket"]
@@ -243,3 +249,84 @@ async def test_naver_signup_with_email_already_used_is_409(client: AsyncClient) 
     )
     assert res.status_code == 409
     assert code(res) == "EMAIL_TAKEN"
+
+
+async def test_same_nickname_does_not_mix_local_accounts_or_oauth(client: AsyncClient) -> None:
+    social = await signup(client, "social@ex.com", username="같은이름")
+    first = await local_signup(client, username="같은이름", email="first@ex.com")
+    second = await local_signup(
+        client, username="같은이름", email="second@ex.com", password="other12345"
+    )
+    assert first.status_code == second.status_code == 201
+    ids = {social["id"]}
+    for response, email, password in (
+        (first, "FIRST@ex.com", "abc12345"),
+        (second, "second@ex.com", "other12345"),
+    ):
+        user_id = response.json()["data"]["user"]["user_id"]
+        ids.add(user_id)
+        logged_in = await client.post("/auth/login", json={"email": email, "password": password})
+        assert logged_in.status_code == 200
+        assert logged_in.json()["data"]["user"]["user_id"] == user_id
+    assert len(ids) == 3
+    for email, password in (("같은이름", "abc12345"), ("second@ex.com", "abc12345")):
+        rejected = await client.post("/auth/login", json={"email": email, "password": password})
+        assert rejected.status_code == 401
+    async with engine.connect() as conn:
+        assert (
+            await conn.execute(
+                text(
+                    "SELECT count(*) FROM platform.users WHERE auth_provider='local' "
+                    "AND provider_user_id IS NULL"
+                )
+            )
+        ).scalar_one() == 2
+
+
+async def test_concurrent_same_nickname_signups_succeed(client: AsyncClient) -> None:
+    results = await asyncio.gather(
+        *(
+            local_signup(client, username="공통닉네임", email=f"parallel{i}@ex.com")
+            for i in range(2)
+        )
+    )
+    assert [r.status_code for r in results] == [201, 201]
+
+
+async def test_concurrent_same_email_only_creates_one_account(client: AsyncClient) -> None:
+    results = await asyncio.gather(
+        *(
+            local_signup(client, username=f"name{i}", email=email)
+            for i, email in enumerate(("race@ex.com", "RACE@ex.com"))
+        )
+    )
+    assert sorted(r.status_code for r in results) == [201, 409]
+    assert code(next(r for r in results if r.status_code == 409)) == "EMAIL_TAKEN"
+
+
+async def test_oauth_ticket_reuse_is_rejected_even_without_email(client: AsyncClient) -> None:
+    from app.core.security import create_signup_ticket
+
+    ticket = create_signup_ticket("no-email-subject", None, "google")
+    body = {"signup_ticket": ticket, "username": "별명", "role": "writer"}
+    assert (await client.post("/auth/signup", json=body)).status_code == 201
+    duplicate = await client.post("/auth/signup", json={**body, "username": "다른별명"})
+    assert duplicate.status_code == 401
+    assert code(duplicate) == "SIGNUP_TICKET_INVALID"
+
+
+@pytest.mark.parametrize("assignment", ["provider_user_id = 'nickname'", "email = NULL"])
+async def test_local_identity_constraints(client: AsyncClient, assignment: str) -> None:
+    assert (await local_signup(client)).status_code == 201
+    with pytest.raises(IntegrityError):
+        async with engine.begin() as conn:
+            await conn.execute(
+                text(f"UPDATE platform.users SET {assignment} WHERE auth_provider='local'")
+            )
+
+
+async def test_oauth_provider_id_must_remain_present(client: AsyncClient) -> None:
+    await signup(client, "oauth@ex.com")
+    with pytest.raises(IntegrityError):
+        async with engine.begin() as conn:
+            await conn.execute(text("UPDATE platform.users SET provider_user_id=NULL"))

@@ -35,8 +35,7 @@ Unauthorized = _err("UNAUTHORIZED", 401, "인증이 필요합니다")
 Forbidden = _err("FORBIDDEN", 403, "권한이 없습니다")
 
 # --- AUTH (Google · 일반) -------------------------------------------------
-UsernameRequired = _err("USERNAME_REQUIRED", 400, "아이디가 필요합니다")
-UsernameTaken = _err("USERNAME_TAKEN", 409, "이미 사용 중인 아이디입니다")
+UsernameRequired = _err("USERNAME_REQUIRED", 400, "닉네임이 필요합니다")
 SignupTicketInvalid = _err(
     "SIGNUP_TICKET_INVALID", 401, "가입 티켓이 만료되었거나 올바르지 않습니다"
 )
