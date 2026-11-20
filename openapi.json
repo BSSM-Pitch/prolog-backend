@@ -4244,10 +4244,10 @@
       },
       "LoginRequest": {
         "properties": {
-          "login_id": {
+          "email": {
             "maxLength": 255,
             "minLength": 1,
-            "title": "Login Id",
+            "title": "Email",
             "type": "string"
           },
           "password": {
@@ -4258,7 +4258,7 @@
           }
         },
         "required": [
-          "login_id",
+          "email",
           "password"
         ],
         "title": "LoginRequest",
@@ -9206,7 +9206,7 @@
   "paths": {
     "/v1/auth/login": {
       "post": {
-        "description": "`login_id` 는 이메일이다(아이디 로그인은 없다). 소셜로 가입한 계정은 이 경로로 로그인할 수\n없다(`INVALID_CREDENTIALS`) — 계정이 없는지 비밀번호가 틀렸는지 구분하지 않는다.",
+        "description": "`email` 로 로그인한다. 기존 `login_id` 필드도 이메일 별칭으로 받는다.\n소셜 계정은 이 경로로 로그인할 수 없다(`INVALID_CREDENTIALS`).\n계정이 없는지 비밀번호가 틀렸는지 구분하지 않는다.",
         "operationId": "login_v1_auth_login_post",
         "requestBody": {
           "content": {
@@ -9351,7 +9351,7 @@
     },
     "/v1/auth/oauth/google": {
       "post": {
-        "description": "Google 이 준 authorization code 를 넘긴다. code 는 1회용이라 이 호출은 한 번만 성공한다.\n\n- 이미 가입한 사용자: `data` 는 사용자와 토큰, `meta.is_new_user = false`.\n- 처음 온 사용자: 계정을 만들지 않고 `data` 에 `signup_ticket`(10분 유효)과 이메일을 준다.\n  `meta.is_new_user = true`. 아이디·역할을 받아 `POST /auth/signup` 으로 가입을 마친다.",
+        "description": "Google 이 준 authorization code 를 넘긴다. code 는 1회용이라 이 호출은 한 번만 성공한다.\n\n- 이미 가입한 사용자: `data` 는 사용자와 토큰, `meta.is_new_user = false`.\n- 처음 온 사용자: 계정을 만들지 않고 `data` 에 `signup_ticket`(10분 유효)과 이메일을 준다.\n  `meta.is_new_user = true`. 닉네임·역할을 받아 `POST /auth/signup` 으로 가입을 마친다.",
         "operationId": "oauth_google_v1_auth_oauth_google_post",
         "requestBody": {
           "content": {
@@ -9547,7 +9547,7 @@
     },
     "/v1/auth/signup": {
       "post": {
-        "description": "두 가지 가입을 받는다.\n\n- **소셜:** `POST /auth/oauth/google` 이 준 `signup_ticket` + 아이디·역할.\n  티켓은 한 번만 쓸 수 있다.\n- **일반:** `email` + `password`(영문·숫자 포함 8자 이상) + 아이디·역할.\n\n성공하면 바로 로그인된 상태(토큰 포함)를 돌려준다.",
+        "description": "두 가지 가입을 받는다.\n\n- **소셜:** `POST /auth/oauth/google` 이 준 `signup_ticket` + 닉네임·역할.\n  티켓은 한 번만 쓸 수 있다.\n- **일반:** `email` + `password`(영문·숫자 포함 8자 이상) + 닉네임·역할.\n\n성공하면 바로 로그인된 상태(토큰 포함)를 돌려준다.",
         "operationId": "signup_v1_auth_signup_post",
         "requestBody": {
           "content": {
@@ -9585,12 +9585,12 @@
                     }
                   },
                   "USERNAME_REQUIRED": {
-                    "summary": "아이디가 필요합니다",
+                    "summary": "닉네임이 필요합니다",
                     "value": {
                       "error": {
                         "code": "USERNAME_REQUIRED",
                         "details": {},
-                        "message": "아이디가 필요합니다"
+                        "message": "닉네임이 필요합니다"
                       }
                     }
                   }
@@ -9600,7 +9600,7 @@
                 }
               }
             },
-            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다\n- `USERNAME_REQUIRED` — 아이디가 필요합니다"
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다\n- `USERNAME_REQUIRED` — 닉네임이 필요합니다"
           },
           "401": {
             "content": {
@@ -9637,16 +9637,6 @@
                         "message": "이미 가입된 이메일입니다"
                       }
                     }
-                  },
-                  "USERNAME_TAKEN": {
-                    "summary": "이미 사용 중인 아이디입니다",
-                    "value": {
-                      "error": {
-                        "code": "USERNAME_TAKEN",
-                        "details": {},
-                        "message": "이미 사용 중인 아이디입니다"
-                      }
-                    }
                   }
                 },
                 "schema": {
@@ -9654,7 +9644,7 @@
                 }
               }
             },
-            "description": "- `EMAIL_TAKEN` — 이미 가입된 이메일입니다\n- `USERNAME_TAKEN` — 이미 사용 중인 아이디입니다"
+            "description": "- `EMAIL_TAKEN` — 이미 가입된 이메일입니다"
           }
         },
         "summary": "가입을 마친다",
@@ -32479,7 +32469,8 @@
     },
     "/v1/users/check-username": {
       "get": {
-        "description": "가입 화면용. 로그인하지 않아도 부를 수 있다.\n\n`available = true` 여도 가입 전에 다른 사람이 먼저 가져갈 수 있다 — 그때 가입은\n`USERNAME_TAKEN` 으로 실패한다.",
+        "deprecated": true,
+        "description": "가입 화면용. 로그인하지 않아도 부를 수 있다.\n\n닉네임 중복은 허용한다. 공백뿐인 입력만 available=false 이며 DB 중복 조회는 하지 않는다.",
         "operationId": "check_username_v1_users_check_username_get",
         "parameters": [
           {
@@ -32528,7 +32519,7 @@
             "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다"
           }
         },
-        "summary": "아이디 사용 가능 여부를 확인한다",
+        "summary": "닉네임 입력 가능 여부를 확인한다 (기존 클라이언트 호환)",
         "tags": [
           "AUTH"
         ]
@@ -32627,7 +32618,7 @@
         ]
       },
       "patch": {
-        "description": "바꿀 수 있는 것은 `role`(writer · aspiring_writer · reader) 하나다. 아이디는 바꿀 수 없다.",
+        "description": "바꿀 수 있는 것은 `role`(writer · aspiring_writer · reader) 하나다. 닉네임은 바꿀 수 없다.",
         "operationId": "update_me_v1_users_me_patch",
         "requestBody": {
           "content": {

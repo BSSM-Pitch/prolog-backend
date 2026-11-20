@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import AliasChoices, BaseModel, EmailStr, Field
 
 from app.core.response import Envelope
 
@@ -33,8 +33,10 @@ class SignupRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    # 이메일. 필드 이름은 기존 클라이언트 호환을 위해 그대로 둔다.
-    login_id: str = Field(min_length=1, max_length=255)
+    # login_id 는 구 클라이언트의 이메일 필드 별칭일 뿐, 닉네임 로그인은 허용하지 않는다.
+    email: str = Field(
+        min_length=1, max_length=255, validation_alias=AliasChoices("email", "login_id")
+    )
     password: str = Field(min_length=1, max_length=128)
 
 

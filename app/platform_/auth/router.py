@@ -46,7 +46,7 @@ async def oauth_google(
 
     - 이미 가입한 사용자: `data` 는 사용자와 토큰, `meta.is_new_user = false`.
     - 처음 온 사용자: 계정을 만들지 않고 `data` 에 `signup_ticket`(10분 유효)과 이메일을 준다.
-      `meta.is_new_user = true`. 아이디·역할을 받아 `POST /auth/signup` 으로 가입을 마친다.
+      `meta.is_new_user = true`. 닉네임·역할을 받아 `POST /auth/signup` 으로 가입을 마친다.
     """
     identity = await google.exchange(body.oauth_code)
     data, is_new_user = await service.oauth_login(session, service.PROVIDER, identity)
@@ -78,7 +78,6 @@ async def oauth_naver(body: OAuthNaverRequest, session: Session, naver: Naver) -
     responses=raises(
         errors.InvalidInput,
         errors.UsernameRequired,
-        errors.UsernameTaken,
         errors.EmailTaken,
         errors.SignupTicketInvalid,
     ),
@@ -86,9 +85,9 @@ async def oauth_naver(body: OAuthNaverRequest, session: Session, naver: Naver) -
 async def signup(body: SignupRequest, session: Session) -> dict[str, Any]:
     """두 가지 가입을 받는다.
 
-    - **소셜:** `POST /auth/oauth/google` 이 준 `signup_ticket` + 아이디·역할.
+    - **소셜:** `POST /auth/oauth/google` 이 준 `signup_ticket` + 닉네임·역할.
       티켓은 한 번만 쓸 수 있다.
-    - **일반:** `email` + `password`(영문·숫자 포함 8자 이상) + 아이디·역할.
+    - **일반:** `email` + `password`(영문·숫자 포함 8자 이상) + 닉네임·역할.
 
     성공하면 바로 로그인된 상태(토큰 포함)를 돌려준다.
     """
@@ -102,10 +101,11 @@ async def signup(body: SignupRequest, session: Session) -> dict[str, Any]:
     responses=raises(errors.InvalidCredentials, errors.AccountBanned),
 )
 async def login(body: LoginRequest, session: Session) -> dict[str, Any]:
-    """`login_id` 는 이메일이다(아이디 로그인은 없다). 소셜로 가입한 계정은 이 경로로 로그인할 수
-    없다(`INVALID_CREDENTIALS`) — 계정이 없는지 비밀번호가 틀렸는지 구분하지 않는다.
+    """`email` 로 로그인한다. 기존 `login_id` 필드도 이메일 별칭으로 받는다.
+    소셜 계정은 이 경로로 로그인할 수 없다(`INVALID_CREDENTIALS`).
+    계정이 없는지 비밀번호가 틀렸는지 구분하지 않는다.
     """
-    return ok(await service.login(session, body.login_id, body.password))
+    return ok(await service.login(session, body.email, body.password))
 
 
 @router.post(
@@ -150,13 +150,14 @@ async def me(session: Session, user: User) -> dict[str, Any]:
     responses=raises(errors.UserNotFound),
 )
 async def update_me(body: UserUpdate, session: Session, user: User) -> dict[str, Any]:
-    """바꿀 수 있는 것은 `role`(writer · aspiring_writer · reader) 하나다. 아이디는 바꿀 수 없다."""
+    """바꿀 수 있는 것은 `role`(writer · aspiring_writer · reader) 하나다. 닉네임은 바꿀 수 없다."""
     return ok(await service.update_me(session, user.id, body.role))
 
 
 @users_router.get(
     "/check-username",
-    summary="아이디 사용 가능 여부를 확인한다",
+    summary="닉네임 입력 가능 여부를 확인한다 (기존 클라이언트 호환)",
+    deprecated=True,
     response_model=Envelope[UsernameCheckResponse],
 )
 async def check_username(
@@ -164,7 +165,6 @@ async def check_username(
 ) -> dict[str, Any]:
     """가입 화면용. 로그인하지 않아도 부를 수 있다.
 
-    `available = true` 여도 가입 전에 다른 사람이 먼저 가져갈 수 있다 — 그때 가입은
-    `USERNAME_TAKEN` 으로 실패한다.
+    닉네임 중복은 허용한다. 공백뿐인 입력만 available=false 이며 DB 중복 조회는 하지 않는다.
     """
     return ok(await service.check_username(session, username))

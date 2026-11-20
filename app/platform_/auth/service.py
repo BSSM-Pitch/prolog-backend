@@ -1,4 +1,4 @@
-"""AUTH — Google 2단계 가입 + 일반(아이디·비밀번호) 가입·로그인.
+"""AUTH — OAuth 2단계 가입 + 일반(이메일·비밀번호) 가입·로그인.
 
 Google authorization code 는 1회용이다. 신규 사용자에게 400 을 던지고 같은 code 로
 재요청하게 하면 Google 이 거부하므로, 인증(=티켓 발급)과 가입 완료를 두 호출로 나눈다.
@@ -26,7 +26,7 @@ from app.core.security import (
 )
 from app.platform_.auth import repository as repo
 from app.platform_.auth.google import GoogleIdentity as OAuthIdentity
-from app.platform_.auth.models import EMAIL_UQ, PROVIDER_UQ, USERNAME_UQ, User
+from app.platform_.auth.models import EMAIL_UQ, PROVIDER_UQ, User
 from app.platform_.auth.schemas import (
     SessionResponse,
     SignupRequest,
@@ -110,7 +110,7 @@ async def signup(session: AsyncSession, body: SignupRequest) -> SessionResponse:
         user = User(
             email=body.email,
             auth_provider=LOCAL,
-            provider_user_id=username,
+            provider_user_id=None,
             password_hash=hash_password(body.password or ""),
             username=username,
             role=body.role,
@@ -119,10 +119,6 @@ async def signup(session: AsyncSession, body: SignupRequest) -> SessionResponse:
         await repo.add_user(session, user)
     except IntegrityError as exc:
         constraint = errors.constraint_name(exc)
-        # local 의 provider_user_id 는 username 이라 같은 경합이 PROVIDER_UQ 로도 온다.
-        if constraint == USERNAME_UQ or (constraint == PROVIDER_UQ and user.auth_provider == LOCAL):
-            # 사전 SELECT 로는 경합을 막을 수 없어 제약을 신뢰한다.
-            raise errors.UsernameTaken() from exc
         if constraint == EMAIL_UQ:
             raise errors.EmailTaken() from exc
         if constraint == PROVIDER_UQ:
@@ -133,8 +129,8 @@ async def signup(session: AsyncSession, body: SignupRequest) -> SessionResponse:
     return SessionResponse(user=_user_response(user), tokens=await _issue(session, user))
 
 
-async def login(session: AsyncSession, login_id: str, password: str) -> SessionResponse:
-    user = await repo.get_local_user(session, login_id.strip())
+async def login(session: AsyncSession, email: str, password: str) -> SessionResponse:
+    user = await repo.get_local_user(session, email.strip())
     if not verify_password(password, user.password_hash if user else None) or user is None:
         raise errors.InvalidCredentials()
     return SessionResponse(user=_user_response(user), tokens=await _issue(session, user))
@@ -180,8 +176,8 @@ async def update_me(session: AsyncSession, user_id: UUID, role: str) -> UserResp
 
 
 async def check_username(session: AsyncSession, username: str) -> UsernameCheckResponse:
-    taken = await repo.username_exists(session, username)
-    return UsernameCheckResponse(username=username, available=not taken)
+    # 기존 클라이언트 호환용. 닉네임 점유 여부를 조회하지 않는다.
+    return UsernameCheckResponse(username=username, available=bool(username.strip()))
 
 
 async def usernames_of(session: AsyncSession, user_ids: Sequence[UUID]) -> dict[UUID, str]:

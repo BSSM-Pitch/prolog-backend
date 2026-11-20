@@ -7,7 +7,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base, Timestamps, fk_uuid, pk
 
 # IntegrityError 는 제약 **이름**으로 분기한다. 메시지 파싱은 PG 마이너 버전에 깨진다(CLAUDE.md §5).
-USERNAME_UQ = "users_username_uq"
 PROVIDER_UQ = "users_provider_uq"
 EMAIL_UQ = "users_email_lower_uq"
 
@@ -21,10 +20,10 @@ class User(Base, Timestamps):
     # google | naver | local. local 만 password_hash 를 갖는다(0012 CHECK).
     auth_provider: Mapped[str] = mapped_column(String(20), default="google")
     # Google 은 `sub`(이메일이 아니다 — 이메일은 바뀌고 sub 는 불변이다), naver 는 프로필 id,
-    # local 은 username.
-    provider_user_id: Mapped[str] = mapped_column(String(255))
+    # local 은 이메일로 로그인하므로 공급자 식별자가 없다.
+    provider_user_id: Mapped[str | None] = mapped_column(String(255))
     password_hash: Mapped[str | None] = mapped_column(String(255))
-    username: Mapped[str] = mapped_column(String(30))
+    username: Mapped[str] = mapped_column(String(30))  # 표시용 닉네임. 중복 허용.
     # users.role 은 자기 분류다. 인가와 무관하다 (CLAUDE.md §3).
     role: Mapped[str] = mapped_column(String(20))
     # ASSUMPTION: 명세 미정의. 요금제 도입 시 CHECK 값만 확장 (CLAUDE.md §5).
