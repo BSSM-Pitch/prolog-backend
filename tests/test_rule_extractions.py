@@ -248,3 +248,67 @@ async def test_two_extraction_confirms_do_not_race_into_duplicate_rules(
     assert responses[0].json()["data"][0]["rule_id"] == responses[1].json()["data"][0]["rule_id"]
     rules = (await client.get(f"/projects/{m['pid']}/world-rules", headers=m["h"])).json()["data"]
     assert len(rules) == 1 and len(rules[0]["evidence_sources"]) == 1
+
+
+async def test_project_history_restores_jobs_and_candidates_without_browser_ids(
+    client: AsyncClient,
+) -> None:
+    m = await _manuscript(client, "restore-rules@example.com")
+    path = f"/projects/{m['pid']}/rule-extractions"
+    queued = (await client.post(m["base"], headers=m["h"])).json()["data"]
+    restored = await client.get(path, headers=m["h"])
+    assert restored.status_code == 200
+    assert restored.json()["data"][0]["extraction_id"] == queued["extraction_id"]
+    assert restored.json()["data"][0]["manuscript_id"] == m["mid"]
+    assert restored.json()["data"][0]["status"] == "queued"
+    await handle(SessionFactory, UUID(queued["extraction_id"]), FakeAI(RULES))
+    completed = (await client.get(path, headers=m["h"])).json()["data"][0]
+    assert completed["status"] == "completed"
+    assert len(completed["extracted_rules"]) == 2
+    assert completed["extracted_rules"][0]["review_status"] == "pending"
+    await client.post(
+        f"{m['base']}/{queued['extraction_id']}/confirm",
+        headers=m["h"],
+        json={"selected_indices": [0]},
+    )
+    reviewed = (await client.get(path, headers=m["h"])).json()["data"][0]
+    assert reviewed["extracted_rules"][0]["review_status"] == "confirmed"
+    stranger = await signup(client, "stranger-rules@example.com")
+    assert (await client.get(path, headers=stranger["headers"])).status_code == 403
+    await client.delete(f"/projects/{m['pid']}/manuscripts/{m['mid']}", headers=m["h"])
+    assert (await client.get(path, headers=m["h"])).json()["data"] == []
+
+
+async def test_repeated_concurrent_requests_reuse_active_job_and_only_emit_once(
+    client: AsyncClient,
+) -> None:
+    import asyncio
+
+    from sqlalchemy import text
+
+    m = await _manuscript(client, "concurrent-rules@example.com")
+    responses = await asyncio.gather(*(client.post(m["base"], headers=m["h"]) for _ in range(3)))
+    assert all(r.status_code == 202 for r in responses)
+    ids = {r.json()["data"]["extraction_id"] for r in responses}
+    assert len(ids) == 1
+    eid = ids.pop()
+    async with SessionFactory() as session:
+        count = await session.scalar(
+            text("SELECT count(*) FROM ops.outbox_events WHERE aggregate_id = :id"),
+            {"id": UUID(eid)},
+        )
+        assert count == 1
+    await handle(SessionFactory, UUID(eid), FakeAI(RULES))
+    next_job = (await client.post(m["base"], headers=m["h"])).json()["data"]
+    assert next_job["extraction_id"] != eid
+    # Completed work remains available while a later extraction is queued.
+    first = await client.get(f"/projects/{m['pid']}/rule-extractions?limit=1", headers=m["h"])
+    assert first.json()["data"][0]["extraction_id"] == next_job["extraction_id"]
+    cursor = first.json()["meta"]["next_cursor"]
+    second = await client.get(
+        f"/projects/{m['pid']}/rule-extractions",
+        params={"limit": 1, "cursor": cursor},
+        headers=m["h"],
+    )
+    assert second.json()["data"][0]["extraction_id"] == eid
+    assert second.json()["meta"]["next_cursor"] is None
