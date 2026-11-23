@@ -9,10 +9,11 @@
 """
 
 import hashlib
+from datetime import datetime
 from typing import Any, cast
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai import jobs as ai_jobs
@@ -27,7 +28,7 @@ from app.authoring.rex.schemas import (
     RuleExtractionResponse,
 )
 from app.content.manuscripts import service as manuscripts
-from app.content.manuscripts.models import Chapter
+from app.content.manuscripts.models import Chapter, Manuscript
 from app.core import errors
 from app.jobs import service as jobs
 from app.jobs.models import Job
@@ -117,6 +118,12 @@ async def request(
     session: AsyncSession, project_id: UUID, manuscript_id: UUID, user_id: UUID
 ) -> Job:
     """본문이 준비된 원고만 된다. 업로드 추출 중이거나 빈 원고면 `INVALID_INPUT`."""
+    # Serialize requests for one manuscript before checking active jobs.
+    await session.execute(
+        select(Manuscript.id)
+        .where(Manuscript.id == manuscript_id, Manuscript.project_id == project_id)
+        .with_for_update()
+    )
     manuscript = await manuscripts.get(session, project_id, manuscript_id)  # 없으면 404
     if manuscript.status != "ready" or not (manuscript.content or "").strip():
         raise errors.InvalidInput(
@@ -124,6 +131,19 @@ async def request(
             field="manuscript_id",
             status=manuscript.status,
         )
+    active = await session.scalar(
+        select(Job)
+        .where(
+            Job.project_id == project_id,
+            Job.target_id == manuscript_id,
+            Job.job_type == JOB_TYPE,
+            Job.status.in_(("queued", "running")),
+        )
+        .order_by(Job.created_at.desc(), Job.id.desc())
+        .limit(1)
+    )
+    if active is not None:
+        return active
     job = await jobs.create(
         session,
         project_id=project_id,
@@ -137,6 +157,29 @@ async def request(
     await session.flush()
     await session.refresh(job)
     return job
+
+
+async def list_extractions(
+    session: AsyncSession,
+    project_id: UUID,
+    limit: int,
+    cursor: tuple[datetime, UUID] | None,
+) -> list[Job]:
+    """Restore project extraction history without any browser-local job IDs."""
+    stmt = (
+        select(Job)
+        .join(Manuscript, Job.target_id == Manuscript.id)
+        .where(
+            Job.project_id == project_id,
+            Manuscript.project_id == project_id,
+            Job.job_type == JOB_TYPE,
+        )
+        .order_by(Job.created_at.desc(), Job.id.desc())
+        .limit(limit + 1)
+    )
+    if cursor:
+        stmt = stmt.where(tuple_(Job.created_at, Job.id) < cursor)
+    return list((await session.scalars(stmt)).all())
 
 
 async def get(

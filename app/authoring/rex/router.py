@@ -102,6 +102,22 @@ async def delete_rule(project_id: ProjectId, rule_id: RuleId, session: Session) 
 # --- AI 추출(명세 §4.1~4.4) ------------------------------------------------
 
 
+@router.get(
+    "/{projectId}/rule-extractions",
+    dependencies=[Viewer],
+    summary="작품의 규칙 추출 작업과 후보를 복원한다",
+    response_model=Page[RuleExtractionResponse],
+)
+async def list_extractions(
+    project_id: ProjectId, session: Session, limit: Limit = DEFAULT_LIMIT, cursor: Cursor = None
+) -> dict[str, Any]:
+    rows = await extraction.list_extractions(
+        session, project_id, limit, decode_cursor(cursor) if cursor else None
+    )
+    page, meta = next_cursor(rows, limit)
+    return ok([extraction.to_response(job) for job in page], meta)
+
+
 @router.post(
     EXTRACTIONS,
     status_code=status.HTTP_202_ACCEPTED,
@@ -115,7 +131,8 @@ async def request_extraction(
     """비동기다. `status` 는 `queued` 로 시작한다 — 조회로 폴링한다.
 
     본문이 준비된(`ready`) 원고만 된다. 업로드 추출 중이거나 빈 원고면 `INVALID_INPUT`.
-    화면 21 의 "원고에서 다시 추출" 도 이 요청이다(새 추출).
+    화면 21 의 "원고에서 다시 추출" 도 이 요청이다. 같은 원고의 작업이 진행 중이면
+    기존 작업을 반환하고, 완료·실패 이후에는 새 추출을 만든다.
     """
     job = await extraction.request(session, project_id, manuscript_id, ctx.user.id)
     return ok(extraction.to_response(job))
