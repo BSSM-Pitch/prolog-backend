@@ -27,8 +27,9 @@ from app.authoring.rex.schemas import (
     RuleExtractionConfirm,
     RuleExtractionResponse,
 )
+from app.authoring.rex.scope import snapshot, validate_text
 from app.content.manuscripts import service as manuscripts
-from app.content.manuscripts.models import Chapter, Manuscript
+from app.content.manuscripts.models import Manuscript
 from app.core import errors
 from app.jobs import service as jobs
 from app.jobs.models import Job
@@ -61,6 +62,11 @@ def to_response(job: Job) -> RuleExtractionResponse:
         extraction_id=job.id,
         manuscript_id=cast(UUID, job.target_id),
         status=status_of(job),
+        chapter_ids=job.input.get("chapter_ids"),
+        chapter_numbers=[c["chapter_no"] for c in job.input.get("chapters", [])]
+        if job.input.get("chapter_ids") is not None
+        else None,
+        char_count=job.input.get("char_count"),
         extracted_rules=[
             RuleCandidate(
                 index=i,
@@ -115,7 +121,11 @@ async def _job(
 
 
 async def request(
-    session: AsyncSession, project_id: UUID, manuscript_id: UUID, user_id: UUID
+    session: AsyncSession,
+    project_id: UUID,
+    manuscript_id: UUID,
+    user_id: UUID,
+    chapter_ids: list[UUID] | None = None,
 ) -> Job:
     """본문이 준비된 원고만 된다. 업로드 추출 중이거나 빈 원고면 `INVALID_INPUT`."""
     # Serialize requests for one manuscript before checking active jobs.
@@ -124,13 +134,7 @@ async def request(
         .where(Manuscript.id == manuscript_id, Manuscript.project_id == project_id)
         .with_for_update()
     )
-    manuscript = await manuscripts.get(session, project_id, manuscript_id)  # 없으면 404
-    if manuscript.status != "ready" or not (manuscript.content or "").strip():
-        raise errors.InvalidInput(
-            "본문이 준비된 원고만 규칙을 추출할 수 있습니다",
-            field="manuscript_id",
-            status=manuscript.status,
-        )
+    source = await snapshot(session, project_id, manuscript_id, chapter_ids)
     active = await session.scalar(
         select(Job)
         .where(
@@ -143,6 +147,17 @@ async def request(
         .limit(1)
     )
     if active is not None:
+        if (active.input.get("scope_version") != 1 and chapter_ids is not None) or (
+            active.input.get("scope_version") == 1
+            and (
+                active.input.get("chapter_ids") != source["chapter_ids"]
+                or active.input.get("text") != source["text"]
+            )
+        ):
+            raise errors.InvalidInput(
+                "이 원고에서 다른 범위의 규칙을 추출 중이에요. 완료 후 다시 요청해 주세요.",
+                field="chapter_ids",
+            )
         return active
     job = await jobs.create(
         session,
@@ -152,6 +167,7 @@ async def request(
         target_id=manuscript_id,
         queue=QUEUE,
         created_by=user_id,
+        input=source,
     )
     jobs.announce(session, job)
     await session.flush()
@@ -304,24 +320,20 @@ async def confirm(
 
 
 async def _prepare(session: AsyncSession, job: Job) -> dict[str, Any]:
-    manuscript = await manuscripts.get(session, job.project_id, cast(UUID, job.target_id))
+    # Deleted manuscripts remain inaccessible. New jobs use their immutable request snapshot.
+    await manuscripts.get(session, job.project_id, cast(UUID, job.target_id))
+    if job.input.get("scope_version") == 1:
+        source = job.input
+        validate_text(source["text"])
+    else:
+        # Old queued/retried jobs must obey the limit before reaching any AI call too.
+        source = await snapshot(session, job.project_id, cast(UUID, job.target_id), None)
+        job.input = source
     rows = (
-        await session.execute(select(WorldRule).where(WorldRule.project_id == job.project_id))
-    ).scalars()
-    chapters = (
-        (
-            await session.execute(
-                select(Chapter).where(
-                    Chapter.project_id == job.project_id, Chapter.manuscript_id == job.target_id
-                )
-            )
-        )
-        .scalars()
-        .all()
-    )
+        await session.scalars(select(WorldRule).where(WorldRule.project_id == job.project_id))
+    ).all()
     return {
-        "chapters": [{"chapter_no": c.chapter_no, "content": c.content} for c in chapters],
-        "text": manuscript.content or "",
+        **source,
         "existing_rules": [
             {"rule_id": str(r.id), "title": r.title, "description": r.description} for r in rows
         ],

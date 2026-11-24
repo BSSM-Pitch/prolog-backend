@@ -7,6 +7,7 @@ from app.authoring.rex import extraction, service
 from app.authoring.rex.schemas import (
     RuleExtractionConfirm,
     RuleExtractionEnvelope,
+    RuleExtractionRequest,
     RuleExtractionResponse,
     WorldRuleCreate,
     WorldRuleResponse,
@@ -126,15 +127,23 @@ async def list_extractions(
     responses=raises(errors.ManuscriptNotFound),
 )
 async def request_extraction(
-    project_id: ProjectId, manuscript_id: ManuscriptId, session: Session, ctx: EditorCtx
+    project_id: ProjectId,
+    manuscript_id: ManuscriptId,
+    session: Session,
+    ctx: EditorCtx,
+    body: RuleExtractionRequest | None = None,
 ) -> dict[str, Any]:
     """비동기다. `status` 는 `queued` 로 시작한다 — 조회로 폴링한다.
 
-    본문이 준비된(`ready`) 원고만 된다. 업로드 추출 중이거나 빈 원고면 `INVALID_INPUT`.
-    화면 21 의 "원고에서 다시 추출" 도 이 요청이다. 같은 원고의 작업이 진행 중이면
-    기존 작업을 반환하고, 완료·실패 이후에는 새 추출을 만든다.
+    본문이 준비된(`ready`) 원고만 된다. `chapter_ids`로 분석할 장을 선택한다.
+    생략하면 전체 본문을 사용한다. 선택한 본문과 장 사이 줄바꿈을 합쳐 30,000자까지 허용한다.
+    빈 본문·다른 원고의 장·한도 초과는 작업 생성 전에 `INVALID_INPUT`.
+    화면 21 의 "원고에서 다시 추출" 도 이 요청이다. 같은 원고·범위·본문의 작업이
+    진행 중이면 기존 작업을 반환한다. 다른 범위는 완료 후 요청해야 한다.
     """
-    job = await extraction.request(session, project_id, manuscript_id, ctx.user.id)
+    job = await extraction.request(
+        session, project_id, manuscript_id, ctx.user.id, body.chapter_ids if body else None
+    )
     return ok(extraction.to_response(job))
 
 
