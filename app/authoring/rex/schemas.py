@@ -89,11 +89,19 @@ class RuleCandidate(BaseModel):
     duplicate_kind: Literal["exact", "suggested"] | None = None
 
 
+class RuleExtractionRequest(BaseModel):
+    # Omitted/null keeps old clients working, subject to the same 30,000-character limit.
+    chapter_ids: list[UUID] | None = Field(default=None, min_length=1)
+
+
 class RuleExtractionResponse(BaseModel):
     extraction_id: UUID
     manuscript_id: UUID
     status: ExtractionStatus
     extracted_rules: list[RuleCandidate]
+    chapter_ids: list[UUID] | None = None
+    chapter_numbers: list[int] | None = None
+    char_count: int | None = None
     created_at: datetime
     updated_at: datetime
 
