@@ -250,6 +250,9 @@ class FakeAI:
     def run_nlcd(self, source_text: str) -> dict[str, Any]:
         return self._next("run_nlcd", source_text, default=dict(self.EMPTY_NLCD))
 
+    def run_relationship_draft(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return self._next("run_relationship_draft", payload)
+
     def run_character_assessment(self, payload: dict[str, Any]) -> dict[str, Any]:
         return self._next("run_character_assessment", payload)
 
