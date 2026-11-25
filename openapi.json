@@ -9270,6 +9270,206 @@
         },
         "title": "WorldRuleUpdate",
         "type": "object"
+      },
+      "RelationshipDraftResponseEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RelationshipDraftResponse"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "RelationshipDraftResponseEnvelope"
+      },
+      "RelationshipDraftResponse": {
+        "properties": {
+          "draft_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Draft Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "chapter_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Chapter Id"
+          },
+          "source_hash": {
+            "type": "string",
+            "title": "Source Hash"
+          },
+          "stale": {
+            "type": "boolean",
+            "title": "Stale"
+          },
+          "analyzed_chars": {
+            "type": "integer",
+            "title": "Analyzed Chars"
+          },
+          "total_chars": {
+            "type": "integer",
+            "title": "Total Chars"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RelationshipSuggestion"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "draft_id",
+          "status",
+          "chapter_id",
+          "source_hash",
+          "stale",
+          "analyzed_chars",
+          "total_chars",
+          "result",
+          "error"
+        ],
+        "title": "RelationshipDraftResponse"
+      },
+      "RelationshipSuggestion": {
+        "properties": {
+          "source_character_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Character Id"
+          },
+          "target_character_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Character Id"
+          },
+          "state": {
+            "type": "string",
+            "maxLength": 50,
+            "title": "State"
+          },
+          "trust": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trust"
+          },
+          "event_title": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Event Title"
+          },
+          "explanation": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Explanation"
+          },
+          "evidence": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Evidence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_character_id",
+          "target_character_id",
+          "state",
+          "trust",
+          "event_title",
+          "explanation",
+          "evidence"
+        ],
+        "title": "RelationshipSuggestion"
+      },
+      "RelationshipDraftInput": {
+        "properties": {
+          "manuscript_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Manuscript Id"
+          },
+          "chapter_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Chapter Id"
+          },
+          "selected_pair": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "type": "array",
+                "maxItems": 2,
+                "minItems": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected Pair"
+          },
+          "retry": {
+            "type": "boolean",
+            "title": "Retry",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "manuscript_id",
+          "chapter_id"
+        ],
+        "title": "RelationshipDraftInput"
       }
     },
     "securitySchemes": {
@@ -33249,6 +33449,328 @@
         "tags": [
           "NOTI"
         ]
+      }
+    },
+    "/v1/projects/{projectId}/relationship-drafts": {
+      "post": {
+        "tags": [
+          "RCV"
+        ],
+        "summary": "선택한 장의 관계 초안을 생성하거나 재사용",
+        "operationId": "propose_relationship_v1_projects__projectId__relationship_drafts_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Projectid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RelationshipDraftInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelationshipDraftResponseEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "message": "요청 값이 올바르지 않습니다",
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "인증이 필요합니다",
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "message": "이용이 정지된 계정입니다",
+                        "details": {}
+                      }
+                    }
+                  },
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "message": "권한이 없습니다",
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "- `CHAPTER_NOT_FOUND` — 챕터를 찾을 수 없습니다\n- `CHARACTER_NOT_FOUND` — 캐릭터를 찾을 수 없습니다\n- `MANUSCRIPT_NOT_FOUND` — 원고를 찾을 수 없습니다\n- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "CHAPTER_NOT_FOUND": {
+                    "summary": "챕터를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "CHAPTER_NOT_FOUND",
+                        "message": "챕터를 찾을 수 없습니다",
+                        "details": {}
+                      }
+                    }
+                  },
+                  "CHARACTER_NOT_FOUND": {
+                    "summary": "캐릭터를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "CHARACTER_NOT_FOUND",
+                        "message": "캐릭터를 찾을 수 없습니다",
+                        "details": {}
+                      }
+                    }
+                  },
+                  "MANUSCRIPT_NOT_FOUND": {
+                    "summary": "원고를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "MANUSCRIPT_NOT_FOUND",
+                        "message": "원고를 찾을 수 없습니다",
+                        "details": {}
+                      }
+                    }
+                  },
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "message": "프로젝트를 찾을 수 없습니다",
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/projects/{projectId}/relationship-drafts/{draftId}": {
+      "get": {
+        "tags": [
+          "RCV"
+        ],
+        "summary": "관계 초안 상태와 원문 근거 조회",
+        "operationId": "relationship_draft_v1_projects__projectId__relationship_drafts__draftId__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Projectid"
+            }
+          },
+          {
+            "name": "draftId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Draftid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelationshipDraftResponseEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "- `INVALID_INPUT` — 요청 값이 올바르지 않습니다",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "INVALID_INPUT": {
+                    "summary": "요청 값이 올바르지 않습니다",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_INPUT",
+                        "message": "요청 값이 올바르지 않습니다",
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "- `UNAUTHORIZED` — 인증이 필요합니다",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "인증이 필요합니다",
+                    "value": {
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "인증이 필요합니다",
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "- `ACCOUNT_BANNED` — 이용이 정지된 계정입니다\n- `FORBIDDEN` — 권한이 없습니다",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "ACCOUNT_BANNED": {
+                    "summary": "이용이 정지된 계정입니다",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_BANNED",
+                        "message": "이용이 정지된 계정입니다",
+                        "details": {}
+                      }
+                    }
+                  },
+                  "FORBIDDEN": {
+                    "summary": "권한이 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "message": "권한이 없습니다",
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "- `PROJECT_NOT_FOUND` — 프로젝트를 찾을 수 없습니다",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "PROJECT_NOT_FOUND": {
+                    "summary": "프로젝트를 찾을 수 없습니다",
+                    "value": {
+                      "error": {
+                        "code": "PROJECT_NOT_FOUND",
+                        "message": "프로젝트를 찾을 수 없습니다",
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     }
   }

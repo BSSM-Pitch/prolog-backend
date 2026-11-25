@@ -20,6 +20,8 @@ Result = dict[str, Any]
 
 
 class AIClient(Protocol):
+    def run_relationship_draft(self, payload: dict[str, Any]) -> Result: ...
+
     def run_narrative_review(self, payload: dict[str, Any]) -> Result: ...
 
     def run_rule_duplicates(
@@ -144,6 +146,11 @@ class PrologAI:
         from prolog_ai import run_nlcd
 
         return run_nlcd(source_text)
+
+    def run_relationship_draft(self, payload: dict[str, Any]) -> Result:
+        from app.ai.relationship_draft import run
+
+        return run(payload)
 
     def run_character_assessment(self, payload: dict[str, Any]) -> Result:
         from app.ai.character_assessment import run

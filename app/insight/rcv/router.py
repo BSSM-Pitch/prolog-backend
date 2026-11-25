@@ -2,14 +2,16 @@ from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Path, Query
+from pydantic import BaseModel, Field
 
+from app.ai.relationship_draft import RelationshipSuggestion
 from app.content.manuscripts.revisions import ConfirmSource
 from app.core import errors
-from app.core.deps import require_project_role
+from app.core.deps import ProjectContext, require_project_role
 from app.core.pagination import DEFAULT_LIMIT, Cursor, Limit, decode_cursor, next_cursor
 from app.core.response import Envelope, Page, ok, raises
 from app.db.session import Session
-from app.insight.rcv import service
+from app.insight.rcv import draft, service
 from app.insight.rcv.schemas import (
     RelationshipCreate,
     RelationshipEntryCreate,
@@ -29,6 +31,72 @@ Viewer = Depends(require_project_role("viewer"))
 Editor = Depends(require_project_role("editor"))
 ALL = "/{projectId}/relationships"
 ONE = ALL + "/{relationshipId}"
+
+
+class RelationshipDraftInput(BaseModel):
+    manuscript_id: UUID
+    chapter_id: UUID
+    selected_pair: list[UUID] | None = Field(default=None, min_length=2, max_length=2)
+    retry: bool = False
+
+
+class RelationshipDraftResponse(BaseModel):
+    draft_id: UUID
+    status: str
+    chapter_id: UUID
+    source_hash: str
+    stale: bool
+    analyzed_chars: int
+    total_chars: int
+    result: RelationshipSuggestion | None
+    error: str | None
+
+
+@router.post(
+    "/{projectId}/relationship-drafts",
+    status_code=202,
+    response_model=Envelope[RelationshipDraftResponse],
+    summary="선택한 장의 관계 초안을 생성하거나 재사용",
+    responses=raises(
+        errors.ManuscriptNotFound,
+        errors.ChapterNotFound,
+        errors.CharacterNotFound,
+        errors.InvalidInput,
+    ),
+)
+async def propose_relationship(
+    project_id: ProjectId,
+    body: RelationshipDraftInput,
+    session: Session,
+    ctx: Annotated[ProjectContext, Depends(require_project_role("editor"))],
+) -> dict[str, Any]:
+    return ok(
+        await draft.view(
+            session,
+            await draft.request(
+                session,
+                project_id,
+                body.manuscript_id,
+                body.chapter_id,
+                ctx.user.id,
+                body.selected_pair,
+                body.retry,
+            ),
+        )
+    )
+
+
+@router.get(
+    "/{projectId}/relationship-drafts/{draftId}",
+    dependencies=[Viewer],
+    response_model=Envelope[RelationshipDraftResponse],
+    summary="관계 초안 상태와 원문 근거 조회",
+    responses=raises(errors.InvalidInput),
+)
+async def relationship_draft(
+    project_id: ProjectId, draft_id: Annotated[UUID, Path(alias="draftId")], session: Session
+) -> dict[str, Any]:
+    return ok(await draft.view(session, await draft.get(session, project_id, draft_id)))
 
 
 @router.get(
